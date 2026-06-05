@@ -44,8 +44,8 @@ export default function WorkspacesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Quản lý Workspaces</h2>
-          <p className="text-gray-500 mt-1">Tổng cộng {total} workspaces</p>
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">Quản lý Workspaces</h2>
+          <p className="text-[var(--text-secondary)] mt-1">Tổng cộng {total} workspaces</p>
         </div>
         <Button>
           <Plus className="w-4 h-4 mr-2" />
@@ -57,13 +57,13 @@ export default function WorkspacesPage() {
       <Card className="!p-4">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
             <input
               type="text"
               placeholder="Tìm kiếm workspace..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 pr-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
             />
           </div>
 
@@ -73,8 +73,8 @@ export default function WorkspacesPage() {
               onClick={() => handleFilterChange('all')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 statusFilter === 'all'
-                  ? 'bg-primary-100 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--hover-bg)]'
               }`}
             >
               Tất cả
@@ -83,8 +83,8 @@ export default function WorkspacesPage() {
               onClick={() => handleFilterChange('active')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 statusFilter === 'active'
-                  ? 'bg-green-100 text-green-700'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--hover-bg)]'
               }`}
             >
               Hoạt động
@@ -93,8 +93,8 @@ export default function WorkspacesPage() {
               onClick={() => handleFilterChange('archived')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 statusFilter === 'archived'
-                  ? 'bg-gray-200 text-gray-700'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--hover-bg)]'
               }`}
             >
               Đã lưu trữ
@@ -114,12 +114,12 @@ export default function WorkspacesPage() {
             <Table headers={['ID', 'Tên Workspace', 'Mô tả', 'Chủ sở hữu', 'Members', 'Trạng thái', 'Thao tác']}>
               {workspaces.map((ws) => (
                 <TableRow key={ws._id}>
-                  <TableCell className="text-xs text-gray-400">#{ws._id?.slice(-6)}</TableCell>
+                  <TableCell className="text-[var(--text-muted)]">#{ws._id?.slice(-6)}</TableCell>
                   <TableCell>
-                    <span className="font-medium truncate block max-w-[250px]" title={ws.name}>{ws.name}</span>
+                    <span className="font-medium truncate block max-w-[250px] text-[var(--text-primary)]" title={ws.name}>{ws.name}</span>
                   </TableCell>
                   <TableCell>
-                    <span className="text-gray-500 truncate block max-w-[200px]" title={ws.description || ''}>{ws.description || '-'}</span>
+                    <span className="text-[var(--text-secondary)] truncate block max-w-[200px]" title={ws.description || ''}>{ws.description || '-'}</span>
                   </TableCell>
                   <TableCell>
                     {ws.ownerId ? (
@@ -127,15 +127,15 @@ export default function WorkspacesPage() {
                         {typeof ws.ownerId === 'object' && ws.ownerId.avatar ? (
                           <img src={ws.ownerId.avatar} alt="" className="w-6 h-6 rounded-full" />
                         ) : (
-                          <div className="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center">
-                            <span className="text-xs font-medium text-primary-600">
+                          <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center">
+                            <span className="text-xs font-medium text-primary-600 dark:text-primary-300">
                               {typeof ws.ownerId === 'object'
                                 ? (ws.ownerId.fullName || ws.ownerId.email || '?').charAt(0).toUpperCase()
                                 : '?'}
                             </span>
                           </div>
                         )}
-                        <span className="text-sm">
+                        <span className="text-sm text-[var(--text-primary)]">
                           {typeof ws.ownerId === 'object'
                             ? ws.ownerId.fullName || ws.ownerId.email || 'Unknown'
                             : 'Unknown'}
@@ -144,8 +144,8 @@ export default function WorkspacesPage() {
                     ) : '-'}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Users className="w-4 h-4 text-gray-400" />
+                    <div className="flex items-center gap-1 text-[var(--text-secondary)]">
+                      <Users className="w-4 h-4" />
                       {ws.members?.length || 0}
                     </div>
                   </TableCell>
@@ -157,13 +157,13 @@ export default function WorkspacesPage() {
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <button
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-primary-600"
+                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-primary-600"
                         title="Xem"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-primary-600"
+                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-primary-600"
                         title="Sửa"
                       >
                         <Edit className="w-4 h-4" />
@@ -171,7 +171,7 @@ export default function WorkspacesPage() {
                       {ws.status === 'archived' ? (
                         <button
                           onClick={() => handleRestore(ws._id)}
-                          className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-green-600"
+                          className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-green-600"
                           title="Khôi phục"
                         >
                           <RotateCcw className="w-4 h-4" />
@@ -179,7 +179,7 @@ export default function WorkspacesPage() {
                       ) : (
                         <button
                           onClick={() => handleArchive(ws._id)}
-                          className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-orange-600"
+                          className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-orange-600"
                           title="Lưu trữ"
                         >
                           <Archive className="w-4 h-4" />
@@ -187,7 +187,7 @@ export default function WorkspacesPage() {
                       )}
                       <button
                         onClick={() => handleDelete(ws._id)}
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-red-600"
+                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-red-600"
                         title="Xóa"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -200,8 +200,8 @@ export default function WorkspacesPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-                <p className="text-sm text-gray-500">
+              <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--border-color)]">
+                <p className="text-sm text-[var(--text-secondary)]">
                   Trang {page} / {totalPages}
                 </p>
                 <div className="flex items-center gap-2">

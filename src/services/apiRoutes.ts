@@ -24,6 +24,7 @@ export const API_ROUTES = {
     UPDATE_MEMBER: (workspaceId: string, userId: string) => `/workspaces/${workspaceId}/members/${userId}`,
     REMOVE_MEMBER: (workspaceId: string, userId: string) => `/workspaces/${workspaceId}/members/${userId}`,
     RESTORE: (id: string) => `/workspaces/${id}/restore`,
+    ARCHIVE: (id: string) => `/workspaces/${id}/archive`,
   },
   DOCUMENTS: {
     BASE: '/documents',
@@ -37,6 +38,11 @@ export const API_ROUTES = {
     BASE: '/permissionsapi',
     USER: (userId: string) => `/permissionsapi/user/${userId}`,
     INITIALIZE: '/permissionsapi/initialize',
+  },
+  AUDIT: {
+    LOGS: '/audit/logs',
+    STATS: '/audit/stats',
+    LOG_BY_ID: (id: string) => `/audit/logs/${id}`,
   },
 };
 

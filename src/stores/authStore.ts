@@ -60,11 +60,17 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   checkAuth: async () => {
+    // Skip if already initialized
+    const state = useAuthStore.getState();
+    if (state.isInitialized && state.isAuthenticated) return;
+
     set({ isLoading: true });
     try {
       const user = await authService.getCurrentUser();
       set({ user, isAuthenticated: true, isLoading: false, isInitialized: true });
-    } catch {
+    } catch (error: unknown) {
+      // Clear any invalid tokens
+      localStorage.removeItem('accessToken');
       set({ user: null, isAuthenticated: false, isLoading: false, isInitialized: true });
     }
   },

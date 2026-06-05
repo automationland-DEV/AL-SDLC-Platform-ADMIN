@@ -87,8 +87,8 @@ export default function UsersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Quản lý Users</h2>
-          <p className="text-gray-500 mt-1">Tổng cộng {total} users</p>
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">Quản lý Users</h2>
+          <p className="text-[var(--text-secondary)] mt-1">Tổng cộng {total} users</p>
         </div>
         <Button onClick={() => { setSelectedUser(null); setShowModal(true); }}>
           <Plus className="w-4 h-4 mr-2" />
@@ -100,14 +100,14 @@ export default function UsersPage() {
       <Card className="!p-4">
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
             <input
               type="text"
               placeholder="Tìm kiếm theo tên hoặc email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 pr-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
             />
           </div>
           <Button variant="secondary" onClick={handleSearch}>Tìm kiếm</Button>
@@ -125,14 +125,14 @@ export default function UsersPage() {
             <Table headers={['ID', 'Tên', 'Email', 'Vai trò', 'Trạng thái', 'Ngày tạo', 'Thao tác']}>
               {users.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell>#{user.id?.slice(-6)}</TableCell>
+                  <TableCell className="text-[var(--text-muted)]">#{user.id?.slice(-6)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       {user.avatar ? (
                         <img src={user.avatar} alt="" className="w-8 h-8 rounded-full" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
-                          <span className="text-sm font-medium text-primary-600">
+                        <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center">
+                          <span className="text-sm font-medium text-primary-600 dark:text-primary-300">
                             {(user.fullName || user.email).charAt(0).toUpperCase()}
                           </span>
                         </div>
@@ -140,28 +140,28 @@ export default function UsersPage() {
                       <span className="font-medium">{user.fullName || '-'}</span>
                     </div>
                   </TableCell>
-                  <TableCell>{user.email}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">{user.email}</TableCell>
                   <TableCell>{getRoleBadge(user.role)}</TableCell>
                   <TableCell>{getStatusBadge(user.status)}</TableCell>
-                  <TableCell>{user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : '-'}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">{user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : '-'}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <button
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-primary-600"
+                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-primary-600"
                         title="Xem"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleEditClick(user)}
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-primary-600"
+                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-primary-600"
                         title="Sửa"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(user.id)}
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-red-600"
+                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-red-600"
                         title="Xóa"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -174,15 +174,15 @@ export default function UsersPage() {
 
             {/* Empty state */}
             {users.length === 0 && !isLoading && (
-              <div className="text-center py-12 text-gray-500">
+              <div className="text-center py-12 text-[var(--text-secondary)]">
                 <p>Không tìm thấy user nào.</p>
               </div>
             )}
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-                <p className="text-sm text-gray-500">
+              <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--border-color)]">
+                <p className="text-sm text-[var(--text-secondary)]">
                   Trang {page} / {totalPages}
                 </p>
                 <div className="flex items-center gap-2">
@@ -213,25 +213,25 @@ export default function UsersPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <Card className="w-full max-w-md m-4">
-            <h3 className="text-lg font-semibold mb-4">
+            <h3 className="text-lg font-semibold mb-4 text-[var(--text-primary)]">
               {selectedUser ? 'Chỉnh sửa User' : 'Thêm User mới'}
             </h3>
 
             {selectedUser ? (
               <div className="space-y-4">
                 {/* User Info */}
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-sm text-gray-600">Email: {selectedUser.email}</p>
-                  <p className="text-sm text-gray-600">Tên: {selectedUser.fullName || '-'}</p>
+                <div className="bg-[var(--bg-tertiary)] rounded-lg p-3">
+                  <p className="text-sm text-[var(--text-secondary)]">Email: {selectedUser.email}</p>
+                  <p className="text-sm text-[var(--text-secondary)]">Tên: {selectedUser.fullName || '-'}</p>
                 </div>
 
                 {/* Role Select */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Vai trò</label>
+                  <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">Vai trò</label>
                   <select
                     value={editRole}
                     onChange={(e) => setEditRole(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
                   >
                     <option value="user">User</option>
                     <option value="super_admin">Super Admin</option>
@@ -240,11 +240,11 @@ export default function UsersPage() {
 
                 {/* Status Select */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+                  <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">Trạng thái</label>
                   <select
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
                   >
                     <option value="active">Hoạt động</option>
                     <option value="inactive">Không hoạt động</option>
@@ -262,7 +262,7 @@ export default function UsersPage() {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-[var(--text-secondary)] mb-4">
                 Form tạo user mới sẽ được thêm vào đây.
               </p>
             )}

@@ -21,11 +21,27 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Paths that should not trigger token refresh (avoid loops)
+const AUTH_PATHS = ['/auth/me', '/auth/refresh', '/auth/login'];
+
 // Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const requestPath = originalRequest.url || '';
+
+    // Don't retry auth-related paths to avoid loops
+    if (AUTH_PATHS.some(path => requestPath.includes(path))) {
+      return Promise.reject(error);
+    }
+
+    // Handle rate limiting (429) - don't retry
+    if (error.response?.status === 429) {
+      localStorage.removeItem('accessToken');
+      window.location.href = '/login';
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;

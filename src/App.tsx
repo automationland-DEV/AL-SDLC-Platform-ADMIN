@@ -9,10 +9,14 @@ import {
   WorkspacesPage,
   DocumentsPage,
   PermissionsPage,
+  ActivityPage,
 } from './pages/admin';
 import { useAuthStore } from './stores';
+import { Toaster } from 'react-hot-toast';
+import { useTheme } from './hooks/useTheme';
 
 function App() {
+  useTheme();
   const { checkAuth, isInitialized } = useAuthStore();
 
   useEffect(() => {
@@ -29,6 +33,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <Toaster position="top-right" />
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
@@ -48,6 +53,7 @@ function App() {
           <Route path="workspaces" element={<WorkspacesPage />} />
           <Route path="documents" element={<DocumentsPage />} />
           <Route path="permissions" element={<PermissionsPage />} />
+          <Route path="activity" element={<ActivityPage />} />
         </Route>
 
         {/* Catch all */}

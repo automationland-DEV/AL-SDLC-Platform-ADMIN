@@ -2,3 +2,4 @@ export { useAuthStore, selectUser, selectIsAuthenticated, selectIsSuperAdmin } f
 export { useUsersStore } from './usersStore';
 export { useWorkspacesStore } from './workspacesStore';
 export { useDocumentsStore } from './documentsStore';
+export { useActivityStore } from './activityStore';
