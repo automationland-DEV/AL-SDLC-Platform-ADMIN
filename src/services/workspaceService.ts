@@ -40,7 +40,7 @@ export const workspaceService = {
   },
 
   archive: async (id: string): Promise<Workspace> => {
-    const response = await api.put<Workspace>(API_ROUTES.WORKSPACES.BY_ID(id), { status: 'archived' });
+    const response = await api.post<Workspace>(API_ROUTES.WORKSPACES.ARCHIVE(id));
     return response.data;
   },
 
