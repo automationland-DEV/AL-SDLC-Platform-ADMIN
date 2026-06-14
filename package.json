@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node ./print-banner.mjs admin 5173 development",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
