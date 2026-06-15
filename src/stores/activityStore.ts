@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { auditService, type AuditLogEntry, type AuditLogStats } from '../services/auditService';
+import { auditService, type AuditLogEntry, type AuditLogStats, type AuditLogQueryParams } from '../services/auditService';
 
 interface ActivityState {
   logs: AuditLogEntry[];
@@ -57,7 +57,7 @@ export const useActivityStore = create<ActivityState & ActivityActions>((set, ge
     set({ isLoading: true, error: null });
     try {
       const { filters } = get();
-      const params: Record<string, string | number> = { page, limit: 20 };
+      const params: AuditLogQueryParams = { page, limit: 20 };
 
       if (filters.userId) params.userId = filters.userId;
       if (filters.type) params.type = filters.type;
@@ -66,7 +66,7 @@ export const useActivityStore = create<ActivityState & ActivityActions>((set, ge
       if (filters.startDate) params.startDate = filters.startDate;
       if (filters.endDate) params.endDate = filters.endDate;
 
-      const response = await auditService.getLogs(params as any);
+      const response = await auditService.getLogs(params);
 
       set({
         logs: response.data,

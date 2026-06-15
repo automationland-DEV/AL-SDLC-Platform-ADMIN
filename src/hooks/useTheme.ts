@@ -3,12 +3,9 @@ import { useEffect, useState } from "react";
 type Theme = "light" | "dark" | "system";
 
 export const useTheme = () => {
-  const [theme, setTheme] = useState<Theme>("system");
-
-  useEffect(() => {
-    const saved = (localStorage.getItem("admin-theme") as Theme) || "system";
-    setTheme(saved);
-  }, []);
+  const [theme, setTheme] = useState<Theme>(
+    () => (localStorage.getItem("admin-theme") as Theme) || "system"
+  );
 
   useEffect(() => {
     const root = window.document.documentElement;

@@ -68,7 +68,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     try {
       const user = await authService.getCurrentUser();
       set({ user, isAuthenticated: true, isLoading: false, isInitialized: true });
-    } catch (error: unknown) {
+    } catch {
       // Clear any invalid tokens
       localStorage.removeItem('accessToken');
       set({ user: null, isAuthenticated: false, isLoading: false, isInitialized: true });
