@@ -23,6 +23,12 @@ interface UsersActions {
   deleteUser: (id: string) => Promise<void>;
   updateUserStatus: (id: string, status: string) => Promise<void>;
   updateUserRole: (id: string, role: string) => Promise<void>;
+  importUsersCsv: (file: File) => Promise<{
+    success: boolean;
+    insertedCount: number;
+    skippedCount: number;
+    errors: string[];
+  }>;
 }
 
 type UsersStore = UsersState & UsersActions;
@@ -142,6 +148,21 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
       const message = error instanceof Error ? error.message : 'Failed to update status';
       set({ error: message });
       throw error;
+    }
+  },
+
+  importUsersCsv: async (file) => {
+    set({ isLoading: true });
+    try {
+      const result = await userService.importUsersCsv(file);
+      await get().fetchUsers();
+      return result;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to import users';
+      set({ error: message, isLoading: false });
+      throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 }));

@@ -83,4 +83,20 @@ export const userService = {
     const response = await api.put<User>(API_ROUTES.AUTH.USER_STATUS(id), { status });
     return response.data;
   },
+
+  importUsersCsv: async (file: File): Promise<{
+    success: boolean;
+    insertedCount: number;
+    skippedCount: number;
+    errors: string[];
+  }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/users/import-csv', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };

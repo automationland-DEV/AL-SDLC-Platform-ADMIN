@@ -1,17 +1,58 @@
 import { useEffect, useState } from 'react';
-import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, Upload } from 'lucide-react';
 import { Button, Card, Badge, Table, TableRow, TableCell } from '../../components/ui';
 import { useUsersStore } from '../../stores';
 import type { User, UserRole, UserStatus } from '../../types';
 
 export default function UsersPage() {
-  const { users, total, page, totalPages, isLoading, search, fetchUsers, setSearch, deleteUser, updateUserRole, updateUserStatus } = useUsersStore();
+  const { users, total, page, totalPages, isLoading, search, fetchUsers, setSearch, deleteUser, updateUserRole, updateUserStatus, importUsersCsv } = useUsersStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [editRole, setEditRole] = useState<string>('user');
   const [editStatus, setEditStatus] = useState<string>('active');
   const [isSaving, setIsSaving] = useState(false);
+
+  // CSV Import States
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    success: boolean;
+    insertedCount: number;
+    skippedCount: number;
+    errors: string[];
+    message?: string;
+  } | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFile(e.target.files[0]);
+      setImportResult(null);
+      setImportError(null);
+    }
+  };
+
+  const handleImportSubmit = async () => {
+    if (!selectedFile) return;
+    setIsImporting(true);
+    setImportError(null);
+    setImportResult(null);
+    try {
+      const res = await importUsersCsv(selectedFile);
+      setImportResult({
+        ...res,
+        message: `Import thành công. Đã tạo ${res.insertedCount} tài khoản, bỏ qua ${res.skippedCount} tài khoản.`
+      });
+      setSelectedFile(null);
+    } catch (err: any) {
+      console.error(err);
+      setImportError(err.response?.data?.message || err.message || 'Lỗi khi import file CSV');
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   useEffect(() => {
     fetchUsers(1);
@@ -90,10 +131,16 @@ export default function UsersPage() {
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">Quản lý Users</h2>
           <p className="text-[var(--text-secondary)] mt-1">Tổng cộng {total} users</p>
         </div>
-        <Button onClick={() => { setSelectedUser(null); setShowModal(true); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          Thêm User
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="secondary" onClick={() => setShowImportModal(true)}>
+            <Upload className="w-4 h-4 mr-2" />
+            Import từ CSV
+          </Button>
+          <Button onClick={() => { setSelectedUser(null); setShowModal(true); }}>
+            <Plus className="w-4 h-4 mr-2" />
+            Thêm User
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -272,6 +319,87 @@ export default function UsersPage() {
                 <Button variant="secondary" onClick={() => setShowModal(false)}>Đóng</Button>
               </div>
             )}
+          </Card>
+        </div>
+      )}
+
+      {/* Import CSV Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-lg m-4 !p-6">
+            <h3 className="text-lg font-semibold mb-4 text-[var(--text-primary)]">
+              Import Users từ CSV
+            </h3>
+            
+            <div className="space-y-4">
+              <p className="text-sm text-[var(--text-secondary)]">
+                Chọn file CSV xuất ra từ hệ thống HRM chứa thông tin nhân viên để tạo tài khoản SDLC.
+              </p>
+
+              <div className="border-2 border-dashed border-[var(--border-color)] rounded-lg p-6 flex flex-col items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--hover-bg)] transition cursor-pointer relative">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={isImporting}
+                />
+                <Upload className="w-8 h-8 text-[var(--text-muted)] mb-2" />
+                <span className="text-sm font-medium text-[var(--text-primary)]">
+                  {selectedFile ? selectedFile.name : 'Click để chọn file CSV'}
+                </span>
+                <span className="text-xs text-[var(--text-muted)] mt-1">
+                  Định dạng hỗ trợ: .csv
+                </span>
+              </div>
+
+              {importResult && (
+                <div className={`p-4 rounded-lg text-sm ${
+                  importResult.success ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                }`}>
+                  <p className="font-semibold">{importResult.message}</p>
+                  <p className="mt-1">
+                    Đã tạo thành công: <strong>{importResult.insertedCount}</strong> tài khoản. <br/>
+                    Đã bỏ qua (đã có tài khoản hoặc lỗi): <strong>{importResult.skippedCount}</strong>.
+                  </p>
+                  {importResult.errors && importResult.errors.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-red-500/10 max-h-32 overflow-y-auto space-y-1">
+                      <p className="text-xs font-semibold">Chi tiết lỗi/bỏ qua:</p>
+                      {importResult.errors.map((err, idx) => (
+                        <p key={idx} className="text-xs text-red-400">• {err}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {importError && (
+                <div className="p-3 bg-red-500/10 text-red-500 text-sm rounded-lg border border-red-500/20">
+                  {importError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--border-color)]">
+                <Button 
+                  variant="secondary" 
+                  onClick={() => {
+                    setShowImportModal(false);
+                    setSelectedFile(null);
+                    setImportResult(null);
+                    setImportError(null);
+                  }}
+                  disabled={isImporting}
+                >
+                  Hủy
+                </Button>
+                <Button 
+                  onClick={handleImportSubmit} 
+                  disabled={!selectedFile || isImporting}
+                >
+                  {isImporting ? 'Đang import...' : 'Bắt đầu Import'}
+                </Button>
+              </div>
+            </div>
           </Card>
         </div>
       )}
