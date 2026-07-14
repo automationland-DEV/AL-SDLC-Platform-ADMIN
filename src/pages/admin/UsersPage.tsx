@@ -46,9 +46,10 @@ export default function UsersPage() {
         message: `Import thành công. Đã tạo ${res.insertedCount} tài khoản, bỏ qua ${res.skippedCount} tài khoản.`
       });
       setSelectedFile(null);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setImportError(err.response?.data?.message || err.message || 'Lỗi khi import file CSV');
+      const error = err as Error & { response?: { data?: { message?: string } } };
+      setImportError(error.response?.data?.message || error.message || 'Lỗi khi import file CSV');
     } finally {
       setIsImporting(false);
     }

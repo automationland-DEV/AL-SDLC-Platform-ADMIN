@@ -13,8 +13,8 @@ export default function UnauthorizedPage() {
         <p className="text-gray-500 mb-8 max-w-md">
           Bạn không có quyền truy cập trang này. Chỉ tài khoản <span className="font-semibold text-primary-600">Super Admin</span> mới có thể vào.
         </p>
-        <Link to="/">
-          <Button variant="secondary">Quay về trang chủ</Button>
+        <Link to="/login">
+          <Button variant="secondary">Quay về trang đăng nhập</Button>
         </Link>
       </div>
     </div>
