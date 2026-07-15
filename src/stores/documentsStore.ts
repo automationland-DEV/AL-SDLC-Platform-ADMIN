@@ -10,6 +10,8 @@ interface DocumentsState {
   isLoading: boolean;
   error: string | null;
   filter: string;
+  workspaceFilter: string;
+  absoluteTotal: number;
 }
 
 interface DocumentsActions {
@@ -17,8 +19,9 @@ interface DocumentsActions {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setFilter: (filter: string) => void;
-  fetchDocuments: (page?: number, type?: string) => Promise<void>;
-  createDocument: (data: Partial<Document>) => Promise<void>;
+  setWorkspaceFilter: (workspaceFilter: string) => void;
+  fetchDocuments: (page?: number, type?: string, workspaceId?: string) => Promise<void>;
+  createDocument: (file: File, name: string, workspaceIds: string[]) => Promise<void>;
   updateDocument: (id: string, data: Partial<Document>) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
 }
@@ -33,6 +36,8 @@ export const useDocumentsStore = create<DocumentsStore>((set, get) => ({
   isLoading: false,
   error: null,
   filter: 'all',
+  workspaceFilter: 'all',
+  absoluteTotal: 0,
 
   setDocuments: (documents, total, page, totalPages) => set({ documents, total, page, totalPages }),
 
@@ -42,47 +47,39 @@ export const useDocumentsStore = create<DocumentsStore>((set, get) => ({
 
   setFilter: (filter) => set({ filter }),
 
-  fetchDocuments: async (_page = 1, type = get().filter) => {
+  setWorkspaceFilter: (workspaceFilter) => set({ workspaceFilter }),
+
+  fetchDocuments: async (_page = 1, type = get().filter, workspaceId = get().workspaceFilter) => {
     set({ isLoading: true, error: null });
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const response: any = await documentService.getAllAdmin();
+      const params: Record<string, string | number> = { page: _page, limit: 20 };
+      if (type !== 'all') params.type = type;
+      if (workspaceId !== 'all') params.workspaceId = workspaceId;
 
-      // Handle both array and paginated responses
-      let documents: Document[] = [];
-      let total = 0;
+      const response = await documentService.getAllAdmin(params);
 
-      if (Array.isArray(response)) {
-        documents = response;
-        total = response.length;
-      } else {
-        documents = response.data || [];
-        total = response.total || documents.length;
-      }
+      const documents = response.data || [];
+      const total = response.total || 0;
+      const totalPages = response.totalPages || 1;
 
-      // Filter by type if needed
-      if (type !== 'all') {
-        documents = documents.filter((doc) => doc.documentType === type);
-        total = documents.length;
-      }
-
-      set({
+      set((state) => ({
         documents,
         total,
-        page: 1,
-        totalPages: 1,
+        absoluteTotal: type === 'all' && workspaceId === 'all' && _page === 1 ? total : state.absoluteTotal || total,
+        page: _page,
+        totalPages,
         isLoading: false,
-      });
+      }));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to fetch documents';
       set({ error: message, isLoading: false });
     }
   },
 
-  createDocument: async (data) => {
+  createDocument: async (file, name, workspaceIds) => {
     set({ isLoading: true });
     try {
-      await documentService.upload(data as unknown as File, data.workspaceIds || []);
+      await documentService.upload(file, name, workspaceIds);
       await get().fetchDocuments();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to create document';

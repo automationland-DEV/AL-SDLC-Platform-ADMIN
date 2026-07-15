@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { Shield, Check, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Card, Button } from '../../components/ui';
+import { AddRoleModal, type RoleItem } from './components/permissions/AddRoleModal';
 
 interface PermissionGroup {
   name: string;
@@ -30,7 +32,7 @@ const permissionGroups: PermissionGroup[] = [
   },
 ];
 
-const roles = [
+const initialRoles: RoleItem[] = [
   { name: 'Super Admin', key: 'super_admin', color: 'red', description: 'Toàn quyền hệ thống' },
   { name: 'Admin', key: 'admin', color: 'orange', description: 'Quản lý workspace' },
   { name: 'Member', key: 'member', color: 'blue', description: 'Thành viên thông thường' },
@@ -39,16 +41,24 @@ const roles = [
 
 export default function PermissionsPage() {
   const [selectedRole, setSelectedRole] = useState('super_admin');
+  const [roles, setRoles] = useState<RoleItem[]>(initialRoles);
+  const [showModal, setShowModal] = useState(false);
+
+  const handleAddRole = (newRole: RoleItem) => {
+    setRoles([...roles, newRole]);
+    setShowModal(false);
+    toast.success('Thêm vai trò thành công');
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Quản lý Permissions</h2>
-          <p className="text-gray-500 mt-1">Phân quyền và quyền truy cập hệ thống</p>
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">Quản lý Permissions</h2>
+          <p className="text-[var(--text-secondary)] mt-1">Phân quyền và quyền truy cập hệ thống</p>
         </div>
-        <Button>
+        <Button onClick={() => setShowModal(true)}>
           <Shield className="w-4 h-4 mr-2" />
           Thêm Role
         </Button>
@@ -63,15 +73,15 @@ export default function PermissionsPage() {
               onClick={() => setSelectedRole(role.key)}
               className={`p-4 text-left rounded-lg border-2 transition-colors ${
                 selectedRole === role.key
-                  ? 'border-primary-500 bg-primary-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                  ? 'border-primary-500 bg-[var(--bg-active)]'
+                  : 'border-[var(--border-color)] hover:border-[var(--border-hover)]'
               }`}
             >
               <div className="flex items-center gap-3">
                 <div className={`w-3 h-3 rounded-full bg-${role.color}-500`}></div>
                 <div>
-                  <p className="font-medium text-gray-900">{role.name}</p>
-                  <p className="text-sm text-gray-500">{role.description}</p>
+                  <p className="font-medium text-[var(--text-primary)]">{role.name}</p>
+                  <p className="text-sm text-[var(--text-secondary)]">{role.description}</p>
                 </div>
               </div>
             </button>
@@ -84,10 +94,10 @@ export default function PermissionsPage() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 w-1/4">Quyền</th>
+              <tr className="border-b border-[var(--border-color)]">
+                <th className="text-left py-3 px-4 font-semibold text-[var(--text-secondary)] w-1/4">Quyền</th>
                 {roles.map((role) => (
-                  <th key={role.key} className="text-center py-3 px-4 font-semibold text-gray-700">
+                  <th key={role.key} className="text-center py-3 px-4 font-semibold text-[var(--text-secondary)]">
                     {role.name}
                   </th>
                 ))}
@@ -95,18 +105,18 @@ export default function PermissionsPage() {
             </thead>
             <tbody>
               {permissionGroups.map((group) => (
-                <>
-                  <tr key={group.name} className="bg-gray-50">
-                    <td colSpan={5} className="py-2 px-4 font-semibold text-gray-700">
+                <Fragment key={group.name}>
+                  <tr className="bg-[var(--bg-secondary)]">
+                    <td colSpan={roles.length + 1} className="py-2 px-4 font-semibold text-[var(--text-primary)]">
                       {group.name}
                     </td>
                   </tr>
                   {group.permissions.map((permission) => (
-                    <tr key={permission} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4 text-gray-700">{permission}</td>
+                    <tr key={permission} className="border-b border-[var(--border-color)] hover:bg-[var(--hover-bg)]">
+                      <td className="py-3 px-4 text-[var(--text-secondary)]">{permission}</td>
                       {roles.map((role) => {
                         const hasPermission = role.key === 'super_admin' || role.key === 'admin' ||
-                          (role.key === 'member' && (permission.includes('Tạo') || permission.includes('Sửa'))) ||
+                          (role.key === 'member' && (permission.includes('Tạo') || permission.includes('Sửa') || permission.includes('Upload'))) ||
                           (role.key === 'viewer' && permission.includes('Xem'));
                         return (
                           <td key={role.key} className="py-3 px-4 text-center">
@@ -122,12 +132,20 @@ export default function PermissionsPage() {
                       })}
                     </tr>
                   ))}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
         </div>
       </Card>
+
+      {/* Add Role Modal */}
+      <AddRoleModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onAddRole={handleAddRole}
+        existingRoles={roles}
+      />
     </div>
   );
 }

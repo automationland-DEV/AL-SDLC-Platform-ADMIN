@@ -50,7 +50,7 @@ export const authService = {
 
 // User Service
 export const userService = {
-  getAllUsers: async (params?: { page?: number; limit?: number; search?: string }): Promise<PaginatedResponse<User>> => {
+  getAllUsers: async (params?: { page?: number; limit?: number; search?: string; role?: string; status?: string }): Promise<PaginatedResponse<User>> => {
     const response = await api.get<PaginatedResponse<User>>(API_ROUTES.AUTH.USERS, { params });
     return response.data;
   },

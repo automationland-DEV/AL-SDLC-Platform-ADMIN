@@ -10,6 +10,7 @@ interface UsersState {
   isLoading: boolean;
   error: string | null;
   search: string;
+  absoluteTotal: number;
 }
 
 interface UsersActions {
@@ -17,7 +18,7 @@ interface UsersActions {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setSearch: (search: string) => void;
-  fetchUsers: (page?: number, search?: string) => Promise<void>;
+  fetchUsers: (page?: number, search?: string, role?: string, status?: string) => Promise<void>;
   createUser: (data: Partial<User>) => Promise<void>;
   updateUser: (id: string, data: Partial<User>) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
@@ -41,6 +42,7 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   isLoading: false,
   error: null,
   search: '',
+  absoluteTotal: 0,
 
   setUsers: (users, total, page, totalPages) => set({ users, total, page, totalPages }),
 
@@ -50,11 +52,11 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
 
   setSearch: (search) => set({ search }),
 
-  fetchUsers: async (page = 1, search = get().search) => {
+  fetchUsers: async (page = 1, search = get().search, role?: string, status?: string) => {
     set({ isLoading: true, error: null });
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const response: any = await userService.getAllUsers({ page, search, limit: 20 });
+      const response: any = await userService.getAllUsers({ page, search, limit: 20, role, status });
 
       // Handle both paginated and non-paginated responses
       let users: User[] = [];
@@ -80,13 +82,16 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
         pages = response.totalPages;
       }
 
-      set({
+      const isUnfiltered = !search && (!role || role === 'all') && (!status || status === 'all');
+
+      set((state) => ({
         users,
         total,
+        absoluteTotal: isUnfiltered ? total : state.absoluteTotal || total,
         page: currentPage,
         totalPages: pages,
         isLoading: false,
-      });
+      }));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to fetch users';
       set({ error: message, isLoading: false });
@@ -94,37 +99,34 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   },
 
   createUser: async (data) => {
-    set({ isLoading: true });
     try {
       await userService.createUser(data);
       await get().fetchUsers();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to create user';
-      set({ error: message, isLoading: false });
+      set({ error: message });
       throw error;
     }
   },
 
   updateUser: async (id, data) => {
-    set({ isLoading: true });
     try {
       await userService.updateUser(id, data);
       await get().fetchUsers();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to update user';
-      set({ error: message, isLoading: false });
+      set({ error: message });
       throw error;
     }
   },
 
   deleteUser: async (id) => {
-    set({ isLoading: true });
     try {
       await userService.deleteUser(id);
       await get().fetchUsers();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to delete user';
-      set({ error: message, isLoading: false });
+      set({ error: message });
       throw error;
     }
   },

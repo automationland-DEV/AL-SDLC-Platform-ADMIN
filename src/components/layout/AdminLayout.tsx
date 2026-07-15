@@ -10,7 +10,6 @@ import {
   ChevronRight,
   Settings,
   LogOut,
-  Bell,
   Activity,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores';
@@ -126,14 +125,7 @@ export function AdminLayout() {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Theme Toggle */}
             <ThemeSwitcher variant="compact" />
-
-            {/* Notifications */}
-            <button className="relative p-2 rounded-lg hover:bg-[var(--hover-bg)] transition-colors">
-              <Bell className="w-5 h-5 text-[var(--text-secondary)]" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
 
             {/* User Info */}
             <div className="flex items-center gap-3 pl-4 border-l border-[var(--border-color)]">

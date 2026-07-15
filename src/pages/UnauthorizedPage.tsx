@@ -1,8 +1,12 @@
-import { Link } from 'react-router-dom';
 import { ShieldX } from 'lucide-react';
 import { Button } from '../components/ui';
 
 export default function UnauthorizedPage() {
+  const handleReturn = () => {
+    const userAppUrl = import.meta.env.VITE_USER_APP_URL || (import.meta.env.PROD ? 'https://sdlc-platform.automationland.vn' : 'http://localhost:3000');
+    window.location.href = userAppUrl;
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center">
@@ -13,9 +17,7 @@ export default function UnauthorizedPage() {
         <p className="text-gray-500 mb-8 max-w-md">
           Bạn không có quyền truy cập trang này. Chỉ tài khoản <span className="font-semibold text-primary-600">Super Admin</span> mới có thể vào.
         </p>
-        <Link to="/login">
-          <Button variant="secondary">Quay về trang đăng nhập</Button>
-        </Link>
+        <Button variant="secondary" onClick={handleReturn}>Quay về trang chủ</Button>
       </div>
     </div>
   );

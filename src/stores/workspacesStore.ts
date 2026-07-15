@@ -10,6 +10,7 @@ interface WorkspacesState {
   isLoading: boolean;
   error: string | null;
   filter: string;
+  absoluteTotal: number;
 }
 
 interface WorkspacesActions {
@@ -35,6 +36,7 @@ export const useWorkspacesStore = create<WorkspacesStore>((set, get) => ({
   isLoading: false,
   error: null,
   filter: 'all',
+  absoluteTotal: 0,
 
   setWorkspaces: (workspaces, total, page, totalPages) => set({ workspaces, total, page, totalPages }),
 
@@ -64,19 +66,33 @@ export const useWorkspacesStore = create<WorkspacesStore>((set, get) => ({
         total = response.total || workspaces.length;
       }
 
+      // Save absolute total before filtering
+      const currentAbsoluteTotal = total;
+
       // Filter by status if needed
-      if (status !== 'all') {
-        workspaces = workspaces.filter((ws) => ws.status === status);
+      if (status === 'deleted') {
+        workspaces = workspaces.filter(ws => ws.deletedAt != null);
+        total = workspaces.length;
+      } else if (status === 'archived') {
+        workspaces = workspaces.filter(ws => ws.status === 'archived' && ws.deletedAt == null);
+        total = workspaces.length;
+      } else if (status !== 'all') {
+        workspaces = workspaces.filter((ws) => ws.status === status && ws.deletedAt == null);
+        total = workspaces.length;
+      } else {
+        // Exclude deleted from 'all'
+        workspaces = workspaces.filter((ws) => ws.deletedAt == null);
         total = workspaces.length;
       }
 
-      set({
+      set((state) => ({
         workspaces,
         total,
+        absoluteTotal: status === 'all' ? currentAbsoluteTotal : state.absoluteTotal || currentAbsoluteTotal,
         page: 1,
         totalPages: 1,
         isLoading: false,
-      });
+      }));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to fetch workspaces';
       set({ error: message, isLoading: false });

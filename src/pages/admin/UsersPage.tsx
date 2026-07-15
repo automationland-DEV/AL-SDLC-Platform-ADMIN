@@ -1,103 +1,145 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, prefer-const */
 import { useEffect, useState } from 'react';
-import { Plus, Search, Edit, Trash2, Eye, Upload } from 'lucide-react';
-import { Button, Card, Badge, Table, TableRow, TableCell } from '../../components/ui';
+import { Plus, Search, Edit, Trash2, Eye, Upload, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Button, Card, Badge, Table, TableRow, TableCell, ConfirmModal } from '../../components/ui';
 import { useUsersStore } from '../../stores';
+import { userService } from '../../services';
 import type { User, UserRole, UserStatus } from '../../types';
+import { UserFormModal } from './components/users/UserFormModal';
+import { UserViewModal } from './components/users/UserViewModal';
+import { UserImportModal } from './components/users/UserImportModal';
+
+// Helper for safe error extraction
+const getErrorMessage = (error: any, defaultMsg: string) => {
+  try {
+    const msg = error?.response?.data?.message;
+    if (typeof msg === 'string') return msg;
+    if (Array.isArray(msg)) return String(msg[0]);
+    const err = error?.response?.data?.error;
+    if (typeof err === 'string') return err;
+    if (typeof error?.message === 'string') return error.message;
+    return defaultMsg;
+  } catch (e) {
+    return defaultMsg;
+  }
+};
 
 export default function UsersPage() {
-  const { users, total, page, totalPages, isLoading, search, fetchUsers, setSearch, deleteUser, updateUserRole, updateUserStatus, importUsersCsv } = useUsersStore();
+  const { users, absoluteTotal, page, totalPages, isLoading, search, fetchUsers, setSearch, createUser, deleteUser, updateUserRole, updateUserStatus, importUsersCsv } = useUsersStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [editRole, setEditRole] = useState<string>('user');
-  const [editStatus, setEditStatus] = useState<string>('active');
-  const [isSaving, setIsSaving] = useState(false);
 
-  // CSV Import States
+  // Filtering and Sorting States
+  const [filterRole, setFilterRole] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'createdAt', direction: 'asc' | 'desc' } | null>(null);
+
+  // View User Modal State
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewedUser, setViewedUser] = useState<User | null>(null);
+
+  // Confirm Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+    type: 'danger'
+  });
+
+  // CSV Import State
   const [showImportModal, setShowImportModal] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{
-    success: boolean;
-    insertedCount: number;
-    skippedCount: number;
-    errors: string[];
-    message?: string;
-  } | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
-      setImportResult(null);
-      setImportError(null);
-    }
-  };
-
-  const handleImportSubmit = async () => {
-    if (!selectedFile) return;
-    setIsImporting(true);
-    setImportError(null);
-    setImportResult(null);
-    try {
-      const res = await importUsersCsv(selectedFile);
-      setImportResult({
-        ...res,
-        message: `Import thành công. Đã tạo ${res.insertedCount} tài khoản, bỏ qua ${res.skippedCount} tài khoản.`
-      });
-      setSelectedFile(null);
-    } catch (err) {
-      console.error(err);
-      const error = err as Error & { response?: { data?: { message?: string } } };
-      setImportError(error.response?.data?.message || error.message || 'Lỗi khi import file CSV');
-    } finally {
-      setIsImporting(false);
-    }
-  };
 
   useEffect(() => {
     fetchUsers(1);
   }, [fetchUsers]);
 
-  const handleSearch = () => {
-    setSearch(searchTerm);
-    fetchUsers(1, searchTerm);
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchTerm !== search) {
+        setSearch(searchTerm);
+        fetchUsers(1, searchTerm, filterRole, filterStatus);
+      }
+    }, 500);
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm, search, filterRole, filterStatus, fetchUsers, setSearch]);
+
+  const handleViewClick = async (user: User) => {
+    try {
+      const fullUser = await userService.getUserById(user.id);
+      setViewedUser(fullUser);
+    } catch (error) {
+      console.error('Failed to load full user details:', error);
+      setViewedUser(user);
+    }
+    setShowViewModal(true);
   };
 
   const handlePageChange = (newPage: number) => {
-    fetchUsers(newPage, search);
+    fetchUsers(newPage, search, filterRole, filterStatus);
   };
 
+  
   const handleEditClick = (user: User) => {
     setSelectedUser(user);
-    setEditRole(user.role);
-    setEditStatus(user.status);
     setShowModal(true);
   };
 
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = async (userId: string, role: string, status: string) => {
     if (!selectedUser) return;
-    setIsSaving(true);
     try {
-      if (editRole !== selectedUser.role) {
-        await updateUserRole(selectedUser.id, editRole);
+      if (role !== selectedUser.role) {
+        await updateUserRole(userId, role);
       }
-      if (editStatus !== selectedUser.status) {
-        await updateUserStatus(selectedUser.id, editStatus);
+      if (status !== selectedUser.status) {
+        await updateUserStatus(userId, status);
       }
-      setShowModal(false);
       setSelectedUser(null);
-    } catch (error) {
+      toast.success('Cập nhật người dùng thành công');
+    } catch (error: any) {
       console.error('Failed to update user:', error);
-    } finally {
-      setIsSaving(false);
+      toast.error(getErrorMessage(error, 'Cập nhật người dùng thất bại'));
+      throw error;
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Bạn có chắc muốn xóa user này?')) {
-      await deleteUser(id);
+  const handleCreateUser = async (userData: any) => {
+    try {
+      await createUser(userData);
+      toast.success('Tạo người dùng thành công');
+    } catch (error: any) {
+      console.error('Failed to create user:', error);
+      toast.error(getErrorMessage(error, 'Tạo người dùng thất bại'));
+      throw error;
     }
+  };
+
+  const handleDelete = (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Xóa User',
+      message: 'Bạn có chắc chắn muốn xóa user này? Hành động này không thể hoàn tác.',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteUser(id);
+          toast.success('Xóa người dùng thành công');
+        } catch (error: any) {
+          console.error('Failed to delete user:', error);
+          toast.error(getErrorMessage(error, 'Xóa người dùng thất bại'));
+        } finally {
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
   };
 
   const getStatusBadge = (status: UserStatus) => {
@@ -124,13 +166,53 @@ export default function UsersPage() {
     );
   };
 
+  const getProcessedUsers = () => {
+    let processed = [...users];
+
+    // Sort
+    if (sortConfig) {
+      processed.sort((a, b) => {
+        if (sortConfig.key === 'name') {
+          const nameA = (a.fullName || a.email).toLowerCase();
+          const nameB = (b.fullName || b.email).toLowerCase();
+          if (nameA < nameB) return sortConfig.direction === 'asc' ? -1 : 1;
+          if (nameA > nameB) return sortConfig.direction === 'asc' ? 1 : -1;
+          return 0;
+        }
+        if (sortConfig.key === 'createdAt') {
+          const dateA = new Date(a.createdAt || 0).getTime();
+          const dateB = new Date(b.createdAt || 0).getTime();
+          return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+        }
+        return 0;
+      });
+    }
+
+    return processed;
+  };
+
+  const processedUsers = getProcessedUsers();
+
+  const handleSort = (key: 'name' | 'createdAt') => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const renderSortIcon = (key: 'name' | 'createdAt') => {
+    if (sortConfig?.key !== key) return <ArrowUpDown className="w-3 h-3 ml-1 inline-block opacity-50" />;
+    return sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 ml-1 inline-block" /> : <ChevronDown className="w-3 h-3 ml-1 inline-block" />;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">Quản lý Users</h2>
-          <p className="text-[var(--text-secondary)] mt-1">Tổng cộng {total} users</p>
+          <p className="text-[var(--text-secondary)] mt-1">Tổng cộng {absoluteTotal} users</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="secondary" onClick={() => setShowImportModal(true)}>
@@ -146,19 +228,45 @@ export default function UsersPage() {
 
       {/* Filters */}
       <Card className="!p-4">
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-md">
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <div className="relative flex-1 w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
             <input
               type="text"
               placeholder="Tìm kiếm theo tên hoặc email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="w-full pl-10 pr-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
             />
           </div>
-          <Button variant="secondary" onClick={handleSearch}>Tìm kiếm</Button>
+          <div className="flex w-full md:w-auto gap-3">
+            <select
+              value={filterRole}
+              onChange={(e) => {
+                setFilterRole(e.target.value);
+                fetchUsers(1, searchTerm, e.target.value, filterStatus);
+              }}
+              className="px-3 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)] flex-1 md:w-36"
+            >
+              <option value="all">Tất cả vai trò</option>
+              <option value="user">User</option>
+              <option value="super_admin">Super Admin</option>
+            </select>
+            <select
+              value={filterStatus}
+              onChange={(e) => {
+                setFilterStatus(e.target.value);
+                fetchUsers(1, searchTerm, filterRole, e.target.value);
+              }}
+              className="px-3 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)] flex-1 min-w-[180px] md:min-w-[200px]"
+            >
+              <option value="all">Tất cả trạng thái</option>
+              <option value="active">Hoạt động</option>
+              <option value="inactive">Không hoạt động</option>
+              <option value="pending_verification">Chờ xác thực</option>
+              <option value="suspended">Đình chỉ</option>
+            </select>
+          </div>
         </div>
       </Card>
 
@@ -170,8 +278,16 @@ export default function UsersPage() {
           </div>
         ) : (
           <>
-            <Table headers={['ID', 'Tên', 'Email', 'Vai trò', 'Trạng thái', 'Ngày tạo', 'Thao tác']}>
-              {users.map((user) => (
+            <Table headers={[
+              { label: 'ID', className: 'w-24' },
+              { label: <button key="name" className="flex items-center font-semibold hover:text-primary-600 transition-colors uppercase" onClick={() => handleSort('name')}>Tên {renderSortIcon('name')}</button>, className: 'w-64' },
+              { label: 'Email', className: 'w-64' },
+              { label: 'Vai trò', align: 'center', className: 'w-32' },
+              { label: 'Trạng thái', align: 'center', className: 'w-40' },
+              { label: <button key="created" className="flex items-center justify-center w-full font-semibold hover:text-primary-600 transition-colors uppercase" onClick={() => handleSort('createdAt')}>Ngày tạo {renderSortIcon('createdAt')}</button>, align: 'center', className: 'w-48' },
+              { label: 'Thao tác', align: 'center', className: 'w-24' }
+            ]}>
+              {processedUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="text-[var(--text-muted)]">#{user.id?.slice(-6)}</TableCell>
                   <TableCell>
@@ -189,27 +305,28 @@ export default function UsersPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-[var(--text-secondary)]">{user.email}</TableCell>
-                  <TableCell>{getRoleBadge(user.role)}</TableCell>
-                  <TableCell>{getStatusBadge(user.status)}</TableCell>
-                  <TableCell className="text-[var(--text-secondary)]">{user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : '-'}</TableCell>
+                  <TableCell className="text-center">{getRoleBadge(user.role)}</TableCell>
+                  <TableCell className="text-center">{getStatusBadge(user.status)}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)] text-center">{user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : '-'}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center justify-center gap-1">
                       <button
-                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-primary-600"
+                        onClick={() => handleViewClick(user)}
+                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-primary-600 cursor-pointer"
                         title="Xem"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleEditClick(user)}
-                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-primary-600"
+                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-primary-600 cursor-pointer"
                         title="Sửa"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(user.id)}
-                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-red-600"
+                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-red-600 cursor-pointer"
                         title="Xóa"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -221,9 +338,9 @@ export default function UsersPage() {
             </Table>
 
             {/* Empty state */}
-            {users.length === 0 && !isLoading && (
+            {processedUsers.length === 0 && !isLoading && (
               <div className="text-center py-12 text-[var(--text-secondary)]">
-                <p>Không tìm thấy user nào.</p>
+                <p>Không tìm thấy user nào phù hợp.</p>
               </div>
             )}
 
@@ -257,153 +374,36 @@ export default function UsersPage() {
         )}
       </Card>
 
-      {/* Edit User Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md m-4">
-            <h3 className="text-lg font-semibold mb-4 text-[var(--text-primary)]">
-              {selectedUser ? 'Chỉnh sửa User' : 'Thêm User mới'}
-            </h3>
+      {/* Modals */}
+      <UserFormModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        selectedUser={selectedUser}
+        onSave={handleSaveChanges}
+        onCreate={handleCreateUser}
+      />
 
-            {selectedUser ? (
-              <div className="space-y-4">
-                {/* User Info */}
-                <div className="bg-[var(--bg-tertiary)] rounded-lg p-3">
-                  <p className="text-sm text-[var(--text-secondary)]">Email: {selectedUser.email}</p>
-                  <p className="text-sm text-[var(--text-secondary)]">Tên: {selectedUser.fullName || '-'}</p>
-                </div>
+      <UserImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={importUsersCsv}
+      />
 
-                {/* Role Select */}
-                <div>
-                  <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">Vai trò</label>
-                  <select
-                    value={editRole}
-                    onChange={(e) => setEditRole(e.target.value)}
-                    className="w-full px-3 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-                  >
-                    <option value="user">User</option>
-                    <option value="super_admin">Super Admin</option>
-                  </select>
-                </div>
+      <UserViewModal
+        isOpen={showViewModal}
+        onClose={() => setShowViewModal(false)}
+        user={viewedUser}
+      />
 
-                {/* Status Select */}
-                <div>
-                  <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">Trạng thái</label>
-                  <select
-                    value={editStatus}
-                    onChange={(e) => setEditStatus(e.target.value)}
-                    className="w-full px-3 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-                  >
-                    <option value="active">Hoạt động</option>
-                    <option value="inactive">Không hoạt động</option>
-                    <option value="pending_verification">Chờ xác thực</option>
-                    <option value="suspended">Đình chỉ</option>
-                  </select>
-                </div>
-
-                {/* Actions */}
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button variant="secondary" onClick={() => setShowModal(false)}>Hủy</Button>
-                  <Button onClick={handleSaveChanges} disabled={isSaving}>
-                    {isSaving ? 'Đang lưu...' : 'Lưu'}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-[var(--text-secondary)] mb-4">
-                Form tạo user mới sẽ được thêm vào đây.
-              </p>
-            )}
-
-            {!selectedUser && (
-              <div className="flex justify-end gap-2">
-                <Button variant="secondary" onClick={() => setShowModal(false)}>Đóng</Button>
-              </div>
-            )}
-          </Card>
-        </div>
-      )}
-
-      {/* Import CSV Modal */}
-      {showImportModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-lg m-4 !p-6">
-            <h3 className="text-lg font-semibold mb-4 text-[var(--text-primary)]">
-              Import Users từ CSV
-            </h3>
-            
-            <div className="space-y-4">
-              <p className="text-sm text-[var(--text-secondary)]">
-                Chọn file CSV xuất ra từ hệ thống HRM chứa thông tin nhân viên để tạo tài khoản SDLC.
-              </p>
-
-              <div className="border-2 border-dashed border-[var(--border-color)] rounded-lg p-6 flex flex-col items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--hover-bg)] transition cursor-pointer relative">
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileChange}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  disabled={isImporting}
-                />
-                <Upload className="w-8 h-8 text-[var(--text-muted)] mb-2" />
-                <span className="text-sm font-medium text-[var(--text-primary)]">
-                  {selectedFile ? selectedFile.name : 'Click để chọn file CSV'}
-                </span>
-                <span className="text-xs text-[var(--text-muted)] mt-1">
-                  Định dạng hỗ trợ: .csv
-                </span>
-              </div>
-
-              {importResult && (
-                <div className={`p-4 rounded-lg text-sm ${
-                  importResult.success ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
-                }`}>
-                  <p className="font-semibold">{importResult.message}</p>
-                  <p className="mt-1">
-                    Đã tạo thành công: <strong>{importResult.insertedCount}</strong> tài khoản. <br/>
-                    Đã bỏ qua (đã có tài khoản hoặc lỗi): <strong>{importResult.skippedCount}</strong>.
-                  </p>
-                  {importResult.errors && importResult.errors.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-red-500/10 max-h-32 overflow-y-auto space-y-1">
-                      <p className="text-xs font-semibold">Chi tiết lỗi/bỏ qua:</p>
-                      {importResult.errors.map((err, idx) => (
-                        <p key={idx} className="text-xs text-red-400">• {err}</p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {importError && (
-                <div className="p-3 bg-red-500/10 text-red-500 text-sm rounded-lg border border-red-500/20">
-                  {importError}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--border-color)]">
-                <Button 
-                  variant="secondary" 
-                  onClick={() => {
-                    setShowImportModal(false);
-                    setSelectedFile(null);
-                    setImportResult(null);
-                    setImportError(null);
-                  }}
-                  disabled={isImporting}
-                >
-                  Hủy
-                </Button>
-                <Button 
-                  onClick={handleImportSubmit} 
-                  disabled={!selectedFile || isImporting}
-                >
-                  {isImporting ? 'Đang import...' : 'Bắt đầu Import'}
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

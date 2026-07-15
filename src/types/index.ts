@@ -71,7 +71,7 @@ export interface Workspace {
 // Document Types
 export interface Document {
   _id: string;
-  uploadedBy?: string;
+  uploadedBy?: string | { _id?: string; fullName?: string; email?: string; avatar?: string };
   name: string;
   originalName?: string;
   filename?: string;
@@ -80,6 +80,7 @@ export interface Document {
   extension?: string;
   size?: number;
   documentType?: 'upload' | 'online';
+  content?: string;
   workspaceIds?: string[];
   deletedAt?: string | null;
   createdAt?: string;

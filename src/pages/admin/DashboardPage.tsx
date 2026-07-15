@@ -78,7 +78,7 @@ export default function DashboardPage() {
   ];
 
   const recentUsers = users.slice(0, 5);
-  const recentWorkspaces = workspaces.slice(0, 5);
+  const recentWorkspaces = workspaces.filter(ws => (ws.status === 'active' || !ws.status) && !ws.deletedAt).slice(0, 5);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -216,7 +216,7 @@ export default function DashboardPage() {
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                     u.role === 'super_admin'
                       ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                      : 'bg-[var(--hover-bg)] dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                   }`}>
                     {u.role === 'super_admin' ? 'Super Admin' : 'User'}
                   </span>
@@ -252,8 +252,8 @@ export default function DashboardPage() {
                   className="py-3 flex items-center justify-between hover:bg-[var(--hover-bg)] -mx-4 px-4 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-md">
-                      <span className="text-sm font-bold text-white">{ws.key}</span>
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-md flex-shrink-0">
+                      <span className="text-sm font-bold text-white uppercase">{ws.key?.slice(0, 2)}</span>
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-[var(--text-primary)]">{ws.name}</p>
@@ -263,13 +263,19 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    ws.status === 'active' || ws.status === undefined
-                      ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  }`}>
-                    {ws.status === 'active' || ws.status === undefined ? 'Hoạt động' : 'Đã lưu trữ'}
-                  </span>
+                  {ws.deletedAt ? (
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300">
+                      Đã xóa
+                    </span>
+                  ) : (
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      ws.status === 'active' || ws.status === undefined
+                        ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
+                        : 'bg-[var(--hover-bg)] dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    }`}>
+                      {ws.status === 'active' || ws.status === undefined ? 'Hoạt động' : 'Đã lưu trữ'}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

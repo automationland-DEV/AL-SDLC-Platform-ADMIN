@@ -33,6 +33,8 @@ export const API_ROUTES = {
     WORKSPACE: (workspaceId: string) => `/documents/workspace/${workspaceId}`,
     UPLOAD: '/documents/upload',
     CREATE_ONLINE: '/documents/create-online',
+    DOWNLOAD: (id: string) => `/documents/${id}/download`,
+    EXPORT_DOCX: (id: string) => `/documents/${id}/export/docx`,
   },
   PERMISSIONS: {
     BASE: '/permissionsapi',
