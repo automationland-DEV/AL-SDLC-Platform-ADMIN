@@ -3,3 +3,4 @@ export { useUsersStore } from './usersStore';
 export { useWorkspacesStore } from './workspacesStore';
 export { useDocumentsStore } from './documentsStore';
 export { useActivityStore } from './activityStore';
+export { useChatChannelsStore } from './chatChannelsStore';

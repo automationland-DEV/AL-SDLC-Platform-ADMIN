@@ -4,7 +4,6 @@ import {
   Users,
   Briefcase,
   GitBranch,
-  Shield,
   ChevronLeft,
   ChevronRight,
   Settings,
@@ -21,7 +20,6 @@ const menuItems = [
   { path: '/users', label: 'Quản lý Users', icon: Users },
   { path: '/workspaces', label: 'Quản lý Workspaces', icon: Briefcase },
   { path: '/workflows', label: 'Quản lý Workflows', icon: GitBranch },
-  { path: '/permissions', label: 'Quản lý Permissions', icon: Shield },
 ];
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
@@ -36,7 +34,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
         {!collapsed && (
-          <span className="font-bold text-lg text-primary-600">AL-SDLC Admin</span>
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="SDLC Logo" className="w-10 h-10 object-contain" />
+            <div className="flex flex-col justify-center">
+              <span className="font-black text-2xl text-blue-600 leading-none">SDLC</span>
+              <span className="font-bold text-base text-blue-600 leading-none mt-0.5 tracking-wide">ADMIN</span>
+            </div>
+          </div>
         )}
         <button
           onClick={onToggle}
@@ -77,15 +81,18 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Footer */}
       <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
         <div className="space-y-1">
-          <button
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors ${
-              collapsed ? 'justify-center' : ''
-            }`}
-            title={collapsed ? 'Settings' : undefined}
+          <Link
+            to="/settings"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+              location.pathname.startsWith('/settings')
+                ? 'bg-primary-50 text-primary-600 font-medium dark:bg-primary-900/20 dark:text-primary-400'
+                : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+            } ${collapsed ? 'justify-center' : ''}`}
+            title={collapsed ? 'Cài đặt' : undefined}
           >
             <Settings className="w-5 h-5 flex-shrink-0" />
             {!collapsed && <span>Cài đặt</span>}
-          </button>
+          </Link>
           <button
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors ${
               collapsed ? 'justify-center' : ''

@@ -54,10 +54,10 @@ export function DocOnlineModal({ isOpen, onClose, onSave, workspaces }: DocOnlin
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300">
-      <div className="w-full max-w-5xl shadow-2xl relative flex flex-col max-h-[95vh] border border-[var(--border-color)] bg-[var(--bg-primary)] rounded-2xl">
+      <div className="w-full max-w-5xl shadow-2xl relative flex flex-col max-h-[95vh] border border-[var(--border-color)] bg-[var(--card-bg)] rounded-2xl">
         
-        {/* Premium Header */}
-        <div className="p-6 rounded-t-2xl border-b border-[var(--border-color)] bg-gradient-to-r from-purple-50 to-transparent dark:from-purple-900/20 dark:to-transparent flex justify-between items-center">
+        {/* Header */}
+        <div className="p-5 rounded-t-2xl border-b border-[var(--border-color)] flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center text-purple-600 dark:text-purple-400 shadow-sm">
               <FileText className="w-6 h-6" />
@@ -70,8 +70,8 @@ export function DocOnlineModal({ isOpen, onClose, onSave, workspaces }: DocOnlin
           <Button variant="secondary" onClick={() => onClose(isDirty)} className="rounded-xl">Đóng</Button>
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1 flex flex-col space-y-6 bg-[var(--bg-primary)]">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="p-5 overflow-y-auto flex-1 flex flex-col space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
             {/* Input Name */}
             <div className="space-y-2">
@@ -120,7 +120,7 @@ export function DocOnlineModal({ isOpen, onClose, onSave, workspaces }: DocOnlin
           </div>
         </div>
 
-        <div className="p-6 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex justify-end gap-3 rounded-b-2xl">
+        <div className="p-5 border-t border-[var(--border-color)] flex justify-end gap-3 rounded-b-2xl">
           <Button type="button" variant="secondary" onClick={() => onClose(isDirty)} className="px-6 rounded-xl">Hủy bỏ</Button>
           <Button type="button" onClick={handleSave} disabled={isSaving} className="px-8 rounded-xl shadow-md hover:shadow-lg transition-shadow bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600">
             {isSaving ? 'Đang khởi tạo...' : 'Tạo tài liệu'}

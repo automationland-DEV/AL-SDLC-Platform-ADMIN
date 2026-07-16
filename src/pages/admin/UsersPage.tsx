@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Search, Edit, Trash2, Eye, Upload, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Badge, Table, TableRow, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Badge, Table, TableRow, TableCell, ConfirmModal } from '../../components/ui';
 import { useUsersStore } from '../../stores';
 import { userService } from '../../services';
 import type { User, UserRole, UserStatus } from '../../types';
@@ -207,7 +207,7 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-[calc(100vh-7rem)] space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -227,7 +227,7 @@ export default function UsersPage() {
       </div>
 
       {/* Filters */}
-      <Card className="!p-4">
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] px-4 py-2.5">
         <div className="flex flex-col md:flex-row items-center gap-4">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
@@ -268,43 +268,49 @@ export default function UsersPage() {
             </select>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Table */}
-      <Card>
+      <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--border-color)] flex flex-col flex-1 min-h-0 overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-600 border-t-transparent"></div>
           </div>
         ) : (
           <>
-            <Table headers={[
-              { label: 'ID', className: 'w-24' },
-              { label: <button key="name" className="flex items-center font-semibold hover:text-primary-600 transition-colors uppercase" onClick={() => handleSort('name')}>Tên {renderSortIcon('name')}</button>, className: 'w-64' },
-              { label: 'Email', className: 'w-64' },
-              { label: 'Vai trò', align: 'center', className: 'w-32' },
-              { label: 'Trạng thái', align: 'center', className: 'w-40' },
-              { label: <button key="created" className="flex items-center justify-center w-full font-semibold hover:text-primary-600 transition-colors uppercase" onClick={() => handleSort('createdAt')}>Ngày tạo {renderSortIcon('createdAt')}</button>, align: 'center', className: 'w-48' },
-              { label: 'Thao tác', align: 'center', className: 'w-24' }
-            ]}>
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <Table 
+                fixedLayout
+                headers={[
+                  { label: 'ID', className: 'w-[8%]' },
+                  { label: <button key="name" className="flex items-center font-semibold hover:text-primary-600 transition-colors uppercase" onClick={() => handleSort('name')}>Tên {renderSortIcon('name')}</button>, className: 'w-[25%]' },
+                  { label: 'Email', className: 'w-[25%]' },
+                  { label: 'Vai trò', align: 'center', className: 'w-[10%]' },
+                  { label: 'Trạng thái', align: 'center', className: 'w-[15%]' },
+                  { label: <button key="created" className="flex items-center justify-center w-full font-semibold hover:text-primary-600 transition-colors uppercase" onClick={() => handleSort('createdAt')}>Ngày tạo {renderSortIcon('createdAt')}</button>, align: 'center', className: 'w-[10%]' },
+                  { label: 'Thao tác', align: 'center', className: 'w-[7%]' }
+                ]}
+              >
               {processedUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="text-[var(--text-muted)]">#{user.id?.slice(-6)}</TableCell>
-                  <TableCell>
+                  <TableCell className="max-w-0">
                     <div className="flex items-center gap-3">
                       {user.avatar ? (
                         <img src={user.avatar} alt="" className="w-8 h-8 rounded-full" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center">
+                        <div className="w-8 h-8 flex-shrink-0 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center">
                           <span className="text-sm font-medium text-primary-600 dark:text-primary-300">
-                            {(user.fullName || user.email).charAt(0).toUpperCase()}
+                            {user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
                           </span>
                         </div>
                       )}
-                      <span className="font-medium">{user.fullName || '-'}</span>
+                      <div className="font-medium text-[var(--text-primary)] truncate flex-1 min-w-0" title={user.fullName}>{user.fullName}</div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-[var(--text-secondary)]">{user.email}</TableCell>
+                  <TableCell className="max-w-0">
+                    <div className="text-[var(--text-secondary)] truncate" title={user.email}>{user.email}</div>
+                  </TableCell>
                   <TableCell className="text-center">{getRoleBadge(user.role)}</TableCell>
                   <TableCell className="text-center">{getStatusBadge(user.status)}</TableCell>
                   <TableCell className="text-[var(--text-secondary)] text-center">{user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : '-'}</TableCell>
@@ -343,10 +349,11 @@ export default function UsersPage() {
                 <p>Không tìm thấy user nào phù hợp.</p>
               </div>
             )}
+            </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--border-color)]">
+              <div className="flex items-center justify-between px-6 py-2.5 border-t border-[var(--border-color)]">
                 <p className="text-sm text-[var(--text-secondary)]">
                   Trang {page} / {totalPages}
                 </p>
@@ -372,9 +379,9 @@ export default function UsersPage() {
             )}
           </>
         )}
-      </Card>
+      </div>
 
-      {/* Modals */}
+      {/* User Form Modal */}
       <UserFormModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}

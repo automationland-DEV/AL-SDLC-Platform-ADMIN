@@ -1,5 +1,5 @@
-import { useTheme } from '../hooks/useTheme';
 import { Sun, Moon, Monitor } from 'lucide-react';
+import { useSettings } from '../hooks/useSettings';
 
 interface ThemeSwitcherProps {
   variant?: "dropdown" | "compact";
@@ -7,7 +7,7 @@ interface ThemeSwitcherProps {
 }
 
 export default function ThemeSwitcher({ variant = "dropdown", className = "" }: ThemeSwitcherProps) {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme } = useSettings();
 
   const options = [
     {
@@ -43,8 +43,8 @@ export default function ThemeSwitcher({ variant = "dropdown", className = "" }: 
               title={option.label}
               className={`p-2 rounded-lg transition-colors ${
                 isActive
-                  ? "bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300"
-                  : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                  ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 shadow-sm"
+                  : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
               }`}
             >
               <Icon className="w-4 h-4" />

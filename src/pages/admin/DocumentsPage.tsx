@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Search, Edit, Trash2, Eye, Download, Upload, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Badge, Table, TableRow, TableCell, SearchableSelect, ConfirmModal } from '../../components/ui';
+import { Button, Badge, Table, TableRow, TableCell, SearchableSelect, ConfirmModal } from '../../components/ui';
 import { useDocumentsStore, useWorkspacesStore } from '../../stores';
 import { documentService } from '../../services';
 import type { Document } from '../../types';
@@ -248,7 +248,7 @@ export default function DocumentsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-[calc(100vh-7rem)] space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -268,9 +268,9 @@ export default function DocumentsPage() {
       </div>
 
       {/* Filters */}
-      <Card className="!p-4">
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] px-4 py-2.5">
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="relative flex-1 min-w-[300px] max-w-2xl">
+          <div className="relative flex-1 min-w-[300px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
             <input
               type="text"
@@ -282,7 +282,7 @@ export default function DocumentsPage() {
           </div>
 
           {/* Workspace Filter Dropdown */}
-          <div className="flex-1 min-w-[250px] max-w-md">
+          <div className="flex-1 min-w-[250px]">
             <SearchableSelect
               value={wsFilter}
               onChange={handleWorkspaceFilterChange}
@@ -335,49 +335,53 @@ export default function DocumentsPage() {
             </button>
           )}
         </div>
-      </Card>
+      </div>
 
       {/* Table */}
-      <Card>
-        {isLoading ? (
+      <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--border-color)] flex flex-col flex-1 min-h-0 overflow-hidden relative">
+        {isLoading && documents.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-600 border-t-transparent"></div>
           </div>
         ) : (
           <>
-            <Table headers={[
-              { label: 'ID', className: 'w-24' },
-              { label: 'Tên', className: 'w-64' },
-              { label: 'Loại', align: 'center', className: 'w-32' },
-              { label: 'Kích thước', align: 'center', className: 'w-32' },
-              { label: 'Workspace', align: 'center', className: 'w-48' },
-              { label: 'Người tạo', align: 'center', className: 'w-32' },
-              { label: 'Ngày tạo', align: 'center', className: 'w-40' },
-              { label: 'Thao tác', align: 'center', className: 'w-32' }
-            ]}>
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <Table 
+                fixedLayout
+                headers={[
+                  { label: 'ID', className: 'w-[8%]' },
+                  { label: 'Tên', className: 'w-[25%]' },
+                  { label: 'Loại', align: 'center', className: 'w-[10%]' },
+                  { label: 'Kích thước', align: 'center', className: 'w-[10%]' },
+                  { label: 'Workspace', align: 'center', className: 'w-[15%]' },
+                  { label: 'Người tạo', align: 'center', className: 'w-[15%]' },
+                  { label: 'Ngày tạo', align: 'center', className: 'w-[10%]' },
+                  { label: 'Thao tác', align: 'center', className: 'w-[7%]' }
+                ]}
+              >
               {documents.map((doc) => (
                 <TableRow key={doc._id}>
                   <TableCell>#{doc._id?.slice(-6)}</TableCell>
-                  <TableCell>
+                  <TableCell className="max-w-0">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${doc.documentType === 'online' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
+                      <div className={`w-10 h-10 flex-shrink-0 rounded-lg flex items-center justify-center ${doc.documentType === 'online' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
                         {getTypeIcon(doc.documentType)}
                       </div>
-                      <div>
-                        <p className="font-medium">{doc.name}</p>
+                      <div className="flex-1 min-w-0 truncate" title={doc.name}>
+                        <p className="font-medium truncate">{doc.name}</p>
                         {doc.originalName && doc.originalName !== doc.name && (
-                          <p className="text-xs text-[var(--text-secondary)]">{doc.originalName}</p>
+                          <p className="text-xs text-[var(--text-secondary)] truncate" title={doc.originalName}>{doc.originalName}</p>
                         )}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-center">{getTypeBadge(doc.documentType)}</TableCell>
                   <TableCell className="text-center">{formatFileSize(doc.size)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-center gap-1 flex-wrap">
+                  <TableCell className="max-w-0">
+                    <div className="flex items-center justify-center gap-1 flex-wrap truncate">
                       {doc.workspaceIds?.slice(0, 2).map((wsId) => (
-                        <span key={wsId} className="px-2 py-0.5 bg-[var(--bg-tertiary)] text-[var(--text-primary)] rounded text-xs" title={getWorkspaceName(wsId)}>
-                          {getWorkspaceName(wsId).slice(0, 10)}
+                        <span key={wsId} className="px-2 py-0.5 bg-[var(--bg-tertiary)] text-[var(--text-primary)] rounded text-xs truncate max-w-[80px]" title={getWorkspaceName(wsId)}>
+                          {getWorkspaceName(wsId)}
                         </span>
                       ))}
                       {(doc.workspaceIds?.length || 0) > 2 && (
@@ -430,16 +434,24 @@ export default function DocumentsPage() {
             </Table>
 
             {/* Empty State */}
-            {documents.length === 0 && (
+            {documents.length === 0 && !isLoading && (
               <div className="text-center py-12">
                 <FileText className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-4" />
                 <p className="text-[var(--text-secondary)]">Chưa có tài liệu nào</p>
               </div>
             )}
+            </div>
+
+            {/* Overlay loading indicator for pagination */}
+            {isLoading && documents.length > 0 && (
+              <div className="absolute inset-0 bg-[var(--card-bg)]/50 flex items-center justify-center z-10 backdrop-blur-[1px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-600 border-t-transparent"></div>
+              </div>
+            )}
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--border-color)]">
+              <div className="flex items-center justify-between px-6 py-2.5 border-t border-[var(--border-color)]">
                 <p className="text-sm text-[var(--text-secondary)]">
                   Trang {page} / {totalPages}
                 </p>
@@ -465,7 +477,7 @@ export default function DocumentsPage() {
             )}
           </>
         )}
-      </Card>
+      </div>
 
       <DocOnlineModal
         isOpen={showOnlineModal}

@@ -6,12 +6,13 @@ export type TableHeader = ReactNode | { label: ReactNode; align?: 'left' | 'cent
 interface TableProps {
   headers: TableHeader[];
   children: ReactNode;
+  fixedLayout?: boolean;
 }
 
-export function Table({ headers, children }: TableProps) {
+export function Table({ headers, children, fixedLayout = false }: TableProps) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-[var(--border-color)]">
+      <table className={`min-w-full divide-y divide-[var(--border-color)] ${fixedLayout ? 'table-fixed' : ''}`}>
         <thead className="bg-[var(--bg-secondary)]">
           <tr>
             {headers.map((header, index) => {

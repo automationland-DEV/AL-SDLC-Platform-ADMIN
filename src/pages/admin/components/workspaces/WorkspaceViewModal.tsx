@@ -1,21 +1,42 @@
 import { Button, Card, Badge } from '../../../../components/ui';
 import type { Workspace } from '../../../../types';
 
+const formatRole = (role: string) => {
+  const roleMap: Record<string, string> = {
+    workspace_admin: 'Quản trị viên',
+    workspace_member: 'Thành viên',
+    workspace_viewer: 'Người xem',
+    workspace_editor: 'Người sửa',
+    admin: 'Quản trị viên',
+    member: 'Thành viên',
+  };
+  return roleMap[role] || role.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+};
+
+const getRoleBadgeVariant = (role: string) => {
+  if (role.includes('admin')) return 'danger';
+  if (role.includes('editor')) return 'warning';
+  return 'default';
+};
+
 interface WorkspaceViewModalProps {
   isOpen: boolean;
   onClose: () => void;
   workspace: Workspace | null;
-  members: { userId: { fullName?: string; email?: string } | null; role: string }[];
+  members: { userId: { fullName?: string; email?: string; avatar?: string } | null; role: string }[];
 }
 
 export function WorkspaceViewModal({ isOpen, onClose, workspace, members }: WorkspaceViewModalProps) {
   if (!isOpen || !workspace) return null;
 
-  const getStatusBadge = (status: string | undefined) => {
-    return status === 'active' ? (
+  const getStatusBadge = () => {
+    if (workspace.deletedAt) {
+      return <Badge variant="danger">Đã xóa</Badge>;
+    }
+    return workspace.status === 'active' ? (
       <Badge variant="success">Hoạt động</Badge>
     ) : (
-      <Badge variant="danger">Đã lưu trữ</Badge>
+      <Badge variant="warning">Đã lưu trữ</Badge>
     );
   };
 
@@ -29,8 +50,8 @@ export function WorkspaceViewModal({ isOpen, onClose, workspace, members }: Work
         <div className="flex-1 overflow-y-auto pr-2 space-y-6">
           {/* Header Info */}
           <div className="bg-gradient-to-r from-primary-50 to-primary-100/50 dark:from-primary-900/20 dark:to-primary-800/10 rounded-xl p-5 border border-primary-100 dark:border-primary-900/50 flex items-center gap-4">
-            <div className="w-16 h-16 rounded-xl bg-primary-200 dark:bg-primary-800 flex items-center justify-center text-primary-700 dark:text-primary-300 font-bold text-2xl shadow-sm">
-              {workspace.key}
+            <div className="w-16 h-16 rounded-xl bg-primary-200 dark:bg-primary-800 flex items-center justify-center text-primary-700 dark:text-primary-300 font-bold text-2xl shadow-sm shrink-0 overflow-hidden">
+              {workspace.key?.slice(0, 2).toUpperCase() || 'WS'}
             </div>
             <div>
               <h4 className="font-semibold text-xl text-[var(--text-primary)]">{workspace.name}</h4>
@@ -45,11 +66,11 @@ export function WorkspaceViewModal({ isOpen, onClose, workspace, members }: Work
             </div>
             <div>
               <p className="text-xs text-[var(--text-secondary)] uppercase font-semibold">Ngày tạo</p>
-              <p className="font-medium">{workspace.createdAt ? new Date(workspace.createdAt as string).toLocaleDateString('vi-VN') : '-'}</p>
+              <p className="font-medium">{workspace.createdAt ? new Date(workspace.createdAt as string).toLocaleString('vi-VN') : '-'}</p>
             </div>
             <div>
               <p className="text-xs text-[var(--text-secondary)] uppercase font-semibold">Trạng thái</p>
-              <div className="mt-1">{getStatusBadge(workspace.status)}</div>
+              <div className="mt-1">{getStatusBadge()}</div>
             </div>
             <div>
               <p className="text-xs text-[var(--text-secondary)] uppercase font-semibold">Số thành viên</p>
@@ -66,7 +87,7 @@ export function WorkspaceViewModal({ isOpen, onClose, workspace, members }: Work
                   <thead className="bg-[var(--bg-tertiary)] text-[var(--text-secondary)] uppercase text-xs">
                     <tr>
                       <th className="px-4 py-3 font-semibold">Tên / Email</th>
-                      <th className="px-4 py-3 font-semibold w-32">Vai trò</th>
+                      <th className="px-4 py-3 font-semibold w-40">Vai trò</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border-color)]">
@@ -75,12 +96,25 @@ export function WorkspaceViewModal({ isOpen, onClose, workspace, members }: Work
                       return (
                         <tr key={index} className="hover:bg-[var(--hover-bg)] transition-colors">
                           <td className="px-4 py-3">
-                            <div className="font-medium text-[var(--text-primary)]">{user?.fullName || 'N/A'}</div>
-                            <div className="text-xs text-[var(--text-secondary)]">{user?.email || 'N/A'}</div>
+                            <div className="flex items-center gap-3">
+                              {user?.avatar ? (
+                                <img src={user.avatar} alt={user.fullName || 'User'} className="w-8 h-8 rounded-full object-cover shrink-0 border border-[var(--border-color)]" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center border border-[var(--border-color)] shrink-0">
+                                  <span className="text-sm font-medium text-primary-600 dark:text-primary-300">
+                                    {user?.fullName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                                  </span>
+                                </div>
+                              )}
+                              <div>
+                                <div className="font-medium text-[var(--text-primary)]">{user?.fullName || 'N/A'}</div>
+                                <div className="text-xs text-[var(--text-secondary)]">{user?.email || 'N/A'}</div>
+                              </div>
+                            </div>
                           </td>
                           <td className="px-4 py-3">
-                            <Badge variant={member.role === 'admin' ? 'danger' : 'default'}>
-                              {member.role}
+                            <Badge variant={getRoleBadgeVariant(member.role)}>
+                              {formatRole(member.role)}
                             </Badge>
                           </td>
                         </tr>
