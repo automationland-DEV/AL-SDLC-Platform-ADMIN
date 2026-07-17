@@ -11,6 +11,7 @@ import {
   ActivityPage,
   SettingsPage,
   ChatChannelsPage,
+  ProfilePage,
 } from './pages/admin';
 import { useAuthStore } from './stores';
 import { Toaster } from 'react-hot-toast';
@@ -55,6 +56,7 @@ function App() {
           <Route path="documents" element={<DocumentsPage />} />
           <Route path="chat-channels" element={<ChatChannelsPage />} />
           <Route path="activity" element={<ActivityPage />} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 

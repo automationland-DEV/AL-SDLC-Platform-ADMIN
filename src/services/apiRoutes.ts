@@ -64,6 +64,7 @@ export const API_ROUTES = {
   },
   IMAGES: {
     BASE: '/imagesapi',
+    UPLOAD: '/imagesapi/upload',
   }
 };
 

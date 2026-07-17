@@ -12,6 +12,7 @@ import {
   LogOut,
   Activity,
   MessageSquare,
+  User,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores';
 import ThemeSwitcher from '../ThemeSwitcher';
@@ -204,6 +205,15 @@ export function AdminLayout() {
                     <div className="h-px bg-[var(--border-color)] my-1" />
 
                     {/* Menu Items */}
+                    <Link
+                      to="/profile"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-[var(--text-primary)] hover:bg-[var(--hover-bg)] transition-colors"
+                    >
+                      <User className="w-4 h-4 text-[var(--text-secondary)]" />
+                      Hồ sơ
+                    </Link>
+
                     <Link
                       to="/settings"
                       onClick={() => setIsUserMenuOpen(false)}

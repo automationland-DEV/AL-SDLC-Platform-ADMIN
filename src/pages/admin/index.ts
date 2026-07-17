@@ -5,3 +5,4 @@ export { default as DocumentsPage } from './DocumentsPage';
 export { default as ActivityPage } from './ActivityPage';
 export { default as SettingsPage } from './SettingsPage';
 export { default as ChatChannelsPage } from './ChatChannelsPage';
+export { default as ProfilePage } from './ProfilePage';
