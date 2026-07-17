@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../stores';
 import ThemeSwitcher from '../ThemeSwitcher';
+import AdminNotificationBell from '../AdminNotificationBell';
 
 export function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -151,6 +152,9 @@ export function AdminLayout() {
 
           <div className="flex items-center gap-4">
             <ThemeSwitcher variant="compact" />
+
+            {/* Admin Notifications */}
+            <AdminNotificationBell />
 
             {/* User Info Dropdown */}
             <div className="relative border-l border-[var(--border-color)] pl-4 flex justify-end" ref={userMenuRef}>
