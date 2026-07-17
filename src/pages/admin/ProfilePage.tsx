@@ -1,16 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
-import { Key, Camera, Loader2 } from 'lucide-react';
+import { Key, Camera, Loader2, Edit2 } from 'lucide-react';
 import { AvatarCropperModal } from './components/AvatarCropperModal';
 import api from '../../services/api';
 import { API_ROUTES } from '../../services/apiRoutes';
-import { Button } from '../../components/ui';
+import { Button, Select, DatePicker } from '../../components/ui';
 import { useAuthStore } from '../../stores';
 import { userService } from '../../services/authService';
 import toast from 'react-hot-toast';
+import type { AuthUser } from '../../types';
 
 export default function ProfilePage() {
   const { user, setUser } = useAuthStore();
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -76,8 +78,7 @@ export default function ProfilePage() {
       if (imageUrl) {
         setAvatarUrl(imageUrl);
         const updatedUser = await userService.updateProfile({ avatar: imageUrl });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setUser(updatedUser as any);
+        setUser(updatedUser as unknown as AuthUser);
         toast.success('Cập nhật ảnh đại diện thành công');
       } else {
         throw new Error('Upload failed: No image URL returned');
@@ -106,12 +107,13 @@ export default function ProfilePage() {
         gender,
         avatar: avatarUrl || undefined
       });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setUser(updatedUser as any); // Type cast if needed depending on AuthStore types
+      setUser(updatedUser as unknown as AuthUser); // Type cast if needed depending on AuthStore types
       toast.success('Cập nhật thông tin thành công');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Lỗi khi cập nhật thông tin');
+    } catch (error) {
+      const errObj = error as Record<string, unknown>;
+      const response = errObj?.response as Record<string, unknown>;
+      const data = response?.data as Record<string, unknown>;
+      toast.error((data?.message as string) || 'Lỗi khi cập nhật thông tin');
     } finally {
       setIsSavingProfile(false);
     }
@@ -141,9 +143,11 @@ export default function ProfilePage() {
       setCurrentPassword('');
       setNewPassword('');
       toast.success('Cập nhật mật khẩu thành công');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Mật khẩu cũ không chính xác hoặc có lỗi xảy ra');
+    } catch (error) {
+      const errObj = error as Record<string, unknown>;
+      const response = errObj?.response as Record<string, unknown>;
+      const data = response?.data as Record<string, unknown>;
+      toast.error((data?.message as string) || 'Mật khẩu cũ không chính xác hoặc có lỗi xảy ra');
     } finally {
       setIsSavingPassword(false);
     }
@@ -211,6 +215,20 @@ export default function ProfilePage() {
                 JPG, PNG, GIF, WEBP - max 10MB
               </p>
             </div>
+            
+            <div className="ml-auto">
+              {!isEditingProfile && (
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={() => setIsEditingProfile(true)}
+                  className="flex items-center gap-1.5"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Sửa hồ sơ
+                </Button>
+              )}
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
@@ -221,7 +239,8 @@ export default function ProfilePage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Nhập họ và tên"
-                className="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                disabled={!isEditingProfile}
+                className={`w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)] ${!isEditingProfile ? 'opacity-60 cursor-not-allowed' : ''}`}
               />
             </div>
             <div className="space-y-2">
@@ -234,13 +253,37 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-2">
+              <label className="text-sm font-semibold text-[var(--text-primary)]">Ngày sinh</label>
+              <DatePicker
+                value={birthday}
+                onChange={(val) => setBirthday(val)}
+                className="w-full"
+                disabled={!isEditingProfile}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-[var(--text-primary)]">Giới tính</label>
+              <Select
+                value={gender}
+                onChange={(val) => setGender(val as 'male' | 'female' | 'other')}
+                options={[
+                  { value: 'male', label: 'Nam' },
+                  { value: 'female', label: 'Nữ' },
+                  { value: 'other', label: 'Khác' }
+                ]}
+                className="w-full"
+                disabled={!isEditingProfile}
+              />
+            </div>
+            <div className="space-y-2">
               <label className="text-sm font-semibold text-[var(--text-primary)]">Số điện thoại</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Nhập số điện thoại"
-                className="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                disabled={!isEditingProfile}
+                className={`w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)] ${!isEditingProfile ? 'opacity-60 cursor-not-allowed' : ''}`}
               />
             </div>
             <div className="space-y-2 md:col-span-2">
@@ -250,36 +293,21 @@ export default function ProfilePage() {
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Nhập địa chỉ"
-                className="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                disabled={!isEditingProfile}
+                className={`w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)] ${!isEditingProfile ? 'opacity-60 cursor-not-allowed' : ''}`}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-[var(--text-primary)]">Ngày sinh</label>
-              <input
-                type="date"
-                value={birthday}
-                onChange={(e) => setBirthday(e.target.value)}
-                className="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-[var(--text-primary)]">Giới tính</label>
-              <select
-                value={gender}
-                onChange={(e) => setGender(e.target.value as 'male' | 'female' | 'other')}
-                className="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-              >
-                <option value="male">Nam</option>
-                <option value="female">Nữ</option>
-                <option value="other">Khác</option>
-              </select>
-            </div>
           </div>
-          <div className="mt-6 flex justify-start">
-            <Button onClick={handleUpdateProfile} disabled={isSavingProfile}>
-              Lưu thay đổi
-            </Button>
-          </div>
+          {isEditingProfile && (
+            <div className="mt-6 flex justify-end gap-3">
+              <Button variant="secondary" onClick={() => setIsEditingProfile(false)} disabled={isSavingProfile}>
+                Hủy
+              </Button>
+              <Button onClick={() => { handleUpdateProfile(); setIsEditingProfile(false); }} disabled={isSavingProfile}>
+                Lưu thay đổi
+              </Button>
+            </div>
+          )}
         </div>
 
         {selectedImage && (
@@ -340,7 +368,7 @@ export default function ProfilePage() {
                   />
                 </div>
               </div>
-              <div className="mt-6 flex justify-start">
+              <div className="mt-6 flex justify-end">
                 <Button variant="danger" onClick={handleUpdatePassword} disabled={isSavingPassword}>
                   Cập nhật mật khẩu
                 </Button>

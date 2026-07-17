@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Button } from '../../../../components/ui';
+import { Button, Select } from '../../../../components/ui';
 import { UserPlus, X } from 'lucide-react';
 import type { User, UserRole, UserStatus } from '../../../../types';
 
@@ -148,28 +148,30 @@ export function UserFormModal({ isOpen, onClose, selectedUser, onSave, onCreate 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">Vai trò</label>
-                  <select
+                  <Select
                     value={editRole}
-                    onChange={(e) => setEditRole(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-[var(--border-color)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)] shadow-sm"
-                  >
-                    <option value="user">User</option>
-                    <option value="super_admin">Super Admin</option>
-                  </select>
+                    onChange={(val) => setEditRole(val)}
+                    options={[
+                      { value: 'user', label: 'User' },
+                      { value: 'super_admin', label: 'Super Admin' }
+                    ]}
+                    className="w-full"
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">Trạng thái</label>
-                  <select
+                  <Select
                     value={editStatus}
-                    onChange={(e) => setEditStatus(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-[var(--border-color)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)] shadow-sm"
-                  >
-                    <option value="active">Hoạt động</option>
-                    <option value="inactive">Không hoạt động</option>
-                    <option value="pending_verification">Chờ xác thực</option>
-                    <option value="suspended">Đình chỉ</option>
-                  </select>
+                    onChange={(val) => setEditStatus(val)}
+                    options={[
+                      { value: 'active', label: 'Hoạt động' },
+                      { value: 'inactive', label: 'Không hoạt động' },
+                      { value: 'pending_verification', label: 'Chờ xác thực' },
+                      { value: 'suspended', label: 'Đình chỉ' }
+                    ]}
+                    className="w-full"
+                  />
                 </div>
               </div>
             </div>
@@ -232,28 +234,30 @@ export function UserFormModal({ isOpen, onClose, selectedUser, onSave, onCreate 
 
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">Vai trò</label>
-                <select
+                <Select
                   value={newRole}
-                  onChange={(e) => setNewRole(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-[var(--border-color)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)] shadow-sm"
-                >
-                  <option value="user">User</option>
-                  <option value="super_admin">Super Admin</option>
-                </select>
+                  onChange={(val) => setNewRole(val)}
+                  options={[
+                    { value: 'user', label: 'User' },
+                    { value: 'super_admin', label: 'Super Admin' }
+                  ]}
+                  className="w-full"
+                />
               </div>
 
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">Trạng thái</label>
-                <select
+                <Select
                   value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-[var(--border-color)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)] shadow-sm"
-                >
-                  <option value="active">Hoạt động</option>
-                  <option value="inactive">Không hoạt động</option>
-                  <option value="pending_verification">Chờ xác thực</option>
-                  <option value="suspended">Đình chỉ</option>
-                </select>
+                  onChange={(val) => setNewStatus(val)}
+                  options={[
+                    { value: 'active', label: 'Hoạt động' },
+                    { value: 'inactive', label: 'Không hoạt động' },
+                    { value: 'pending_verification', label: 'Chờ xác thực' },
+                    { value: 'suspended', label: 'Đình chỉ' }
+                  ]}
+                  className="w-full"
+                />
               </div>
             </div>
           )}

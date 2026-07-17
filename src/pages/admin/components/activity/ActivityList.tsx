@@ -98,19 +98,26 @@ export function ActivityList({ selectedUserId }: ActivityListProps) {
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-medium text-[var(--text-primary)]">{eventLabel}</h4>
-                      <Badge variant={severity.badge}>{log.severity}</Badge>
-                      {isAuthEvent && (
-                        <Badge variant="default">
-                          {log.type.includes('SUCCESS') || log.type === 'LOGOUT' ? (
-                            <LogIn className="w-3 h-3 mr-1" />
-                          ) : (
-                            <LogOut className="w-3 h-3 mr-1" />
-                          )}
-                          Auth
-                        </Badge>
-                      )}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-medium text-[var(--text-primary)]">{eventLabel}</h4>
+                        <Badge variant={severity.badge}>{log.severity}</Badge>
+                        {isAuthEvent && (
+                          <Badge variant="default">
+                            {log.type.includes('SUCCESS') || log.type === 'LOGOUT' ? (
+                              <LogIn className="w-3 h-3 mr-1" />
+                            ) : (
+                              <LogOut className="w-3 h-3 mr-1" />
+                            )}
+                            Auth
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex-shrink-0 text-left sm:text-right">
+                        <span className="text-xs text-[var(--text-muted)] font-mono">
+                          {log.type.length > 20 ? log.type.slice(0, 20) + '...' : log.type}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Metadata */}
@@ -140,17 +147,10 @@ export function ActivityList({ selectedUserId }: ActivityListProps) {
 
                     {/* Extra metadata */}
                     {log.metadata && Object.keys(log.metadata).length > 0 && (
-                      <div className="mt-2 px-3 py-2 bg-[var(--bg-tertiary)] rounded-lg text-xs text-[var(--text-secondary)] font-mono overflow-x-auto">
+                      <div className="mt-2 px-3 py-2 bg-[var(--bg-tertiary)] rounded-lg text-xs text-[var(--text-secondary)] font-mono overflow-x-hidden break-all whitespace-pre-wrap">
                         {JSON.stringify(log.metadata, null, 0)}
                       </div>
                     )}
-                  </div>
-
-                  {/* Type badge */}
-                  <div className="flex-shrink-0">
-                    <span className="text-xs text-[var(--text-muted)] font-mono">
-                      {log.type.length > 20 ? log.type.slice(0, 20) + '...' : log.type}
-                    </span>
                   </div>
                 </div>
               </div>
@@ -162,9 +162,9 @@ export function ActivityList({ selectedUserId }: ActivityListProps) {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-6 py-2.5 border-t border-[var(--border-color)]">
-          <p className="text-sm text-[var(--text-secondary)] hidden md:block">
-            Hiển thị {(page - 1) * 20 + 1} - {Math.min(page * 20, total)} của {total}
+        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-2.5 border-t border-[var(--border-color)] gap-3 sm:gap-0">
+          <p className="text-sm text-[var(--text-secondary)] text-center sm:text-left">
+            Trang {page} / {totalPages}
           </p>
           <div className="flex items-center gap-2">
             <Button

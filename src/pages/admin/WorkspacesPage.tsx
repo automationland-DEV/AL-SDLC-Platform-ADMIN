@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useEffect, useState } from 'react';
 import { Plus, Search, Edit, Trash2, Eye, Archive, RotateCcw, Users } from 'lucide-react';
 import { Button, Card, Badge, Table, TableRow, TableCell } from '../../components/ui';
@@ -42,7 +42,7 @@ export default function WorkspacesPage() {
   const itemsPerPage = 20;
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewedWorkspace, setViewedWorkspace] = useState<Workspace | null>(null);
-  const [workspaceMembers, setWorkspaceMembers] = useState<{ userId: any; role: string }[]>([]);
+  const [workspaceMembers, setWorkspaceMembers] = useState<{ userId: User; role: string }[]>([]);
 
   useEffect(() => {
     fetchWorkspaces(1);
@@ -50,11 +50,14 @@ export default function WorkspacesPage() {
     // Fetch users for owner selection
     const loadUsers = async () => {
       try {
-        const response: any = await userService.getAllUsers({ limit: 1000 });
+        const response = await userService.getAllUsers({ limit: 1000 }) as unknown;
         if (Array.isArray(response)) {
-          setAllUsers(response);
-        } else if (response.data) {
-          setAllUsers(response.data);
+          setAllUsers(response as User[]);
+        } else if (response && typeof response === 'object') {
+          const resObj = response as Record<string, unknown>;
+          if (resObj.data) {
+            setAllUsers(resObj.data as User[]);
+          }
         }
       } catch (error) {
         console.error('Failed to load users:', error);
@@ -96,8 +99,8 @@ export default function WorkspacesPage() {
   const handleViewClick = (ws: Workspace) => {
     setViewedWorkspace(ws);
     // Filter out members where userId is null (deleted users)
-    const validMembers = (ws.members || []).filter((m: any) => m.userId);
-    setWorkspaceMembers(validMembers);
+    const validMembers = (ws.members || []).filter((m: { userId?: unknown; role?: string }) => m.userId);
+    setWorkspaceMembers(validMembers as { userId: User; role: string }[]);
     setShowViewModal(true);
   };
 
@@ -156,7 +159,7 @@ export default function WorkspacesPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
         <div>
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">Quản lý Workspaces</h2>
           <p className="text-[var(--text-secondary)] mt-1">Tổng cộng {absoluteTotal} workspaces</p>
@@ -185,7 +188,7 @@ export default function WorkspacesPage() {
           </div>
 
           {/* Status Filter Tabs */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => handleFilterChange('all')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${statusFilter === 'all'
@@ -285,7 +288,7 @@ export default function WorkspacesPage() {
                   <TableCell>
                     <div className="flex items-center justify-center gap-1 text-[var(--text-secondary)] w-full">
                       <Users className="w-4 h-4" />
-                      {ws.members?.filter((m: any) => m.userId)?.length || 0}
+                      {ws.members?.filter((m: { userId?: unknown }) => m.userId)?.length || 0}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -348,8 +351,8 @@ export default function WorkspacesPage() {
 
             {/* Pagination */}
             {totalPagesClient > 1 && (
-              <div className="flex items-center justify-between px-6 py-2.5 border-t border-[var(--border-color)]">
-                <p className="text-sm text-[var(--text-secondary)]">
+              <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-2.5 border-t border-[var(--border-color)] gap-3 sm:gap-0">
+                <p className="text-sm text-[var(--text-secondary)] text-center sm:text-left">
                   Trang {currentPage} / {totalPagesClient}
                 </p>
                 <div className="flex items-center gap-2">
@@ -390,7 +393,7 @@ export default function WorkspacesPage() {
         isOpen={showViewModal}
         onClose={() => setShowViewModal(false)}
         workspace={viewedWorkspace}
-        members={workspaceMembers as any}
+        members={workspaceMembers}
       />
 
       {/* Confirm Modal */}

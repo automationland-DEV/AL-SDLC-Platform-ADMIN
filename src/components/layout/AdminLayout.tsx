@@ -6,7 +6,6 @@ import {
   Briefcase,
   FileText,
   ChevronLeft,
-  ChevronRight,
   ChevronDown,
   Settings,
   LogOut,
@@ -19,7 +18,7 @@ import ThemeSwitcher from '../ThemeSwitcher';
 import AdminNotificationBell from '../AdminNotificationBell';
 
 export function AdminLayout() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -51,37 +50,60 @@ export function AdminLayout() {
     navigate('/login');
   };
 
+  const handleMobileMenuClick = () => {
+    if (window.innerWidth < 768) {
+      setCollapsed(true);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[var(--bg-secondary)]">
+      {/* Mobile Sidebar Overlay */}
+      {!collapsed && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+          onClick={() => setCollapsed(true)} 
+        />
+      )}
+
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full z-40 transition-all duration-300 ${
-          collapsed ? 'w-20' : 'w-64'
+        className={`fixed left-0 top-0 h-full z-50 transition-all duration-300 ${
+          collapsed ? '-translate-x-full md:translate-x-0 md:w-20' : 'translate-x-0 w-64'
         } bg-[var(--card-bg)] border-r border-[var(--border-color)]`}
       >
         {/* Logo */}
-        <div className={`h-16 flex items-center justify-between px-4 border-b border-[var(--border-color)]`}>
-          {!collapsed && (
-            <div className="flex items-center flex-shrink-0">
-              <span className="grid h-11 w-11 flex-shrink-0 place-items-center p-1">
-                <img src="/logo.png" alt="SDLC Logo" className="h-9 w-9 rounded-[8px] object-contain" />
-              </span>
-              <span className="flex flex-col text-base font-bold leading-[0.95] tracking-tight text-[#2563EB] dark:text-[#60A5FA] whitespace-nowrap">
-                <span className="text-2xl font-black">SDLC</span>
-                <span>ADMIN</span>
-              </span>
-            </div>
+        <div className={`h-16 flex items-center ${collapsed ? 'justify-center' : 'justify-between px-4'} border-b border-[var(--border-color)]`}>
+          {collapsed ? (
+            <button
+              onClick={() => setCollapsed(false)}
+              className="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] transition-colors flex items-center justify-center group"
+              title="Mở rộng menu"
+            >
+              <img src="/logo.png" alt="SDLC Logo" className="h-9 w-9 rounded-[8px] object-contain group-hover:scale-105 transition-transform" />
+            </button>
+          ) : (
+            <>
+              <div className="flex items-center flex-shrink-0">
+                <span className="grid h-11 w-11 flex-shrink-0 place-items-center p-1">
+                  <img src="/logo.png" alt="SDLC Logo" className="h-9 w-9 rounded-[8px] object-contain" />
+                </span>
+                <span 
+                  className="![font-family:'Inter',system-ui,sans-serif] flex flex-col text-[1rem] leading-[0.95] font-bold tracking-tight text-[#2563EB] dark:text-[#60A5FA] whitespace-nowrap"
+                >
+                  <span className="text-[1.5rem] font-black leading-none">SDLC</span>
+                  <span className="leading-none">ADMIN</span>
+                </span>
+              </div>
+              <button
+                onClick={() => setCollapsed(true)}
+                className="hidden md:block p-2 rounded-lg hover:bg-[var(--hover-bg)] transition-colors"
+                title="Thu gọn menu"
+              >
+                <ChevronLeft className="w-5 h-5 text-[var(--text-secondary)]" />
+              </button>
+            </>
           )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="p-2 rounded-lg hover:bg-[var(--hover-bg)] transition-colors"
-          >
-            {collapsed ? (
-              <ChevronRight className="w-5 h-5 text-[var(--text-secondary)]" />
-            ) : (
-              <ChevronLeft className="w-5 h-5 text-[var(--text-secondary)]" />
-            )}
-          </button>
         </div>
 
         {/* Navigation */}
@@ -94,7 +116,8 @@ export function AdminLayout() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                onClick={handleMobileMenuClick}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                   isActive
                     ? 'bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-300 font-medium'
                     : 'text-[var(--text-secondary)] hover:bg-[var(--hover-bg)]'
@@ -113,7 +136,8 @@ export function AdminLayout() {
           <div className="space-y-1">
             <Link
               to="/settings"
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+              onClick={handleMobileMenuClick}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                 location.pathname.startsWith('/settings')
                   ? 'bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-300 font-medium'
                   : 'text-[var(--text-secondary)] hover:bg-[var(--hover-bg)]'
@@ -125,7 +149,7 @@ export function AdminLayout() {
             </Link>
             <button
               onClick={handleLogout}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 ${
                 collapsed ? 'justify-center' : ''
               }`}
               title={collapsed ? 'Logout' : undefined}
@@ -140,18 +164,24 @@ export function AdminLayout() {
       {/* Main Content */}
       <main
         className={`transition-all duration-300 ${
-          collapsed ? 'ml-20' : 'ml-64'
+          collapsed ? 'md:ml-20' : 'md:ml-64'
         }`}
       >
         {/* Header */}
-        <header className={`h-16 border-b border-[var(--border-color)] flex items-center justify-between px-6 sticky top-0 z-30 bg-[var(--card-bg)]`}>
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+        <header className={`h-16 border-b border-[var(--border-color)] flex items-center justify-between px-4 md:px-6 sticky top-0 z-40 bg-[var(--card-bg)]`}>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="md:hidden p-2 -ml-2 rounded-lg hover:bg-[var(--hover-bg)] transition-colors flex-shrink-0"
+            >
+              <svg className="w-6 h-6 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+            <h2 className="text-base sm:text-lg font-semibold text-[var(--text-primary)] truncate max-w-[150px] sm:max-w-none">
               {menuItems.find(item => item.path === location.pathname)?.label || 'Admin'}
             </h2>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
             <ThemeSwitcher variant="compact" />
 
             {/* Admin Notifications */}
@@ -242,7 +272,7 @@ export function AdminLayout() {
         </header>
 
         {/* Page Content */}
-        <div className="p-6">
+        <div className="p-4 md:p-6 overflow-x-hidden">
           <Outlet />
         </div>
       </main>

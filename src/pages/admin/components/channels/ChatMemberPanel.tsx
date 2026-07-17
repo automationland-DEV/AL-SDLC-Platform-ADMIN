@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { X, Search } from 'lucide-react';
+import { X, Search, ChevronLeft } from 'lucide-react';
 import { chatChannelService } from '../../../../services';
 import type { User } from '../../../../types';
 
@@ -75,14 +75,24 @@ export default function ChatMemberPanel({ channelId, onClose }: ChatMemberPanelP
   }, [members, searchQuery]);
 
   return (
-    <div className="w-80 border-l border-[var(--border-color)] bg-[var(--bg-primary)] flex flex-col h-full flex-shrink-0 animate-in slide-in-from-right-8 duration-300">
-      <div className="px-4 py-3 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-secondary)]">
-        <h3 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
-          Members <span className="px-1.5 py-0.5 rounded-full bg-[var(--bg-tertiary)] text-[10px] text-[var(--text-muted)] font-medium">{members.length}</span>
-        </h3>
+    <div className="w-full sm:w-80 absolute sm:relative inset-0 sm:inset-auto z-20 sm:z-auto border-l-0 sm:border-l border-[var(--border-color)] bg-[var(--bg-primary)] flex flex-col h-full flex-shrink-0 animate-in slide-in-from-right-8 duration-300">
+      <div className="px-3 py-3 sm:px-4 sm:py-3 border-b border-[var(--border-color)] flex items-center justify-between gap-2 bg-[var(--bg-secondary)]">
+        <div className="flex items-center gap-2 min-w-0">
+          <button 
+            onClick={onClose}
+            className="sm:hidden p-1.5 -ml-1 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] transition-colors flex-shrink-0"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <div className="truncate">
+            <h3 className="font-semibold text-[var(--text-primary)] truncate flex items-center gap-2">
+              Members <span className="px-1.5 py-0.5 rounded-full bg-[var(--bg-tertiary)] text-[10px] text-[var(--text-muted)] font-medium">{members.length}</span>
+            </h3>
+          </div>
+        </div>
         <button 
           onClick={onClose}
-          className="p-1.5 hover:bg-[var(--hover-bg)] rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+          className="hidden sm:block p-1.5 hover:bg-[var(--hover-bg)] rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors flex-shrink-0"
         >
           <X className="w-4 h-4" />
         </button>

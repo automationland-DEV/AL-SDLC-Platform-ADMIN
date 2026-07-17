@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import Cropper from 'react-easy-crop';
+import Cropper, { type Area } from 'react-easy-crop';
 import { Button } from '../../../components/ui';
 import getCroppedImg from '../../../utils/cropImage';
 import toast from 'react-hot-toast';
@@ -17,10 +17,10 @@ export function AvatarCropperModal({
 }: AvatarCropperModalProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleCropComplete = useCallback((_croppedArea: any, croppedAreaPixels: any) => {
+  const handleCropComplete = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
 
@@ -83,7 +83,7 @@ export function AvatarCropperModal({
           </div>
           
           <div className="flex items-center justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={onClose} disabled={isProcessing}>
+            <Button variant="secondary" onClick={onClose} disabled={isProcessing}>
               Huỷ
             </Button>
             <Button onClick={handleSave} disabled={isProcessing}>

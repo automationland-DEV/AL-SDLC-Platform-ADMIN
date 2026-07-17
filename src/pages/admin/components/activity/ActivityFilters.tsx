@@ -1,5 +1,5 @@
 import { Search, X } from 'lucide-react';
-import { Button } from '../../../../components/ui';
+import { Button, Select, DatePicker } from '../../../../components/ui';
 import { useActivityStore } from '../../../../stores';
 
 interface ActivityFiltersProps {
@@ -32,51 +32,51 @@ export function ActivityFilters({ onSearch, onReset, hasActiveFilters }: Activit
       <div className="flex flex-wrap items-end gap-4">
         <div className="w-full sm:w-48">
           <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Loại sự kiện</label>
-          <select
+          <Select
             value={filters.type}
-            onChange={(e) => handleFilterChange('type', e.target.value)}
-            className="w-full px-3 py-1.5 border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-          >
-            <option value="">Tất cả</option>
-            <option value="LOGIN_SUCCESS">Đăng nhập thành công</option>
-            <option value="LOGIN_FAILED">Đăng nhập thất bại</option>
-            <option value="LOGOUT">Đăng xuất</option>
-            <option value="UNAUTHORIZED_ACCESS">Truy cập trái phép</option>
-            <option value="TASK_VIEWED">Xem task</option>
-            <option value="TASK_CREATE_SUCCESS">Tạo task</option>
-            <option value="TASK_UPDATE_SUCCESS">Cập nhật task</option>
-            <option value="TASK_DELETE_SUCCESS">Xóa task</option>
-          </select>
+            onChange={(val) => handleFilterChange('type', val)}
+            options={[
+              { value: '', label: 'Tất cả' },
+              { value: 'LOGIN_SUCCESS', label: 'Đăng nhập thành công' },
+              { value: 'LOGIN_FAILED', label: 'Đăng nhập thất bại' },
+              { value: 'LOGOUT', label: 'Đăng xuất' },
+              { value: 'UNAUTHORIZED_ACCESS', label: 'Truy cập trái phép' },
+              { value: 'TASK_VIEWED', label: 'Xem task' },
+              { value: 'TASK_CREATE_SUCCESS', label: 'Tạo task' },
+              { value: 'TASK_UPDATE_SUCCESS', label: 'Cập nhật task' },
+              { value: 'TASK_DELETE_SUCCESS', label: 'Xóa task' }
+            ]}
+            className="w-full text-sm"
+          />
         </div>
         <div className="w-full sm:w-32">
           <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Mức độ</label>
-          <select
+          <Select
             value={filters.severity}
-            onChange={(e) => handleFilterChange('severity', e.target.value)}
-            className="w-full px-3 py-1.5 border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-          >
-            <option value="">Tất cả</option>
-            <option value="INFO">Info</option>
-            <option value="WARN">Warning</option>
-            <option value="CRITICAL">Critical</option>
-          </select>
+            onChange={(val) => handleFilterChange('severity', val)}
+            options={[
+              { value: '', label: 'Tất cả' },
+              { value: 'INFO', label: 'Info' },
+              { value: 'WARN', label: 'Warning' },
+              { value: 'CRITICAL', label: 'Critical' }
+            ]}
+            className="w-full text-sm"
+          />
         </div>
         <div className="w-full sm:w-40">
           <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Từ ngày</label>
-          <input
-            type="date"
+          <DatePicker
             value={filters.startDate}
-            onChange={(e) => handleFilterChange('startDate', e.target.value)}
-            className="w-full px-3 py-1.5 border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+            onChange={(val) => handleFilterChange('startDate', val)}
+            className="w-full text-sm"
           />
         </div>
         <div className="w-full sm:w-40">
           <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Đến ngày</label>
-          <input
-            type="date"
+          <DatePicker
             value={filters.endDate}
-            onChange={(e) => handleFilterChange('endDate', e.target.value)}
-            className="w-full px-3 py-1.5 border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+            onChange={(val) => handleFilterChange('endDate', val)}
+            className="w-full text-sm"
           />
         </div>
         <div className="flex-shrink-0 w-full sm:w-auto">

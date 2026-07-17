@@ -142,7 +142,7 @@ export default function ChatChannelsPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
         <div>
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">Quản lý Chat Channels</h2>
           <p className="text-[var(--text-secondary)] mt-1">Tổng cộng {absoluteTotal} channels trong hệ thống</p>
@@ -337,8 +337,8 @@ export default function ChatChannelsPage() {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-[var(--border-color)] px-4 py-3 bg-[var(--bg-tertiary)] shrink-0">
-                <span className="text-sm text-[var(--text-secondary)]">
+              <div className="flex flex-col sm:flex-row items-center justify-between border-t border-[var(--border-color)] px-4 py-3 bg-[var(--bg-tertiary)] shrink-0 gap-3 sm:gap-0">
+                <span className="text-sm text-[var(--text-secondary)] text-center sm:text-left">
                   Đang hiển thị {((currentPage - 1) * itemsPerPage) + 1} đến {Math.min(currentPage * itemsPerPage, displayChannels.length)} trên tổng số {displayChannels.length}
                 </span>
                 <div className="flex gap-2">

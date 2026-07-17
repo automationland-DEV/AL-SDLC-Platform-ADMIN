@@ -55,8 +55,7 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   fetchUsers: async (page = 1, search = get().search, role?: string, status?: string) => {
     set({ isLoading: true, error: null });
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const response: any = await userService.getAllUsers({ page, search, limit: 20, role, status });
+      const response = await userService.getAllUsers({ page, search, limit: 20, role, status }) as unknown;
 
       // Handle both paginated and non-paginated responses
       let users: User[] = [];
@@ -66,20 +65,24 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
 
       if (Array.isArray(response)) {
         // Non-paginated response
-        users = response;
-        total = response.length;
-      } else if (response.pagination) {
-        // Paginated with pagination object: { data: [...], pagination: { page, limit, total, totalPages } }
-        users = response.data;
-        total = response.pagination.total;
-        currentPage = response.pagination.page;
-        pages = response.pagination.totalPages;
-      } else {
-        // Paginated with flat fields: { data: [...], total, page, totalPages }
-        users = response.data;
-        total = response.total;
-        currentPage = response.page;
-        pages = response.totalPages;
+        users = response as User[];
+        total = users.length;
+      } else if (response && typeof response === 'object') {
+        const resObj = response as Record<string, unknown>;
+        if (resObj.pagination && typeof resObj.pagination === 'object') {
+          // Paginated with pagination object: { data: [...], pagination: { page, limit, total, totalPages } }
+          const pagination = resObj.pagination as Record<string, unknown>;
+          users = (resObj.data as User[]) || [];
+          total = (pagination.total as number) || 0;
+          currentPage = (pagination.page as number) || 1;
+          pages = (pagination.totalPages as number) || 1;
+        } else {
+          // Paginated with flat fields: { data: [...], total, page, totalPages }
+          users = (resObj.data as User[]) || [];
+          total = (resObj.total as number) || 0;
+          currentPage = (resObj.page as number) || 1;
+          pages = (resObj.totalPages as number) || 1;
+        }
       }
 
       const isUnfiltered = !search && (!role || role === 'all') && (!status || status === 'all');

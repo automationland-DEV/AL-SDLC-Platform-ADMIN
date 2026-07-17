@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, prefer-const */
+
 import { useEffect, useState } from 'react';
 import { Plus, Search, Edit, Trash2, Eye, Upload, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Badge, Table, TableRow, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Badge, Table, TableRow, TableCell, ConfirmModal, Select } from '../../components/ui';
 import { useUsersStore } from '../../stores';
 import { userService } from '../../services';
 import type { User, UserRole, UserStatus } from '../../types';
@@ -11,16 +11,22 @@ import { UserViewModal } from './components/users/UserViewModal';
 import { UserImportModal } from './components/users/UserImportModal';
 
 // Helper for safe error extraction
-const getErrorMessage = (error: any, defaultMsg: string) => {
+const getErrorMessage = (error: unknown, defaultMsg: string) => {
   try {
-    const msg = error?.response?.data?.message;
+    const errObj = error as Record<string, unknown>;
+    const response = errObj?.response as Record<string, unknown>;
+    const data = response?.data as Record<string, unknown>;
+    
+    const msg = data?.message;
     if (typeof msg === 'string') return msg;
     if (Array.isArray(msg)) return String(msg[0]);
-    const err = error?.response?.data?.error;
+    
+    const err = data?.error;
     if (typeof err === 'string') return err;
-    if (typeof error?.message === 'string') return error.message;
+    if (typeof errObj?.message === 'string') return errObj.message;
+    
     return defaultMsg;
-  } catch (e) {
+  } catch {
     return defaultMsg;
   }
 };
@@ -104,18 +110,18 @@ export default function UsersPage() {
       }
       setSelectedUser(null);
       toast.success('Cập nhật người dùng thành công');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to update user:', error);
       toast.error(getErrorMessage(error, 'Cập nhật người dùng thất bại'));
       throw error;
     }
   };
 
-  const handleCreateUser = async (userData: any) => {
+  const handleCreateUser = async (userData: { email: string; password?: string; fullName?: string; role: string; status: string }) => {
     try {
-      await createUser(userData);
+      await createUser(userData as Partial<User>);
       toast.success('Tạo người dùng thành công');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to create user:', error);
       toast.error(getErrorMessage(error, 'Tạo người dùng thất bại'));
       throw error;
@@ -132,7 +138,7 @@ export default function UsersPage() {
         try {
           await deleteUser(id);
           toast.success('Xóa người dùng thành công');
-        } catch (error: any) {
+        } catch (error) {
           console.error('Failed to delete user:', error);
           toast.error(getErrorMessage(error, 'Xóa người dùng thất bại'));
         } finally {
@@ -167,7 +173,7 @@ export default function UsersPage() {
   };
 
   const getProcessedUsers = () => {
-    let processed = [...users];
+    const processed = [...users];
 
     // Sort
     if (sortConfig) {
@@ -209,12 +215,12 @@ export default function UsersPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
         <div>
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">Quản lý Users</h2>
           <p className="text-[var(--text-secondary)] mt-1">Tổng cộng {absoluteTotal} users</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Button variant="secondary" onClick={() => setShowImportModal(true)}>
             <Upload className="w-4 h-4 mr-2" />
             Import từ CSV
@@ -239,33 +245,35 @@ export default function UsersPage() {
               className="w-full pl-10 pr-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
             />
           </div>
-          <div className="flex w-full md:w-auto gap-3">
-            <select
+          <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3">
+            <Select
               value={filterRole}
-              onChange={(e) => {
-                setFilterRole(e.target.value);
-                fetchUsers(1, searchTerm, e.target.value, filterStatus);
+              onChange={(val) => {
+                setFilterRole(val);
+                fetchUsers(1, searchTerm, val, filterStatus);
               }}
-              className="px-3 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)] flex-1 md:w-36"
-            >
-              <option value="all">Tất cả vai trò</option>
-              <option value="user">User</option>
-              <option value="super_admin">Super Admin</option>
-            </select>
-            <select
+              options={[
+                { value: 'all', label: 'Tất cả vai trò' },
+                { value: 'user', label: 'User' },
+                { value: 'super_admin', label: 'Super Admin' }
+              ]}
+              className="w-full sm:w-auto flex-1 sm:min-w-[160px] md:min-w-[180px]"
+            />
+            <Select
               value={filterStatus}
-              onChange={(e) => {
-                setFilterStatus(e.target.value);
-                fetchUsers(1, searchTerm, filterRole, e.target.value);
+              onChange={(val) => {
+                setFilterStatus(val);
+                fetchUsers(1, searchTerm, filterRole, val);
               }}
-              className="px-3 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)] flex-1 min-w-[180px] md:min-w-[200px]"
-            >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="active">Hoạt động</option>
-              <option value="inactive">Không hoạt động</option>
-              <option value="pending_verification">Chờ xác thực</option>
-              <option value="suspended">Đình chỉ</option>
-            </select>
+              options={[
+                { value: 'all', label: 'Tất cả trạng thái' },
+                { value: 'active', label: 'Hoạt động' },
+                { value: 'inactive', label: 'Không hoạt động' },
+                { value: 'pending_verification', label: 'Chờ xác thực' },
+                { value: 'suspended', label: 'Đình chỉ' }
+              ]}
+              className="w-full sm:w-auto flex-1 sm:min-w-[180px] md:min-w-[200px]"
+            />
           </div>
         </div>
       </div>
@@ -353,8 +361,8 @@ export default function UsersPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-2.5 border-t border-[var(--border-color)]">
-                <p className="text-sm text-[var(--text-secondary)]">
+              <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-2.5 border-t border-[var(--border-color)] gap-3 sm:gap-0">
+                <p className="text-sm text-[var(--text-secondary)] text-center sm:text-left">
                   Trang {page} / {totalPages}
                 </p>
                 <div className="flex items-center gap-2">

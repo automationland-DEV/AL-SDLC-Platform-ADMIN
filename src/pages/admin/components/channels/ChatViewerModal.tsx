@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Hash, Megaphone, Users, MessageSquare, FileText, Download, Search, Play } from 'lucide-react';
+import { X, Hash, Megaphone, Users, MessageSquare, FileText, Download, Search, Play, ChevronLeft } from 'lucide-react';
 import { chatChannelService } from '../../../../services';
 import type { ChatChannel, ChatMessage, ChatAttachment } from '../../../../types';
 import ChatSearchPanel from './ChatSearchPanel';
@@ -63,15 +63,16 @@ export default function ChatViewerModal({ isOpen, onClose, channel }: ChatViewer
   };
 
   const handleJumpToMessage = (messageId: string) => {
-    const el = document.getElementById(`msg-${messageId}`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Temporary highlight
-      el.style.backgroundColor = 'var(--hover-bg)';
-      setTimeout(() => {
-        el.style.backgroundColor = '';
-      }, 2000);
-    }
+    setTimeout(() => {
+      const el = document.getElementById(`msg-${messageId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('bg-primary-50', 'dark:bg-primary-900/30', 'ring-2', 'ring-primary-500', 'transition-all', 'duration-500', 'z-10');
+        setTimeout(() => {
+          el.classList.remove('bg-primary-50', 'dark:bg-primary-900/30', 'ring-2', 'ring-primary-500', 'z-10');
+        }, 3000);
+      }
+    }, 150);
   };
 
   const scrollToBottom = (ref: React.RefObject<HTMLDivElement | null>) => {
@@ -335,12 +336,18 @@ export default function ChatViewerModal({ isOpen, onClose, channel }: ChatViewer
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`w-full max-w-6xl h-[85vh] bg-[var(--card-bg)] rounded-2xl shadow-2xl border border-[var(--border-color)] overflow-hidden flex flex-col transition-all duration-300`}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-0 sm:p-4">
+      <div className={`w-full max-w-6xl h-[100dvh] sm:h-[85vh] bg-[var(--card-bg)] rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-[var(--border-color)] overflow-hidden flex flex-col transition-all duration-300`}>
         {/* Header */}
-        <div className="flex-shrink-0 relative bg-[var(--bg-secondary)] border-b border-[var(--border-color)] px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-900/30 flex items-center justify-center">
+        <div className="flex-shrink-0 relative bg-[var(--bg-secondary)] border-b border-[var(--border-color)] px-3 py-3 sm:px-6 sm:py-4 flex items-start sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <button
+              onClick={onClose}
+              className="sm:hidden p-1.5 -ml-1 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] transition-colors flex-shrink-0"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <div className="w-10 h-10 rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
               {getTypeIcon(channel.type)}
             </div>
             <div>
@@ -355,7 +362,7 @@ export default function ChatViewerModal({ isOpen, onClose, channel }: ChatViewer
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             <button
               onClick={toggleThreadIndexPanel}
               className={`p-2 rounded-lg transition-colors ${isThreadIndexPanelOpen ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400' : 'hover:bg-[var(--hover-bg)] text-[var(--text-secondary)]'}`}
@@ -379,7 +386,7 @@ export default function ChatViewerModal({ isOpen, onClose, channel }: ChatViewer
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] transition-colors"
+              className="hidden sm:block p-2 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -423,15 +430,23 @@ export default function ChatViewerModal({ isOpen, onClose, channel }: ChatViewer
 
           {/* Thread Sidebar */}
           {activeThread && (
-            <div className="w-[400px] flex-shrink-0 flex flex-col bg-[var(--card-bg)]">
-              <div className="flex-shrink-0 px-4 py-3 border-b border-[var(--border-color)] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-semibold text-[var(--text-primary)]">Thread</h4>
-                  <span className="text-xs text-[var(--text-muted)] max-w-[150px] truncate">#{channel.name}</span>
+            <div className="w-full sm:w-[400px] flex-shrink-0 flex flex-col bg-[var(--card-bg)] absolute sm:relative inset-0 sm:inset-auto z-10 border-l-0 sm:border-l border-[var(--border-color)]">
+              <div className="flex-shrink-0 px-3 py-3 sm:px-4 sm:py-3 border-b border-[var(--border-color)] flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <button 
+                    onClick={() => setActiveThread(null)}
+                    className="sm:hidden p-1.5 -ml-1 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] transition-colors flex-shrink-0"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <div className="truncate">
+                    <h4 className="font-semibold text-[var(--text-primary)] truncate">Thread</h4>
+                    <span className="text-xs text-[var(--text-muted)] truncate block">#{channel.name}</span>
+                  </div>
                 </div>
                 <button 
                   onClick={() => setActiveThread(null)}
-                  className="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] transition-colors"
+                  className="hidden sm:block p-1.5 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] transition-colors flex-shrink-0"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -477,7 +492,12 @@ export default function ChatViewerModal({ isOpen, onClose, channel }: ChatViewer
             <ChatSearchPanel
               channelId={channel._id}
               onClose={() => setIsSearchPanelOpen(false)}
-              onJumpToMessage={handleJumpToMessage}
+              onJumpToMessage={(msgId) => {
+                handleJumpToMessage(msgId);
+                if (window.innerWidth < 640) {
+                  closeAllPanels();
+                }
+              }}
             />
           )}
           {isMemberPanelOpen && (
@@ -494,6 +514,9 @@ export default function ChatViewerModal({ isOpen, onClose, channel }: ChatViewer
                 const msg = messages.find(m => m._id === msgId) || { _id: msgId } as ChatMessage;
                 setActiveThread(msg);
                 handleJumpToMessage(msgId);
+                if (window.innerWidth < 640) {
+                  closeAllPanels();
+                }
               }}
               // currentUser is not required since Admin can just see all threads, but we can pass null or undefined
             />

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useEffect, useState } from 'react';
 import { Search, Edit, Trash2, Eye, Download, Upload, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -82,8 +82,9 @@ export default function DocumentsPage() {
           await deleteDocument(id);
           toast.success('Xóa tài liệu thành công');
           setConfirmModal(prev => ({ ...prev, isOpen: false }));
-        } catch (error: any) {
-          toast.error(error.response?.data?.message || error.message || 'Xóa tài liệu thất bại');
+        } catch (error: unknown) {
+          const err = error as { response?: { data?: { message?: string } }; message?: string };
+          toast.error(err.response?.data?.message || err.message || 'Xóa tài liệu thất bại');
         }
       }
     });
@@ -96,7 +97,7 @@ export default function DocumentsPage() {
       setShowOnlineModal(false);
       fetchDocuments(1);
       toast.success('Tạo tài liệu online thành công');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to create online document:', error);
       throw error;
     }
@@ -145,7 +146,7 @@ export default function DocumentsPage() {
       setShowUploadModal(false);
       fetchDocuments(1);
       toast.success('Upload tài liệu thành công');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to upload document:', error);
       throw error;
     }
@@ -173,7 +174,7 @@ export default function DocumentsPage() {
       setSelectedDoc(null);
       fetchDocuments(page);
       toast.success('Cập nhật tài liệu thành công');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to update document:', error);
       toast.error('Cập nhật thất bại. Bạn chỉ có thể sửa tài liệu do chính mình tạo.');
       throw error;
@@ -250,12 +251,12 @@ export default function DocumentsPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
         <div>
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">Quản lý Documents</h2>
           <p className="text-[var(--text-secondary)] mt-1">Tổng cộng {absoluteTotal} documents</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Button variant="secondary" onClick={openOnlineModal}>
             <FileText className="w-4 h-4 mr-2" />
             Tạo Online
@@ -451,8 +452,8 @@ export default function DocumentsPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-2.5 border-t border-[var(--border-color)]">
-                <p className="text-sm text-[var(--text-secondary)]">
+              <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-2.5 border-t border-[var(--border-color)] gap-3 sm:gap-0">
+                <p className="text-sm text-[var(--text-secondary)] text-center sm:text-left">
                   Trang {page} / {totalPages}
                 </p>
                 <div className="flex items-center gap-2">

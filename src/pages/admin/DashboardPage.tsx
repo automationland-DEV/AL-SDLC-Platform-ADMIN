@@ -13,57 +13,17 @@ import {
   Database,
   Lock,
 } from 'lucide-react';
+
 import { useUsersStore, useWorkspacesStore, useDocumentsStore } from '../../stores';
 import { useAuthStore } from '../../stores/authStore';
-
-// Simple SVG Sparkline component for light data visualization
-function Sparkline({ data, color, className = '' }: { data: number[]; color: string; className?: string }) {
-  const max = Math.max(...data);
-  const min = Math.min(...data);
-  const range = max - min || 1;
-  const height = 32;
-  const width = 80;
-
-  const points = data
-    .map((d, i) => {
-      const x = (i / (data.length - 1)) * width;
-      const y = height - ((d - min) / range) * (height - 4) - 2;
-      return `${x},${y}`;
-    })
-    .join(' ');
-
-  const fillPoints = `0,${height} ${points} ${width},${height}`;
-  const gradientId = `gradient-${color.replace(/[^a-zA-Z0-9]/g, '-')}`;
-
-  return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className={`overflow-visible ${className} ${color}`}>
-      <defs>
-        <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.2" />
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon
-        points={fillPoints}
-        fill={`url(#${gradientId})`}
-      />
-      <polyline
-        points={points}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 export default function DashboardPage() {
   const { users, total: totalUsers, isLoading: usersLoading, fetchUsers } = useUsersStore();
   const { workspaces, total: totalWorkspaces, isLoading: workspacesLoading, fetchWorkspaces } = useWorkspacesStore();
   const { total: totalDocuments, isLoading: documentsLoading, fetchDocuments } = useDocumentsStore();
   const { user } = useAuthStore();
+  
+
 
   useEffect(() => {
     fetchUsers(1);
@@ -79,27 +39,30 @@ export default function DashboardPage() {
       value: totalUsers,
       icon: Users,
       link: '/users',
-      trend: '+12%',
+      trend: '+12.5%',
       trendUp: true,
-      data: [10, 15, 12, 18, 14, 25],
+      color: 'blue',
+      dateRange: 'vs tháng trước'
     },
     {
       label: 'Workspaces',
       value: totalWorkspaces,
       icon: Briefcase,
       link: '/workspaces',
-      trend: '+8%',
+      trend: '+8.4%',
       trendUp: true,
-      data: [5, 8, 12, 11, 16, 20],
+      color: 'purple',
+      dateRange: 'vs tháng trước'
     },
     {
       label: 'Documents',
       value: totalDocuments,
       icon: FileText,
       link: '/documents',
-      trend: '+23%',
+      trend: '+15.3%',
       trendUp: true,
-      data: [2, 5, 4, 9, 15, 24],
+      color: 'emerald',
+      dateRange: 'vs tháng trước'
     },
   ];
 
@@ -173,56 +136,56 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
         {stats.map((stat) => {
           const Icon = stat.icon;
+          
+          let bgClass = '';
+          let textClass = '';
+          const iconBg = 'bg-white dark:bg-gray-800';
+
+          if (stat.color === 'blue') {
+            bgClass = 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30';
+            textClass = 'text-blue-600 dark:text-blue-400';
+          } else if (stat.color === 'purple') {
+            bgClass = 'bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-900/30';
+            textClass = 'text-purple-600 dark:text-purple-400';
+          } else if (stat.color === 'emerald') {
+            bgClass = 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30';
+            textClass = 'text-emerald-600 dark:text-emerald-400';
+          }
+
           return (
             <Link key={stat.label} to={stat.link} className="group block focus:outline-none">
-              <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-5 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all duration-200 h-full flex flex-col">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-lg text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform duration-200">
-                    <Icon className="w-5 h-5" />
+              <div className={`${bgClass} border rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-200 h-full flex flex-col justify-between relative overflow-hidden`}>
+                <div className="flex justify-between items-start">
+                  <div className="flex flex-col z-10">
+                    <span className={`text-xs font-bold uppercase tracking-wider mb-2 ${textClass}`}>
+                      {stat.label}
+                    </span>
+                    <span className="text-3xl font-black text-gray-900 dark:text-white">
+                      {stat.value || '0'}
+                    </span>
                   </div>
-                  {/* Light Data Viz */}
-                  <Sparkline 
-                    data={stat.data} 
-                    color={
-                      stat.trendUp === true 
-                        ? 'text-emerald-500' 
-                        : stat.trendUp === false 
-                        ? 'text-rose-500' 
-                        : 'text-[var(--text-muted)]'
-                    } 
-                  />
+                  <div className={`w-12 h-12 rounded-full ${iconBg} flex items-center justify-center shadow-sm ${textClass} group-hover:scale-110 transition-transform duration-200 z-10`}>
+                    <Icon className="w-6 h-6" />
+                  </div>
                 </div>
                 
-                <div className="flex-1">
-                  <p className="text-3xl font-semibold tracking-tight text-[var(--text-primary)] mb-1">
-                    {stat.value || '-'}
-                  </p>
-                  <p className="text-sm font-medium text-[var(--text-secondary)]">
-                    {stat.label}
-                  </p>
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-[var(--border-color)] flex items-center justify-between">
+                <div className="mt-8 flex flex-col gap-1 z-10">
                   {stat.trendUp !== null ? (
-                    <div className={`flex items-center gap-1 text-xs font-semibold ${
-                      stat.trendUp ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                    <div className={`flex items-center gap-1 text-sm font-bold ${
+                      stat.trendUp ? 'text-emerald-500' : 'text-rose-500'
                     }`}>
                       {stat.trendUp ? (
-                        <TrendingUp className="w-3.5 h-3.5" />
+                        <TrendingUp className="w-4 h-4 stroke-[3]" />
                       ) : (
-                        <TrendingDown className="w-3.5 h-3.5" />
+                        <TrendingDown className="w-4 h-4 stroke-[3]" />
                       )}
-                      <span>{stat.trend} tháng này</span>
+                      <span>{stat.trend}</span>
                     </div>
                   ) : (
-                    <div className="text-xs font-semibold text-[var(--text-muted)]">
-                      Cố định
-                    </div>
+                    <div className="text-sm font-bold text-gray-500">-</div>
                   )}
-                  
-                  <div className="flex items-center text-xs font-medium text-[var(--text-muted)] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                    Chi tiết
-                    <ChevronRight className="w-3.5 h-3.5 ml-0.5 group-hover:translate-x-0.5 transition-transform" />
+                  <div className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                    {stat.dateRange}
                   </div>
                 </div>
               </div>
@@ -231,16 +194,20 @@ export default function DashboardPage() {
         })}
       </div>
 
+
       {/* Lists Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Users List */}
-        <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl shadow-sm overflow-hidden flex flex-col">
-          <div className="p-5 border-b border-[var(--border-color)] flex items-center justify-between">
+        <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300 overflow-hidden flex flex-col relative">
+          {/* Subtle gradient blob for depth */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 dark:bg-indigo-900/10 rounded-full blur-2xl opacity-50 pointer-events-none" />
+          
+          <div className="p-6 border-b border-[var(--border-color)] flex items-center justify-between relative z-10">
             <div>
-              <h2 className="text-lg font-semibold text-[var(--text-primary)]">Users gần đây</h2>
+              <h2 className="text-lg font-bold text-[var(--text-primary)]">Users gần đây</h2>
               <p className="text-sm text-[var(--text-secondary)]">Người dùng mới đăng ký</p>
             </div>
-            <Link to="/users" className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center transition-colors">
+            <Link to="/users" className="text-sm font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20">
               Xem tất cả <ChevronRight className="w-4 h-4 ml-0.5" />
             </Link>
           </div>
@@ -308,13 +275,15 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Workspaces List */}
-        <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl shadow-sm overflow-hidden flex flex-col">
-          <div className="p-5 border-b border-[var(--border-color)] flex items-center justify-between">
+        <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300 overflow-hidden flex flex-col relative">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50 dark:bg-purple-900/10 rounded-full blur-2xl opacity-50 pointer-events-none" />
+
+          <div className="p-6 border-b border-[var(--border-color)] flex items-center justify-between relative z-10">
             <div>
-              <h2 className="text-lg font-semibold text-[var(--text-primary)]">Workspaces gần đây</h2>
+              <h2 className="text-lg font-bold text-[var(--text-primary)]">Workspaces gần đây</h2>
               <p className="text-sm text-[var(--text-secondary)]">Các không gian mới cập nhật</p>
             </div>
-            <Link to="/workspaces" className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center transition-colors">
+            <Link to="/workspaces" className="text-sm font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 flex items-center transition-colors px-3 py-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20">
               Xem tất cả <ChevronRight className="w-4 h-4 ml-0.5" />
             </Link>
           </div>

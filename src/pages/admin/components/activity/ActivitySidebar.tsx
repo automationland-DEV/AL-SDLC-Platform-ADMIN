@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Search, Globe } from 'lucide-react';
-import { useUsersStore } from '../../../../stores';
+import { userService } from '../../../../services';
+import type { User } from '../../../../types';
 
 interface ActivitySidebarProps {
   selectedUserId: string;
@@ -8,7 +9,8 @@ interface ActivitySidebarProps {
 }
 
 export function ActivitySidebar({ selectedUserId, onUserSelect }: ActivitySidebarProps) {
-  const { users, fetchUsers, isLoading } = useUsersStore();
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -18,8 +20,31 @@ export function ActivitySidebar({ selectedUserId, onUserSelect }: ActivitySideba
   }, [searchTerm]);
 
   useEffect(() => {
-    fetchUsers(1, '', 'all', 'all');
-  }, [fetchUsers]);
+    let isMounted = true;
+    const fetchAllUsers = async () => {
+      setIsLoading(true);
+      try {
+        const response = await userService.getAllUsers({ limit: 999999999 }) as unknown;
+        if (isMounted) {
+          if (Array.isArray(response)) {
+            setUsers(response as User[]);
+          } else if (response && typeof response === 'object') {
+            const resObj = response as Record<string, unknown>;
+            const extractedUsers = (resObj.data || resObj.users || resObj.items || resObj.results || []) as User[];
+            setUsers(extractedUsers);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch users for sidebar', error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+    fetchAllUsers();
+    return () => { isMounted = false; };
+  }, []);
 
   const filteredUsers = useMemo(() => {
     if (!debouncedSearch) return users;
@@ -32,8 +57,8 @@ export function ActivitySidebar({ selectedUserId, onUserSelect }: ActivitySideba
   }, [users, debouncedSearch]);
 
   return (
-    <div className="col-span-1 md:sticky md:top-6 space-y-4">
-      <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--border-color)] flex flex-col h-[calc(100vh-7rem)] overflow-hidden">
+    <div className="md:sticky md:top-6 space-y-4">
+      <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--border-color)] flex flex-col h-[400px] md:h-[calc(100vh-7rem)] overflow-hidden">
         <div className="p-4 border-b border-[var(--border-color)]">
           <h2 className="text-lg font-bold text-[var(--text-primary)] mb-3">Người dùng</h2>
           <div className="relative">
@@ -51,11 +76,10 @@ export function ActivitySidebar({ selectedUserId, onUserSelect }: ActivitySideba
         <div className="flex-1 overflow-y-auto p-4 space-y-1 min-h-0">
           <button
             onClick={() => onUserSelect('all')}
-            className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 transition-colors ${
-              selectedUserId === 'all'
-                ? 'bg-indigo-50 border-l-4 border-indigo-600 dark:bg-indigo-900/20 dark:border-indigo-500'
-                : 'hover:bg-[var(--hover-bg)] border-l-4 border-transparent'
-            }`}
+            className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 transition-colors ${selectedUserId === 'all'
+              ? 'bg-indigo-50 border-l-4 border-indigo-600 dark:bg-indigo-900/20 dark:border-indigo-500'
+              : 'hover:bg-[var(--hover-bg)] border-l-4 border-transparent'
+              }`}
           >
             <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
               <Globe className="w-4 h-4" />
@@ -85,11 +109,10 @@ export function ActivitySidebar({ selectedUserId, onUserSelect }: ActivitySideba
                 <button
                   key={uid}
                   onClick={() => onUserSelect(uid)}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors ${
-                    isSelected
-                      ? 'bg-indigo-50 border-l-4 border-indigo-600 dark:bg-indigo-900/20 dark:border-indigo-500'
-                      : 'hover:bg-[var(--hover-bg)] border-l-4 border-transparent'
-                  }`}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors ${isSelected
+                    ? 'bg-indigo-50 border-l-4 border-indigo-600 dark:bg-indigo-900/20 dark:border-indigo-500'
+                    : 'hover:bg-[var(--hover-bg)] border-l-4 border-transparent'
+                    }`}
                 >
                   <div className="relative">
                     {u.avatar ? (

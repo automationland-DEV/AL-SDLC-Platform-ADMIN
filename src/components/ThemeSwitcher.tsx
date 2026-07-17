@@ -31,27 +31,23 @@ export default function ThemeSwitcher({ variant = "dropdown", className = "" }: 
   ];
 
   if (variant === "compact") {
+    const currentIndex = options.findIndex(o => o.id === theme) >= 0 ? options.findIndex(o => o.id === theme) : 0;
+    const currentOption = options[currentIndex];
+    const Icon = currentOption.icon;
+    
+    const cycleTheme = () => {
+      const nextIndex = (currentIndex + 1) % options.length;
+      setTheme(options[nextIndex].id as "light" | "dark" | "system");
+    };
+
     return (
-      <div className={`flex items-center gap-1 ${className}`}>
-        {options.map((option) => {
-          const Icon = option.icon;
-          const isActive = theme === option.id;
-          return (
-            <button
-              key={option.id}
-              onClick={() => setTheme(option.id as "light" | "dark" | "system")}
-              title={option.label}
-              className={`p-2 rounded-lg transition-colors ${
-                isActive
-                  ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 shadow-sm"
-                  : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-            </button>
-          );
-        })}
-      </div>
+      <button
+        onClick={cycleTheme}
+        title={`Chế độ: ${currentOption.label}`}
+        className={`p-2 rounded-lg transition-colors text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 ${className}`}
+      >
+        <Icon className="w-5 h-5" />
+      </button>
     );
   }
 
