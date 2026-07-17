@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Hash, Megaphone, Users, MessageSquare, FileText, Download } from 'lucide-react';
+import { X, Hash, Megaphone, Users, MessageSquare, FileText, Download, Search, Play } from 'lucide-react';
 import { chatChannelService } from '../../../../services';
 import type { ChatChannel, ChatMessage, ChatAttachment } from '../../../../types';
+import ChatSearchPanel from './ChatSearchPanel';
+import ChatMemberPanel from './ChatMemberPanel';
+import ChatThreadIndexPanel from './ChatThreadIndexPanel';
 
 interface ChatViewerModalProps {
   isOpen: boolean;
@@ -17,8 +20,59 @@ export default function ChatViewerModal({ isOpen, onClose, channel }: ChatViewer
   const [threadReplies, setThreadReplies] = useState<ChatMessage[]>([]);
   const [loadingThread, setLoadingThread] = useState(false);
 
+  const [lightboxFile, setLightboxFile] = useState<{ url: string; name: string; mimeType?: string } | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const threadEndRef = useRef<HTMLDivElement>(null);
+
+  const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false);
+  const [isMemberPanelOpen, setIsMemberPanelOpen] = useState(false);
+  const [isThreadIndexPanelOpen, setIsThreadIndexPanelOpen] = useState(false);
+
+  const closeAllPanels = () => {
+    setIsSearchPanelOpen(false);
+    setIsMemberPanelOpen(false);
+    setIsThreadIndexPanelOpen(false);
+  };
+
+  const toggleSearchPanel = () => {
+    if (isSearchPanelOpen) {
+      setIsSearchPanelOpen(false);
+    } else {
+      closeAllPanels();
+      setIsSearchPanelOpen(true);
+    }
+  };
+
+  const toggleMemberPanel = () => {
+    if (isMemberPanelOpen) {
+      setIsMemberPanelOpen(false);
+    } else {
+      closeAllPanels();
+      setIsMemberPanelOpen(true);
+    }
+  };
+
+  const toggleThreadIndexPanel = () => {
+    if (isThreadIndexPanelOpen) {
+      setIsThreadIndexPanelOpen(false);
+    } else {
+      closeAllPanels();
+      setIsThreadIndexPanelOpen(true);
+    }
+  };
+
+  const handleJumpToMessage = (messageId: string) => {
+    const el = document.getElementById(`msg-${messageId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Temporary highlight
+      el.style.backgroundColor = 'var(--hover-bg)';
+      setTimeout(() => {
+        el.style.backgroundColor = '';
+      }, 2000);
+    }
+  };
 
   const scrollToBottom = (ref: React.RefObject<HTMLDivElement | null>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth' });
@@ -130,29 +184,58 @@ export default function ChatViewerModal({ isOpen, onClose, channel }: ChatViewer
     if (!attachments || attachments.length === 0) return null;
     return (
       <div className="flex flex-wrap gap-2 mt-2">
-        {attachments.map((att, idx) => (
-          <div key={idx} className="relative group rounded-lg overflow-hidden border border-[var(--border-color)] bg-[var(--bg-secondary)]">
-            {att.type?.startsWith('image/') ? (
-              <img src={att.url} alt={att.name || 'Attachment'} className="max-w-[200px] max-h-[200px] object-cover" />
-            ) : (
-              <div className="flex items-center gap-2 p-3 min-w-[200px]">
-                <FileText className="w-8 h-8 text-blue-500" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate" title={att.name}>{att.name || 'Unknown file'}</p>
-                  <p className="text-xs text-[var(--text-secondary)]">{att.size ? (att.size / 1024).toFixed(1) + ' KB' : 'Unknown size'}</p>
+        {attachments.map((att, idx) => {
+          const mime = att.mimeType || att.type || '';
+          const isImage = mime.startsWith('image/');
+          const isVideo = mime.startsWith('video/');
+          
+          return (
+            <div key={idx} className={isImage || isVideo ? "max-w-[350px]" : "relative group rounded-lg overflow-hidden border border-[var(--border-color)] bg-[var(--bg-secondary)]"}>
+              {isImage ? (
+                <div 
+                  className="relative group rounded-lg overflow-hidden border border-[var(--border-color)] bg-[var(--bg-secondary)] cursor-pointer"
+                  onClick={() => setLightboxFile({ url: att.url, name: att.name || 'Image', mimeType: mime })}
+                >
+                  <img src={att.url} alt={att.name || 'Attachment'} className="w-full h-auto max-h-[300px] object-contain block hover:opacity-95 transition-opacity" />
                 </div>
-              </div>
-            )}
-            <a 
-              href={att.url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
-            >
-              <Download className="w-6 h-6" />
-            </a>
-          </div>
-        ))}
+              ) : isVideo ? (
+                <div 
+                  className="relative group cursor-pointer bg-black rounded-lg border border-[var(--border-color)] flex items-center justify-center w-full max-h-[300px] aspect-video overflow-hidden"
+                  onClick={() => setLightboxFile({ url: att.url, name: att.name || 'Video', mimeType: mime })}
+                >
+                  <video 
+                    src={att.url} 
+                    preload="metadata"
+                    className="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition-opacity"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/10 hover:bg-black/30 transition-colors">
+                    <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg transform group-hover:scale-105 transition-transform duration-200">
+                      <Play className="w-5 h-5 text-black fill-black ml-0.5" />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 p-3 min-w-[200px]">
+                    <FileText className="w-8 h-8 text-blue-500" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" title={att.name}>{att.name || 'Unknown file'}</p>
+                      <p className="text-xs text-[var(--text-secondary)]">{att.size ? (att.size / 1024).toFixed(1) + ' KB' : 'Unknown size'}</p>
+                    </div>
+                  </div>
+                  <a 
+                    href={att.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
+                  >
+                    <Download className="w-6 h-6" />
+                  </a>
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -179,7 +262,7 @@ export default function ChatViewerModal({ isOpen, onClose, channel }: ChatViewer
 
   const renderMessageBubble = (msg: ChatMessage, isThread = false) => {
     return (
-      <div className={`relative flex gap-3 hover:bg-[var(--hover-bg)] p-2 -mx-2 rounded-lg transition-colors group ${activeThread?._id === msg._id ? 'bg-[var(--hover-bg)] ring-1 ring-primary-500/30' : ''}`}>
+      <div id={`msg-${msg._id}`} className={`relative flex gap-3 hover:bg-[var(--hover-bg)] p-2 -mx-2 rounded-lg transition-colors group ${activeThread?._id === msg._id ? 'bg-[var(--hover-bg)] ring-1 ring-primary-500/30' : ''}`}>
         
         {/* Floating Action Bar */}
         {!isThread && !msg.isDeleted && (msg.replyCount || 0) > 0 && (
@@ -272,12 +355,35 @@ export default function ChatViewerModal({ isOpen, onClose, channel }: ChatViewer
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleThreadIndexPanel}
+              className={`p-2 rounded-lg transition-colors ${isThreadIndexPanelOpen ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400' : 'hover:bg-[var(--hover-bg)] text-[var(--text-secondary)]'}`}
+              title="Threads"
+            >
+              <MessageSquare className="w-5 h-5" />
+            </button>
+            <button
+              onClick={toggleMemberPanel}
+              className={`p-2 rounded-lg transition-colors ${isMemberPanelOpen ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400' : 'hover:bg-[var(--hover-bg)] text-[var(--text-secondary)]'}`}
+              title="Thành viên"
+            >
+              <Users className="w-5 h-5" />
+            </button>
+            <button
+              onClick={toggleSearchPanel}
+              className={`p-2 rounded-lg transition-colors ${isSearchPanelOpen ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400' : 'hover:bg-[var(--hover-bg)] text-[var(--text-secondary)]'}`}
+              title="Tìm kiếm"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content Body */}
@@ -365,8 +471,88 @@ export default function ChatViewerModal({ isOpen, onClose, channel }: ChatViewer
               </div>
             </div>
           )}
+
+          {/* Side Panels */}
+          {isSearchPanelOpen && (
+            <ChatSearchPanel
+              channelId={channel._id}
+              onClose={() => setIsSearchPanelOpen(false)}
+              onJumpToMessage={handleJumpToMessage}
+            />
+          )}
+          {isMemberPanelOpen && (
+            <ChatMemberPanel
+              channelId={channel._id}
+              onClose={() => setIsMemberPanelOpen(false)}
+            />
+          )}
+          {isThreadIndexPanelOpen && (
+            <ChatThreadIndexPanel
+              channelId={channel._id}
+              onClose={() => setIsThreadIndexPanelOpen(false)}
+              onOpenThread={(msgId) => {
+                const msg = messages.find(m => m._id === msgId) || { _id: msgId } as ChatMessage;
+                setActiveThread(msg);
+                handleJumpToMessage(msgId);
+              }}
+              // currentUser is not required since Admin can just see all threads, but we can pass null or undefined
+            />
+          )}
         </div>
       </div>
+
+      {/* Lightbox Preview Modal */}
+      {lightboxFile && (
+        <div 
+          className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center"
+          onClick={() => setLightboxFile(null)}
+        >
+          {/* Top Bar */}
+          <div 
+            className="absolute top-0 inset-x-0 h-14 bg-gradient-to-b from-black/70 to-transparent flex items-center justify-between px-6 text-white z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-xs font-medium truncate max-w-[70%]">
+              {lightboxFile.name}
+            </span>
+            <div className="flex items-center gap-3">
+              <a
+                href={lightboxFile.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+                title="Download"
+              >
+                <Download className="w-5 h-5" />
+              </a>
+              <button
+                onClick={() => setLightboxFile(null)}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {lightboxFile.mimeType?.toLowerCase().startsWith('video/') ? (
+            <video
+              src={lightboxFile.url}
+              controls
+              preload="metadata"
+              className="max-w-[90vw] max-h-[85vh] rounded-md shadow-2xl mt-10 focus:outline-none"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <img
+              src={lightboxFile.url}
+              alt="Preview"
+              className="max-w-[90vw] max-h-[85vh] object-contain rounded-md shadow-2xl select-none mt-10"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

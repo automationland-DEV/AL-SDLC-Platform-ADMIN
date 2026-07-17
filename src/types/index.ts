@@ -127,6 +127,7 @@ export interface ChatAttachment {
   name?: string;
   size?: number;
   type?: string;
+  mimeType?: string;
 }
 
 export interface ChatMessage {

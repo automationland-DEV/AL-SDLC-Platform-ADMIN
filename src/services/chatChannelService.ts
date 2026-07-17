@@ -41,8 +41,9 @@ export const chatChannelService = {
     await api.patch(API_ROUTES.CHAT.UPDATE_MEMBER_ROLE(channelId, userId), { role });
   },
 
-  getMessages: async (channelId: string, cursor?: string): Promise<{ messages: ChatMessage[]; nextCursor: string | null }> => {
-    const params = cursor ? { cursor, limit: 50 } : { limit: 50 };
+  getMessages: async (channelId: string, cursor?: string, limit: number = 50): Promise<{ messages: ChatMessage[]; nextCursor: string | null }> => {
+    const params: Record<string, unknown> = { limit };
+    if (cursor) params.cursor = cursor;
     const response = await api.get<{ messages: ChatMessage[]; nextCursor: string | null }>(
       API_ROUTES.CHAT.CHANNEL_MESSAGES(channelId),
       { params }
@@ -55,6 +56,49 @@ export const chatChannelService = {
     const data = response.data;
     if (Array.isArray(data)) return data;
     if (data && typeof data === 'object' && 'data' in data) return (data as { data: ChatMessage[] }).data || [];
+    return [];
+  },
+
+  getActiveThreads: async (channelId: string): Promise<ChatMessage[]> => {
+    const response = await api.get(`/chat/channels/${channelId}/threads`);
+    const data = response.data?.data ?? response.data;
+    const threadsData = Array.isArray(data?.threads) ? data.threads : (Array.isArray(data) ? data : []);
+    return threadsData;
+  },
+
+  searchMessages: async (channelId: string, query: string, senderId?: string): Promise<ChatMessage[]> => {
+    const params: Record<string, string> = { q: query };
+    if (senderId) params.senderId = senderId;
+    const response = await api.get<{ messages?: ChatMessage[] } | ChatMessage[]>(
+      API_ROUTES.CHAT.SEARCH_MESSAGES(channelId),
+      { params }
+    );
+    const data = response.data;
+    if (Array.isArray(data)) return data;
+    return data?.messages || [];
+  },
+
+  getAttachments: async (channelId: string): Promise<unknown[]> => {
+    const response = await api.get<{ data?: unknown[] } | unknown[]>(API_ROUTES.ATTACHMENTS.BASE, {
+      params: { targetType: 'channel', targetId: channelId }
+    });
+    const data = response.data;
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === 'object' && 'data' in data) return (data as { data: unknown[] }).data || [];
+    return [];
+  },
+
+  getImages: async (channelId: string): Promise<unknown[]> => {
+    const response = await api.get<{ data?: unknown[], images?: unknown[] } | unknown[]>(API_ROUTES.IMAGES.BASE, {
+      params: { targetType: 'channel', targetId: channelId, limit: 100 }
+    });
+    const imagesResData = response.data;
+    if (Array.isArray(imagesResData)) return imagesResData;
+    if (imagesResData && typeof imagesResData === 'object') {
+      const obj = imagesResData as { images?: unknown[], data?: unknown[] };
+      if (Array.isArray(obj.images)) return obj.images;
+      if (Array.isArray(obj.data)) return obj.data;
+    }
     return [];
   },
 };
