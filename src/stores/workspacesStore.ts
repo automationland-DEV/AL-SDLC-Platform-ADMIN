@@ -49,8 +49,7 @@ export const useWorkspacesStore = create<WorkspacesStore>((set, get) => ({
   fetchWorkspaces: async (_page = 1, status = get().filter) => {
     set({ isLoading: true, error: null });
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const response: any = await workspaceService.getAllAdmin();
+      const response = await workspaceService.getAllAdmin() as unknown;
 
       // Handle both paginated and non-paginated responses
       let workspaces: Workspace[] = [];
@@ -58,12 +57,13 @@ export const useWorkspacesStore = create<WorkspacesStore>((set, get) => ({
 
       if (Array.isArray(response)) {
         // Non-paginated response from BE (admin endpoint)
-        workspaces = response;
-        total = response.length;
-      } else {
+        workspaces = response as Workspace[];
+        total = workspaces.length;
+      } else if (response && typeof response === 'object') {
+        const resObj = response as Record<string, unknown>;
         // Paginated response
-        workspaces = response.data || [];
-        total = response.total || workspaces.length;
+        workspaces = (resObj.data as Workspace[]) || [];
+        total = (resObj.total as number) || workspaces.length;
       }
 
       // Save absolute total before filtering

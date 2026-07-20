@@ -13,6 +13,7 @@ export interface User {
   role: UserRole;
   status: UserStatus;
   mfaEnabled?: boolean;
+  googleId?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -54,6 +55,7 @@ export interface Workspace {
   name: string;
   key: string;
   slug?: string;
+  avatar?: string;
   ownerId?: string | { _id?: string; id?: string; fullName?: string; email?: string; avatar?: string };
   members?: WorkspaceMember[];
   description?: string;
@@ -85,6 +87,61 @@ export interface Document {
   deletedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// Chat Channel Types
+export type ChannelType = 'general' | 'announcement' | 'workspace' | 'dm' | 'custom';
+
+export interface ChannelMember {
+  userId: string;
+  role: 'channel_admin' | 'channel_member';
+  joinedAt?: string;
+  invitedBy?: string;
+}
+
+export interface ChannelLastMessage {
+  content?: string;
+  senderId?: string;
+  senderName?: string;
+  sentAt?: string;
+  type?: string;
+}
+
+export interface ChatChannel {
+  _id: string;
+  name: string;
+  description?: string;
+  type: ChannelType;
+  isPrivate?: boolean;
+  workspaceId?: string | { _id?: string; name?: string; key?: string };
+  members?: string[];
+  channelMembers?: ChannelMember[];
+  lastMessage?: ChannelLastMessage;
+  createdBy?: string | { _id?: string; fullName?: string; email?: string };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ChatAttachment {
+  url: string;
+  name?: string;
+  size?: number;
+  type?: string;
+  mimeType?: string;
+}
+
+export interface ChatMessage {
+  _id: string;
+  senderId?: { _id?: string; fullName?: string; email?: string; avatar?: string };
+  content: string;
+  attachments?: ChatAttachment[];
+  reactions?: Record<string, unknown>;
+  isDeleted?: boolean;
+  replyCount?: number;
+  replyUsers?: { _id?: string; fullName?: string; avatar?: string }[];
+  stickerId?: { url: string };
+  createdAt: string;
+  lastReplyAt?: string;
 }
 
 // API Response Types

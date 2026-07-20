@@ -80,10 +80,10 @@ export function DocEditModal({ isOpen, onClose, onSave, selectedDoc, workspaces 
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300">
-      <div className={`w-full ${isOnline ? 'max-w-5xl' : 'max-w-4xl'} shadow-2xl relative flex flex-col max-h-[95vh] border border-[var(--border-color)] bg-[var(--bg-primary)] rounded-2xl transform transition-all`}>
+      <div className={`w-full ${isOnline ? 'max-w-5xl' : 'max-w-4xl'} shadow-2xl relative flex flex-col max-h-[95vh] border border-[var(--border-color)] bg-[var(--card-bg)] rounded-2xl transform transition-all`}>
         
-        {/* Premium Header */}
-        <div className="p-6 rounded-t-2xl border-b border-[var(--border-color)] bg-gradient-to-r from-amber-50 to-transparent dark:from-amber-900/20 dark:to-transparent flex justify-between items-center">
+        {/* Header */}
+        <div className="p-5 rounded-t-2xl border-b border-[var(--border-color)] flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-sm">
               <Edit3 className="w-6 h-6" />
@@ -104,10 +104,10 @@ export function DocEditModal({ isOpen, onClose, onSave, selectedDoc, workspaces 
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1 flex flex-col space-y-6 bg-[var(--bg-primary)]">
-          <div className="grid grid-cols-1 gap-6">
+        <div className="p-5 overflow-y-auto flex-1 flex flex-col space-y-4 bg-[var(--bg-primary)]">
+          <div className="grid grid-cols-1 gap-4">
             {/* Input Name & Workspace */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
                   <Type className="w-4 h-4 text-amber-500" /> Tên tài liệu <span className="text-red-500">*</span>
@@ -194,7 +194,7 @@ export function DocEditModal({ isOpen, onClose, onSave, selectedDoc, workspaces 
           )}
         </div>
 
-        <div className="p-6 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex justify-end gap-3 rounded-b-2xl">
+        <div className="p-5 border-t border-[var(--border-color)] flex justify-end gap-3 rounded-b-2xl">
           <Button type="button" variant="secondary" onClick={() => onClose(isDirty)} className="px-6 rounded-xl">Hủy bỏ</Button>
           <Button type="button" onClick={handleSave} disabled={isSaving} className="px-8 rounded-xl shadow-md hover:shadow-lg transition-shadow bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600 border-none text-white">
             {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}

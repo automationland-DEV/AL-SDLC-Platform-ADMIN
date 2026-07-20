@@ -60,6 +60,11 @@ export const userService = {
     return response.data;
   },
 
+  updateProfile: async (data: Partial<User> & { currentPassword?: string, password?: string }): Promise<User> => {
+    const response = await api.put<User>(API_ROUTES.USERS.PROFILE, data);
+    return response.data;
+  },
+
   createUser: async (data: Partial<User>): Promise<User> => {
     const response = await api.post<User>(API_ROUTES.USERS.BASE, data);
     return response.data;

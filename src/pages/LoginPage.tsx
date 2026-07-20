@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores';
 import { API_BASE_URL } from '../services/apiRoutes';
-import { Zap, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
@@ -50,13 +50,17 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-20">
         <div className="bg-white/30 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/30 p-8 md:p-10 transition-all duration-300 hover:shadow-indigo-500/10 hover:border-white/55">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 mb-3">
-              <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <Zap className="w-7 h-7 text-white" />
-              </div>
+            <div className="inline-flex items-center flex-shrink-0 mb-6">
+              <span className="grid h-12 w-12 flex-shrink-0 place-items-center p-1">
+                <img src="/logo.png" alt="SDLC Logo" className="h-11 w-11 rounded-[8px] object-contain" />
+              </span>
+              <span className="flex flex-col text-[1.125rem] font-bold leading-[0.95] tracking-tight text-[#2563EB] text-left whitespace-nowrap ml-1">
+                <span className="text-3xl font-black">SDLC</span>
+                <span>ADMIN</span>
+              </span>
             </div>
             <h1 className="text-2xl font-bold text-gray-950 tracking-tight">Chào mừng trở lại</h1>
-            <p className="text-gray-600 text-sm mt-1.5 font-semibold">Đăng nhập vào AL-SDLC Admin</p>
+            <p className="text-gray-600 text-sm mt-1.5 font-semibold">Đăng nhập vào hệ thống quản trị SDLC</p>
           </div>
 
           <button

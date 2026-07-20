@@ -46,6 +46,26 @@ export const API_ROUTES = {
     STATS: '/audit/stats',
     LOG_BY_ID: (id: string) => `/audit/logs/${id}`,
   },
+  CHAT: {
+    CHANNELS: '/chat/channels',
+    ADMIN_CHANNELS: '/chat/admin/channels',
+    CHANNEL_BY_ID: (id: string) => `/chat/${id}`,
+    CHANNEL_MEMBERS: (id: string) => `/chat/channels/${id}/members`,
+    CHANNEL_MESSAGES: (id: string) => `/chat/channels/${id}/messages`,
+    THREAD_REPLIES: (channelId: string, messageId: string) => `/chat/channels/${channelId}/messages/${messageId}/replies`,
+    DELETE_CHANNEL: (id: string) => `/chat/channels/${id}`,
+    UPDATE_CHANNEL: (id: string) => `/chat/channels/${id}`,
+    KICK_MEMBER: (channelId: string, userId: string) => `/chat/channels/${channelId}/members/${userId}`,
+    UPDATE_MEMBER_ROLE: (channelId: string, userId: string) => `/chat/channels/${channelId}/members/${userId}`,
+    SEARCH_MESSAGES: (id: string) => `/chat/channels/${id}/messages/search`,
+  },
+  ATTACHMENTS: {
+    BASE: '/attachments',
+  },
+  IMAGES: {
+    BASE: '/imagesapi',
+    UPLOAD: '/imagesapi/upload',
+  }
 };
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5512';

@@ -8,15 +8,17 @@ import {
   UsersPage,
   WorkspacesPage,
   DocumentsPage,
-  PermissionsPage,
   ActivityPage,
+  SettingsPage,
+  ChatChannelsPage,
+  ProfilePage,
 } from './pages/admin';
 import { useAuthStore } from './stores';
 import { Toaster } from 'react-hot-toast';
-import { useTheme } from './hooks/useTheme';
+import { useSettings } from './hooks/useSettings';
 
 function App() {
-  useTheme();
+  useSettings();
   const { checkAuth, isInitialized } = useAuthStore();
 
   useEffect(() => {
@@ -52,8 +54,10 @@ function App() {
           <Route path="users" element={<UsersPage />} />
           <Route path="workspaces" element={<WorkspacesPage />} />
           <Route path="documents" element={<DocumentsPage />} />
-          <Route path="permissions" element={<PermissionsPage />} />
+          <Route path="chat-channels" element={<ChatChannelsPage />} />
           <Route path="activity" element={<ActivityPage />} />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
 
         {/* Catch all */}

@@ -78,9 +78,9 @@ export function DocUploadModal({ isOpen, onClose, onUpload, workspaces }: DocUpl
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300">
-      <div className="w-full max-w-3xl shadow-2xl relative flex flex-col border border-[var(--border-color)] bg-[var(--bg-primary)] rounded-2xl transform transition-all">
-        {/* Header with gradient */}
-        <div className="p-6 rounded-t-2xl border-b border-[var(--border-color)] bg-gradient-to-r from-primary-50 to-transparent dark:from-primary-900/20 dark:to-transparent">
+      <div className="w-full max-w-3xl shadow-2xl relative flex flex-col border border-[var(--border-color)] bg-[var(--card-bg)] rounded-2xl transform transition-all">
+        {/* Header */}
+        <div className="p-5 rounded-t-2xl border-b border-[var(--border-color)]">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center text-primary-600 dark:text-primary-400 shadow-sm">
               <Upload className="w-6 h-6" />
@@ -92,7 +92,7 @@ export function DocUploadModal({ isOpen, onClose, onUpload, workspaces }: DocUpl
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-5 space-y-4">
           {/* Drag & Drop Area */}
           <div 
             className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all duration-200 ease-in-out relative
@@ -199,7 +199,7 @@ export function DocUploadModal({ isOpen, onClose, onUpload, workspaces }: DocUpl
           </div>
         </div>
 
-        <div className="p-6 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex justify-end gap-3 rounded-b-2xl relative z-10">
+        <div className="p-5 border-t border-[var(--border-color)] flex justify-end gap-3 rounded-b-2xl relative z-10">
           <Button type="button" variant="secondary" onClick={onClose} disabled={isSaving} className="px-6 rounded-xl">
             Hủy
           </Button>

@@ -1,5 +1,5 @@
-import { useTheme } from '../hooks/useTheme';
 import { Sun, Moon, Monitor } from 'lucide-react';
+import { useSettings } from '../hooks/useSettings';
 
 interface ThemeSwitcherProps {
   variant?: "dropdown" | "compact";
@@ -7,7 +7,7 @@ interface ThemeSwitcherProps {
 }
 
 export default function ThemeSwitcher({ variant = "dropdown", className = "" }: ThemeSwitcherProps) {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme } = useSettings();
 
   const options = [
     {
@@ -31,27 +31,23 @@ export default function ThemeSwitcher({ variant = "dropdown", className = "" }: 
   ];
 
   if (variant === "compact") {
+    const currentIndex = options.findIndex(o => o.id === theme) >= 0 ? options.findIndex(o => o.id === theme) : 0;
+    const currentOption = options[currentIndex];
+    const Icon = currentOption.icon;
+    
+    const cycleTheme = () => {
+      const nextIndex = (currentIndex + 1) % options.length;
+      setTheme(options[nextIndex].id as "light" | "dark" | "system");
+    };
+
     return (
-      <div className={`flex items-center gap-1 ${className}`}>
-        {options.map((option) => {
-          const Icon = option.icon;
-          const isActive = theme === option.id;
-          return (
-            <button
-              key={option.id}
-              onClick={() => setTheme(option.id as "light" | "dark" | "system")}
-              title={option.label}
-              className={`p-2 rounded-lg transition-colors ${
-                isActive
-                  ? "bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300"
-                  : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-            </button>
-          );
-        })}
-      </div>
+      <button
+        onClick={cycleTheme}
+        title={`Chế độ: ${currentOption.label}`}
+        className={`p-2 rounded-lg transition-colors text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 ${className}`}
+      >
+        <Icon className="w-5 h-5" />
+      </button>
     );
   }
 
