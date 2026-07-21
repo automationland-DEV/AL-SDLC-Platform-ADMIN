@@ -208,9 +208,23 @@ export default function DocumentsPage() {
     }
   };
 
-  const openViewModal = (doc: Document) => {
-    setSelectedDocToView(doc);
-    setShowViewModal(true);
+  const openViewModal = async (doc: Document) => {
+    if (doc.documentType === 'online' && !doc.content) {
+      try {
+        toast.loading('Đang tải nội dung...', { id: 'load-doc' });
+        const content = await documentService.getContent(doc._id);
+        setSelectedDocToView({ ...doc, content });
+        toast.dismiss('load-doc');
+        setShowViewModal(true);
+      } catch (error) {
+        toast.dismiss('load-doc');
+        toast.error('Lỗi khi tải nội dung tài liệu');
+        console.error(error);
+      }
+    } else {
+      setSelectedDocToView(doc);
+      setShowViewModal(true);
+    }
   };
 
   const openOnlineModal = () => {
