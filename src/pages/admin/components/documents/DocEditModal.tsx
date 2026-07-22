@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';

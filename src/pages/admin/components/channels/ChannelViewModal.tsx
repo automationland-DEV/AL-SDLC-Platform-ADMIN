@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, Hash, Megaphone, Lock, Users, Clock } from 'lucide-react';
 import { Button } from '../../../../components/ui';

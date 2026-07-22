@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, Search, Loader2, FileText, File, Download, ExternalLink, ImageIcon, Play, ChevronLeft } from 'lucide-react';
 import { chatChannelService } from '../../../../services';
-import type { ChatMessage, User } from '../../../../types';
+import type { ChatMessage } from '../../../../types';
 
 interface ChatSearchPanelProps {
   channelId: string;

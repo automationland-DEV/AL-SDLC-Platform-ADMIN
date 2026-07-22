@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, Search, ChevronLeft } from 'lucide-react';
 import { chatChannelService } from '../../../../services';
-import type { User } from '../../../../types';
 
 interface ChatMemberPanelProps {
   channelId: string;

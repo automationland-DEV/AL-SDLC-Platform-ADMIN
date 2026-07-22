@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, MessageSquare, Loader2, ChevronLeft } from 'lucide-react';
 import { chatChannelService } from '../../../../services';
-import type { ChatMessage, User } from '../../../../types';
 
 interface ChatThreadIndexPanelProps {
   channelId: string;
