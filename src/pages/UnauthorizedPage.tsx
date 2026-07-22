@@ -3,7 +3,7 @@ import { Button } from '../components/ui';
 
 export default function UnauthorizedPage() {
   const handleReturn = () => {
-    const userAppUrl = import.meta.env.VITE_FRONTEND_URL || (import.meta.env.DEV ? 'http://localhost:3000' : '/');
+    const userAppUrl = import.meta.env.VITE_FRONTEND_URL;
 
     if (!import.meta.env.VITE_FRONTEND_URL) {
       console.warn('VITE_FRONTEND_URL is not set, falling back to default');
