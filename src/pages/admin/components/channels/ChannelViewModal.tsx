@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { X, Hash, Megaphone, Lock, Users, Clock } from 'lucide-react';
 import { Button } from '../../../../components/ui';
 import { chatChannelService } from '../../../../services';
@@ -22,24 +23,12 @@ interface ChannelMember {
 }
 
 export default function ChannelViewModal({ isOpen, onClose, channel, onDelete }: ChannelViewModalProps) {
-  const [members, setMembers] = useState<ChannelMember[]>([]);
-  const [loadingMembers, setLoadingMembers] = useState(false);
-
-  useEffect(() => {
-    if (isOpen && channel) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLoadingMembers(true);
-      chatChannelService
-        .getMembers(channel._id)
-        .then(setMembers)
-        .catch(() => {
-          setMembers([]);
-        })
-        .finally(() => {
-          setLoadingMembers(false);
-        });
-    }
-  }, [isOpen, channel]);
+  const { data: members = [], isLoading: loadingMembers } = useQuery({
+    queryKey: ['channels', 'members', channel?._id],
+    queryFn: () => (channel?._id ? chatChannelService.getMembers(channel._id) : Promise.resolve([])),
+    enabled: Boolean(isOpen && channel?._id),
+    staleTime: 1000 * 60 * 2,
+  });
 
   if (!isOpen || !channel) return null;
 

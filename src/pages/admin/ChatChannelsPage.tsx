@@ -1,25 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Search, Trash2, Eye, Hash, Megaphone, Lock, Users, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, Badge, Table, TableRow, TableCell, SearchableSelect, ConfirmModal } from '../../components/ui';
-import { useChatChannelsStore, useWorkspacesStore } from '../../stores';
 import ChannelViewModal from './components/channels/ChannelViewModal';
 import ChatViewerModal from './components/channels/ChatViewerModal';
+import {
+  useChannelsQuery,
+  useDeleteChannelMutation,
+  useWorkspacesQuery,
+} from '../../hooks/queries';
+import type { ChatChannel, Workspace } from '../../types';
 
 export default function ChatChannelsPage() {
-  const {
-    channels, filteredChannels, isLoading,
-    fetchChannels, deleteChannel, setSearch, typeFilter, setTypeFilter, workspaceFilter, setWorkspaceFilter, applyFilters, absoluteTotal,
-  } = useChatChannelsStore();
-
-  const { workspaces, fetchWorkspaces } = useWorkspacesStore();
-
+  // ─── UI State ──────────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [workspaceFilter, setWorkspaceFilter] = useState('all');
   const [showViewModal, setShowViewModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<any>(null);
-
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
@@ -37,39 +37,66 @@ export default function ChatChannelsPage() {
     type: 'danger',
   });
 
-  useEffect(() => {
-    fetchChannels();
-    fetchWorkspaces();
-  }, [fetchChannels, fetchWorkspaces]);
+  // ─── Server State (React Query) ─────────────────────────────────────────
+  const { data: channelsRaw = [], isLoading } = useChannelsQuery(
+    workspaceFilter !== 'all' ? workspaceFilter : undefined
+  );
+  const { data: workspacesRaw = [] } = useWorkspacesQuery();
+  const deleteChannelMutation = useDeleteChannelMutation();
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearch(searchTerm);
-      applyFilters();
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [searchTerm, setSearch, applyFilters]);
+  const channels = useMemo(() => {
+    if (Array.isArray(channelsRaw)) return channelsRaw as ChatChannel[];
+    if (channelsRaw && typeof channelsRaw === 'object') {
+      const obj = channelsRaw as Record<string, unknown>;
+      if (Array.isArray(obj.data)) return obj.data as ChatChannel[];
+      if (Array.isArray(obj.channels)) return obj.channels as ChatChannel[];
+    }
+    return [];
+  }, [channelsRaw]);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCurrentPage(1);
-  }, [searchTerm, typeFilter, workspaceFilter]);
+  const workspaces = useMemo(() => {
+    if (Array.isArray(workspacesRaw)) return workspacesRaw as Workspace[];
+    if (workspacesRaw && typeof workspacesRaw === 'object') {
+      const obj = workspacesRaw as Record<string, unknown>;
+      if (Array.isArray(obj.data)) return obj.data as Workspace[];
+      if (Array.isArray(obj.workspaces)) return obj.workspaces as Workspace[];
+    }
+    return [];
+  }, [workspacesRaw]);
+
+  const absoluteTotal = channels.length;
+
+  // ─── Client-side filtering (no extra API calls) ──────────────────────────
+  const filteredChannels = useMemo(() => {
+    let result = [...channels];
+    if (typeFilter !== 'all') {
+      result = result.filter(c => c.type === typeFilter);
+    }
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      result = result.filter(
+        c => c.name.toLowerCase().includes(q) || c.description?.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [channels, typeFilter, searchTerm]);
 
   const handleTypeFilterChange = (type: string) => {
     setTypeFilter(type);
-    setTimeout(() => applyFilters(), 0);
+    setCurrentPage(1);
   };
 
   const handleWorkspaceFilterChange = (wsId: string) => {
     setWorkspaceFilter(wsId);
-    fetchChannels(wsId);
+    setCurrentPage(1);
+    // Query key changes -> React Query refetches from API or uses cache
   };
 
   const handleResetFilters = () => {
     setSearchTerm('');
     setTypeFilter('all');
     setWorkspaceFilter('all');
-    fetchChannels();
+    setCurrentPage(1);
   };
 
   const handleDelete = (id: string) => {
@@ -80,7 +107,7 @@ export default function ChatChannelsPage() {
       type: 'danger',
       onConfirm: async () => {
         try {
-          await deleteChannel(id);
+          await deleteChannelMutation.mutateAsync(id);
           toast.success('Xóa channel thành công');
           setConfirmModal((prev) => ({ ...prev, isOpen: false }));
         } catch (error: any) {

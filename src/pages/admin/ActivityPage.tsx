@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Filter, RefreshCw, Users, ChevronDown } from 'lucide-react';
 import { Button } from '../../components/ui';
 import { useActivityStore } from '../../stores';
+import { useActivityStatsQuery } from '../../hooks/queries';
 
 import {
   ActivitySidebar,
@@ -19,31 +20,19 @@ export default function ActivityPage() {
     filters,
     setFilters,
     resetFilters,
-    fetchLogs,
-    fetchStats,
-    isLoading: logsLoading,
   } = useActivityStore();
+
+  // Prefetch stats so they're available when ActivityStats mounts
+  useActivityStatsQuery();
 
   const [showFilters, setShowFilters] = useState(false);
   const [showMobileUsers, setShowMobileUsers] = useState(false);
 
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
-
-  useEffect(() => {
-    if (selectedUserId === 'all') {
-      setFilters({ userId: '' });
-    } else {
-      setFilters({ userId: selectedUserId });
-    }
-    fetchLogs(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedUserId, fetchLogs]);
-
+  // When user filter changes in URL, update store filter
+  // ActivityList reads from store.filters via its own useActivityLogsQuery
   const handleSearch = () => {
-    fetchLogs(1);
-    if (selectedUserId === 'all') fetchStats();
+    // Trigger re-render — ActivityList query key will update via store.filters
+    // no explicit fetch needed
   };
 
   const handleReset = () => {
@@ -51,20 +40,24 @@ export default function ActivityPage() {
     if (selectedUserId !== 'all') {
       setFilters({ userId: selectedUserId });
     }
-    fetchLogs(1);
-    if (selectedUserId === 'all') fetchStats();
   };
 
   const handleUserSelect = (id: string) => {
     if (id === 'all') {
       searchParams.delete('userId');
       setSearchParams(searchParams);
+      setFilters({ userId: '' });
     } else {
       setSearchParams({ userId: id });
+      setFilters({ userId: id });
     }
   };
 
+  // isLoading indicator only for refresh button
+  const logsLoading = false; // ActivityList manages its own loading state now
+
   const hasActiveFilters = Object.entries(filters).some(([k, v]) => k !== 'userId' && v !== '');
+
 
   return (
     <div className="space-y-6">

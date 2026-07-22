@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { Search, Edit, Trash2, Eye, Download, Upload, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, Badge, Table, TableRow, TableCell, SearchableSelect, ConfirmModal } from '../../components/ui';
-import { useDocumentsStore, useWorkspacesStore } from '../../stores';
 import { documentService } from '../../services';
 import type { Document } from '../../types';
 
@@ -11,18 +10,76 @@ import { DocOnlineModal } from './components/documents/DocOnlineModal';
 import { DocUploadModal } from './components/documents/DocUploadModal';
 import { DocEditModal } from './components/documents/DocEditModal';
 import { DocViewModal } from './components/documents/DocViewModal';
+import {
+  useDocumentsQuery,
+  useDeleteDocumentMutation,
+  useCreateOnlineDocumentMutation,
+  useUploadDocumentMutation,
+  useUpdateDocumentMutation,
+  useWorkspacesQuery,
+} from '../../hooks/queries';
 
 export default function DocumentsPage() {
-  const {
-    documents, absoluteTotal, page, totalPages, isLoading,
-    fetchDocuments, setFilter, setWorkspaceFilter, deleteDocument
-  } = useDocumentsStore();
-
-  const { workspaces, fetchWorkspaces } = useWorkspacesStore();
-
+  const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [wsFilter, setWsFilter] = useState('all');
+
+  // ─── Server State (React Query) ─────────────────────────────────────────────
+  const { data: documentsData, isLoading } = useDocumentsQuery({
+    page,
+    type: typeFilter !== 'all' ? typeFilter : undefined,
+    workspaceId: wsFilter !== 'all' ? wsFilter : undefined,
+  });
+  const { data: workspacesRaw = [] } = useWorkspacesQuery();
+
+  const deleteDocumentMutation = useDeleteDocumentMutation();
+  const createOnlineMutation = useCreateOnlineDocumentMutation();
+  const uploadMutation = useUploadDocumentMutation();
+  const updateDocumentMutation = useUpdateDocumentMutation();
+
+  // Robust data extraction for Documents
+  const parseDocumentsResponse = (raw: unknown) => {
+    let documents: Document[] = [];
+    let total = 0;
+    let totalPages = 1;
+
+    if (Array.isArray(raw)) {
+      documents = raw as Document[];
+      total = documents.length;
+      totalPages = 1;
+    } else if (raw && typeof raw === 'object') {
+      const obj = raw as Record<string, unknown>;
+      if (Array.isArray(obj.data)) {
+        documents = obj.data as Document[];
+      } else if (Array.isArray(obj.documents)) {
+        documents = obj.documents as Document[];
+      }
+
+      if (typeof obj.total === 'number') {
+        total = obj.total;
+      } else if (obj.pagination && typeof obj.pagination === 'object') {
+        const pag = obj.pagination as Record<string, unknown>;
+        if (typeof pag.total === 'number') total = pag.total;
+        if (typeof pag.totalPages === 'number') totalPages = pag.totalPages;
+      } else {
+        total = documents.length;
+      }
+
+      if (typeof obj.totalPages === 'number') {
+        totalPages = obj.totalPages;
+      }
+    }
+
+    return { documents, absoluteTotal: total, totalPages };
+  };
+
+  const { documents, absoluteTotal, totalPages } = parseDocumentsResponse(documentsData);
+  const workspaces = Array.isArray(workspacesRaw)
+    ? (workspacesRaw as Workspace[])
+    : (workspacesRaw && typeof workspacesRaw === 'object' && Array.isArray((workspacesRaw as Record<string, unknown>).data)
+        ? ((workspacesRaw as Record<string, unknown>).data as Workspace[])
+        : []);
 
   const [showOnlineModal, setShowOnlineModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -45,30 +102,21 @@ export default function DocumentsPage() {
     type: 'danger'
   });
 
-  useEffect(() => {
-    fetchDocuments(1);
-    fetchWorkspaces();
-  }, [fetchDocuments, fetchWorkspaces]);
-
   const handleFilterChange = (type: string) => {
     setTypeFilter(type);
-    setFilter(type);
-    fetchDocuments(1, type, wsFilter);
+    setPage(1);
   };
 
   const handleWorkspaceFilterChange = (wsId: string) => {
     setWsFilter(wsId);
-    setWorkspaceFilter(wsId);
-    fetchDocuments(1, typeFilter, wsId);
+    setPage(1);
   };
 
   const handleResetFilters = () => {
     setSearchTerm('');
     setTypeFilter('all');
-    setFilter('all');
     setWsFilter('all');
-    setWorkspaceFilter('all');
-    fetchDocuments(1, 'all', 'all');
+    setPage(1);
   };
 
   const handleDelete = (id: string) => {
@@ -79,7 +127,7 @@ export default function DocumentsPage() {
       type: 'danger',
       onConfirm: async () => {
         try {
-          await deleteDocument(id);
+          await deleteDocumentMutation.mutateAsync(id);
           toast.success('Xóa tài liệu thành công');
           setConfirmModal(prev => ({ ...prev, isOpen: false }));
         } catch (error: unknown) {
@@ -93,9 +141,8 @@ export default function DocumentsPage() {
   const handleCreateOnline = async (docName: string, docContent: string, workspaceId: string) => {
     try {
       const wIds = workspaceId ? [workspaceId] : [];
-      await documentService.createOnline(docName, docContent, wIds);
+      await createOnlineMutation.mutateAsync({ name: docName, content: docContent, workspaceIds: wIds });
       setShowOnlineModal(false);
-      fetchDocuments(1);
       toast.success('Tạo tài liệu online thành công');
     } catch (error: unknown) {
       console.error('Failed to create online document:', error);
@@ -142,9 +189,8 @@ export default function DocumentsPage() {
   const handleUploadFile = async (file: File, docName: string, workspaceId: string) => {
     try {
       const wIds = workspaceId ? [workspaceId] : [];
-      await documentService.upload(file, docName, wIds);
+      await uploadMutation.mutateAsync({ file, name: docName, workspaceIds: wIds });
       setShowUploadModal(false);
-      fetchDocuments(1);
       toast.success('Upload tài liệu thành công');
     } catch (error: unknown) {
       console.error('Failed to upload document:', error);
@@ -160,10 +206,7 @@ export default function DocumentsPage() {
       const workspaceChanged = JSON.stringify(selectedDoc.workspaceIds || []) !== JSON.stringify(wIds);
 
       if (nameChanged || workspaceChanged) {
-        await documentService.update(selectedDoc._id, {
-          name: docName,
-          workspaceIds: wIds,
-        });
+        await updateDocumentMutation.mutateAsync({ id: selectedDoc._id, data: { name: docName, workspaceIds: wIds } });
       }
       
       if (selectedDoc.documentType === 'online' && docContent !== undefined) {
@@ -172,7 +215,6 @@ export default function DocumentsPage() {
 
       setShowEditModal(false);
       setSelectedDoc(null);
-      fetchDocuments(page);
       toast.success('Cập nhật tài liệu thành công');
     } catch (error: unknown) {
       console.error('Failed to update document:', error);
@@ -475,7 +517,7 @@ export default function DocumentsPage() {
                     variant="secondary"
                     size="sm"
                     disabled={page <= 1}
-                    onClick={() => fetchDocuments(page - 1)}
+                    onClick={() => setPage(page - 1)}
                   >
                     Trước
                   </Button>
@@ -483,7 +525,7 @@ export default function DocumentsPage() {
                     variant="secondary"
                     size="sm"
                     disabled={page >= totalPages}
-                    onClick={() => fetchDocuments(page + 1)}
+                    onClick={() => setPage(page + 1)}
                   >
                     Sau
                   </Button>

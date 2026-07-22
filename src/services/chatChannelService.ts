@@ -4,10 +4,17 @@ import type { ChatChannel, User, ChatMessage } from '../types';
 
 export const chatChannelService = {
   getAllChannels: async (params?: { workspaceId?: string }): Promise<ChatChannel[]> => {
-    const response = await api.get<ChatChannel[]>(API_ROUTES.CHAT.ADMIN_CHANNELS, { params });
+    const response = await api.get<unknown>(API_ROUTES.CHAT.ADMIN_CHANNELS, { params });
     const data = response.data;
-    if (Array.isArray(data)) return data;
-    if (data && typeof data === 'object' && 'data' in data) return (data as { data: ChatChannel[] }).data || [];
+    if (Array.isArray(data)) return data as ChatChannel[];
+    if (data && typeof data === 'object') {
+      const obj = data as Record<string, unknown>;
+      if (Array.isArray(obj.data)) return obj.data as ChatChannel[];
+      if (Array.isArray(obj.channels)) return obj.channels as ChatChannel[];
+      if (obj.data && typeof obj.data === 'object' && Array.isArray((obj.data as Record<string, unknown>).channels)) {
+        return (obj.data as Record<string, unknown>).channels as ChatChannel[];
+      }
+    }
     return [];
   },
 

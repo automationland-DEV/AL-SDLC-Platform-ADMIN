@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { X, Search, Loader2, FileText, File, Download, ExternalLink, ImageIcon, Play, ChevronLeft } from 'lucide-react';
 import { chatChannelService } from '../../../../services';
 import type { ChatMessage, User } from '../../../../types';
@@ -34,7 +35,12 @@ export default function ChatSearchPanel({ channelId, onClose, onJumpToMessage }:
   const [linksList, setLinksList] = useState<{ url: string; msg: ChatMessage }[]>([]);
   const [isLoadingLinks, setIsLoadingLinks] = useState(false);
   
-  const [members, setMembers] = useState<User[]>([]);
+  const { data: members = [] } = useQuery({
+    queryKey: ['channels', 'members', channelId],
+    queryFn: () => chatChannelService.getMembers(channelId),
+    enabled: Boolean(channelId),
+    staleTime: 1000 * 60 * 2,
+  });
   
   const [showSenderDropdown, setShowSenderDropdown] = useState(false);
   const [senderSearchQuery, setSenderSearchQuery] = useState('');
@@ -67,11 +73,6 @@ export default function ChatSearchPanel({ channelId, onClose, onJumpToMessage }:
       m.email?.toLowerCase().includes(lowerQuery)
     );
   }, [members, senderSearchQuery]);
-
-  // Fetch channel members for sender filter
-  useEffect(() => {
-    chatChannelService.getMembers(channelId).then(setMembers).catch(console.error);
-  }, [channelId]);
 
   // Debounce search query
   useEffect(() => {

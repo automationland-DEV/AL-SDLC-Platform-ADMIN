@@ -1,12 +1,19 @@
 import { Activity, Clock, AlertTriangle, Info } from 'lucide-react';
-import { useActivityStore } from '../../../../stores';
+import { useActivityStatsQuery, useActivityLogsQuery } from '../../../../hooks/queries';
 
 interface ActivityStatsProps {
   selectedUserId: string;
 }
 
 export function ActivityStats({ selectedUserId }: ActivityStatsProps) {
-  const { stats, total, logs } = useActivityStore();
+  const { data: stats } = useActivityStatsQuery();
+  // For user-specific view: get total from logs query
+  const { data: logsData } = useActivityLogsQuery(
+    selectedUserId !== 'all' ? { userId: selectedUserId, page: 1, limit: 1 } : { page: 1, limit: 1 }
+  );
+  const total = stats?.total ?? logsData?.pagination.total ?? 0;
+  const lastActivityDate = logsData?.data?.[0]?.createdAt ?? null;
+
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -94,7 +101,7 @@ export function ActivityStats({ selectedUserId }: ActivityStatsProps) {
             <div>
               <p className="text-xs text-[var(--text-secondary)]">Hoạt động mới nhất</p>
               <p className="text-sm font-bold text-[var(--text-primary)] mt-1">
-                {logs.length > 0 ? formatDate(logs[0].createdAt) : 'Chưa có'}
+                {lastActivityDate ? formatDate(lastActivityDate) : 'Chưa có'}
               </p>
             </div>
           </div>

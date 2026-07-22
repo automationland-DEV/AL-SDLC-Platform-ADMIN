@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Users,
@@ -14,22 +13,49 @@ import {
   Lock,
 } from 'lucide-react';
 
-import { useUsersStore, useWorkspacesStore, useDocumentsStore } from '../../stores';
 import { useAuthStore } from '../../stores/authStore';
+import { useUsersQuery, useWorkspacesQuery, useDocumentsQuery } from '../../hooks/queries';
 
 export default function DashboardPage() {
-  const { users, total: totalUsers, isLoading: usersLoading, fetchUsers } = useUsersStore();
-  const { workspaces, total: totalWorkspaces, isLoading: workspacesLoading, fetchWorkspaces } = useWorkspacesStore();
-  const { total: totalDocuments, isLoading: documentsLoading, fetchDocuments } = useDocumentsStore();
   const { user } = useAuthStore();
-  
 
+  // React Query — data is cached; navigating back won't trigger a new API call
+  const { data: usersData, isLoading: usersLoading } = useUsersQuery({ page: 1 });
+  const { data: workspacesRaw, isLoading: workspacesLoading } = useWorkspacesQuery();
+  const { data: documentsData, isLoading: documentsLoading } = useDocumentsQuery({ page: 1 });
 
-  useEffect(() => {
-    fetchUsers(1);
-    fetchWorkspaces(1);
-    fetchDocuments(1);
-  }, [fetchUsers, fetchWorkspaces, fetchDocuments]);
+  // Safe data extraction handling array, flat pagination, or nested pagination
+  const extractList = <T,>(raw: unknown, key?: string): T[] => {
+    if (Array.isArray(raw)) return raw as T[];
+    if (raw && typeof raw === 'object') {
+      const obj = raw as Record<string, unknown>;
+      if (Array.isArray(obj.data)) return obj.data as T[];
+      if (key && Array.isArray(obj[key])) return obj[key] as T[];
+    }
+    return [];
+  };
+
+  const extractTotal = (raw: unknown): number => {
+    if (Array.isArray(raw)) return raw.length;
+    if (raw && typeof raw === 'object') {
+      const obj = raw as Record<string, unknown>;
+      if (typeof obj.total === 'number') return obj.total;
+      if (obj.pagination && typeof obj.pagination === 'object') {
+        const pag = obj.pagination as Record<string, unknown>;
+        if (typeof pag.total === 'number') return pag.total;
+      }
+      if (Array.isArray(obj.data)) return obj.data.length;
+    }
+    return 0;
+  };
+
+  const users = extractList<{ id: string; fullName?: string; email: string; avatar?: string; role: string }>(usersData, 'users');
+  const totalUsers = extractTotal(usersData);
+
+  const workspaces = extractList<{ id: string; name: string; status?: string; deletedAt?: string | null }>(workspacesRaw, 'workspaces');
+  const totalWorkspaces = extractTotal(workspacesRaw);
+
+  const totalDocuments = extractTotal(documentsData);
 
   const isLoading = usersLoading || workspacesLoading || documentsLoading;
 

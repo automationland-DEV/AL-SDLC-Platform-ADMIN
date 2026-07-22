@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { X, Search, ChevronLeft } from 'lucide-react';
 import { chatChannelService } from '../../../../services';
 import type { User } from '../../../../types';
@@ -52,18 +53,14 @@ const getRoleBadge = (role?: string, globalRole?: string) => {
 };
 
 export default function ChatMemberPanel({ channelId, onClose }: ChatMemberPanelProps) {
-  const [members, setMembers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsLoading(true);
-    chatChannelService.getMembers(channelId)
-      .then(setMembers)
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, [channelId]);
+  const { data: members = [], isLoading } = useQuery({
+    queryKey: ['channels', 'members', channelId],
+    queryFn: () => chatChannelService.getMembers(channelId),
+    enabled: Boolean(channelId),
+    staleTime: 1000 * 60 * 2,
+  });
 
   const filteredMembers = useMemo(() => {
     if (!searchQuery) return members;

@@ -15,7 +15,7 @@ export function useChannelsQuery(workspaceId?: string) {
   return useQuery({
     queryKey: channelKeys.list(workspaceId),
     queryFn: () => chatChannelService.getAllChannels(params),
-    staleTime: 1000 * 60 * 2, // 2 minutes
+    staleTime: 1000 * 30, // 30 seconds
   });
 }
 

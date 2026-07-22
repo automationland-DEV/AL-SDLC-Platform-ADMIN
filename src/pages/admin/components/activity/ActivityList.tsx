@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { LogIn, LogOut, AlertTriangle, Info, Shield, Clock, User as UserIcon, MapPin, Activity, RefreshCw } from 'lucide-react';
 import { Badge, Button } from '../../../../components/ui';
 import { useActivityStore } from '../../../../stores';
+import { useActivityLogsQuery } from '../../../../hooks/queries';
+import type { AuditLogQueryParams } from '../../../../services/auditService';
 
 const EVENT_LABELS: Record<string, string> = {
   LOGIN_SUCCESS: 'Đăng nhập thành công',
@@ -29,10 +32,25 @@ interface ActivityListProps {
 }
 
 export function ActivityList({ selectedUserId }: ActivityListProps) {
-  const { logs, total, page, totalPages, isLoading, fetchLogs } = useActivityStore();
+  const { filters } = useActivityStore();
+  const [page, setPage] = useState(1);
+
+  // Build query params from store filters + page
+  const queryParams: AuditLogQueryParams = { page, limit: 20 };
+  if (filters.userId) queryParams.userId = filters.userId;
+  if (filters.type) queryParams.type = filters.type;
+  if (filters.severity) queryParams.severity = filters.severity;
+  if (filters.ip) queryParams.ip = filters.ip;
+  if (filters.startDate) queryParams.startDate = filters.startDate;
+  if (filters.endDate) queryParams.endDate = filters.endDate;
+
+  const { data, isLoading } = useActivityLogsQuery(queryParams);
+  const logs = data?.data ?? [];
+  const total = data?.pagination.total ?? 0;
+  const totalPages = data?.pagination.totalPages ?? 1;
 
   const handlePageChange = (newPage: number) => {
-    fetchLogs(newPage);
+    setPage(newPage);
   };
 
   const formatDate = (dateStr: string) => {

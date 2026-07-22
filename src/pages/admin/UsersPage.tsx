@@ -1,14 +1,20 @@
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Plus, Search, Edit, Trash2, Eye, Upload, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, Badge, Table, TableRow, TableCell, ConfirmModal, Select } from '../../components/ui';
-import { useUsersStore } from '../../stores';
-import { userService } from '../../services';
 import type { User, UserRole, UserStatus } from '../../types';
 import { UserFormModal } from './components/users/UserFormModal';
 import { UserViewModal } from './components/users/UserViewModal';
 import { UserImportModal } from './components/users/UserImportModal';
+import {
+  useUsersQuery,
+  useCreateUserMutation,
+  useDeleteUserMutation,
+  useUpdateUserRoleMutation,
+  useUpdateUserStatusMutation,
+  useImportUsersCsvMutation,
+} from '../../hooks/queries';
 
 // Helper for safe error extraction
 const getErrorMessage = (error: unknown, defaultMsg: string) => {
@@ -32,21 +38,20 @@ const getErrorMessage = (error: unknown, defaultMsg: string) => {
 };
 
 export default function UsersPage() {
-  const { users, absoluteTotal, page, totalPages, isLoading, search, fetchUsers, setSearch, createUser, deleteUser, updateUserRole, updateUserStatus, importUsersCsv } = useUsersStore();
+  // ─── UI State (Zustand removed, all local) ────────────────────────────────
+  const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-
-  // Filtering and Sorting States
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'createdAt', direction: 'asc' | 'desc' } | null>(null);
 
-  // View User Modal State
+  // Modal state
+  const [showModal, setShowModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewedUser, setViewedUser] = useState<User | null>(null);
-
-  // Confirm Modal State
+  const [showImportModal, setShowImportModal] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -61,39 +66,76 @@ export default function UsersPage() {
     type: 'danger'
   });
 
-  // CSV Import State
-  const [showImportModal, setShowImportModal] = useState(false);
+  // ─── Server State (React Query) ────────────────────────────────────────────
+  const { data, isLoading } = useUsersQuery({
+    page,
+    search: debouncedSearch || undefined,
+    role: filterRole !== 'all' ? filterRole : undefined,
+    status: filterStatus !== 'all' ? filterStatus : undefined,
+  });
 
-  useEffect(() => {
-    fetchUsers(1);
-  }, [fetchUsers]);
+  const createUserMutation = useCreateUserMutation();
+  const deleteUserMutation = useDeleteUserMutation();
+  const updateRoleMutation = useUpdateUserRoleMutation();
+  const updateStatusMutation = useUpdateUserStatusMutation();
+  const importCsvMutation = useImportUsersCsvMutation();
 
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      if (searchTerm !== search) {
-        setSearch(searchTerm);
-        fetchUsers(1, searchTerm, filterRole, filterStatus);
+  // Derived data with full format fallback
+  const parseUsersResponse = (raw: unknown) => {
+    let users: User[] = [];
+    let total = 0;
+    let totalPages = 1;
+
+    if (Array.isArray(raw)) {
+      users = raw as User[];
+      total = users.length;
+      totalPages = 1;
+    } else if (raw && typeof raw === 'object') {
+      const obj = raw as Record<string, unknown>;
+      if (Array.isArray(obj.data)) {
+        users = obj.data as User[];
+      } else if (Array.isArray(obj.users)) {
+        users = obj.users as User[];
       }
-    }, 500);
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, search, filterRole, filterStatus, fetchUsers, setSearch]);
 
-  const handleViewClick = async (user: User) => {
-    try {
-      const fullUser = await userService.getUserById(user.id);
-      setViewedUser(fullUser);
-    } catch (error) {
-      console.error('Failed to load full user details:', error);
-      setViewedUser(user);
+      if (typeof obj.total === 'number') {
+        total = obj.total;
+      } else if (obj.pagination && typeof obj.pagination === 'object') {
+        const pag = obj.pagination as Record<string, unknown>;
+        if (typeof pag.total === 'number') total = pag.total;
+        if (typeof pag.totalPages === 'number') totalPages = pag.totalPages;
+      } else {
+        total = users.length;
+      }
+
+      if (typeof obj.totalPages === 'number') {
+        totalPages = obj.totalPages;
+      }
     }
+
+    return { users, absoluteTotal: total, totalPages };
+  };
+
+  const { users, absoluteTotal, totalPages } = parseUsersResponse(data);
+
+  // ─── Search debounce ───────────────────────────────────────────────────────
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setPage(1);
+    const id = setTimeout(() => setDebouncedSearch(value), 500);
+    return () => clearTimeout(id);
+  };
+
+  // ─── Handlers ──────────────────────────────────────────────────────────────
+  const handleViewClick = async (user: User) => {
+    setViewedUser(user);
     setShowViewModal(true);
   };
 
   const handlePageChange = (newPage: number) => {
-    fetchUsers(newPage, search, filterRole, filterStatus);
+    setPage(newPage);
   };
 
-  
   const handleEditClick = (user: User) => {
     setSelectedUser(user);
     setShowModal(true);
@@ -103,10 +145,10 @@ export default function UsersPage() {
     if (!selectedUser) return;
     try {
       if (role !== selectedUser.role) {
-        await updateUserRole(userId, role);
+        await updateRoleMutation.mutateAsync({ id: userId, role });
       }
       if (status !== selectedUser.status) {
-        await updateUserStatus(userId, status);
+        await updateStatusMutation.mutateAsync({ id: userId, status });
       }
       setSelectedUser(null);
       toast.success('Cập nhật người dùng thành công');
@@ -119,7 +161,7 @@ export default function UsersPage() {
 
   const handleCreateUser = async (userData: { email: string; password?: string; fullName?: string; role: string; status: string }) => {
     try {
-      await createUser(userData as Partial<User>);
+      await createUserMutation.mutateAsync(userData as Partial<User>);
       toast.success('Tạo người dùng thành công');
     } catch (error) {
       console.error('Failed to create user:', error);
@@ -136,7 +178,7 @@ export default function UsersPage() {
       type: 'danger',
       onConfirm: async () => {
         try {
-          await deleteUser(id);
+          await deleteUserMutation.mutateAsync(id);
           toast.success('Xóa người dùng thành công');
         } catch (error) {
           console.error('Failed to delete user:', error);
@@ -146,6 +188,16 @@ export default function UsersPage() {
         }
       }
     });
+  };
+
+  const handleImport = async (file: File) => {
+    try {
+      const result = await importCsvMutation.mutateAsync(file);
+      return result;
+    } catch (error) {
+      console.error('Failed to import users:', error);
+      throw error;
+    }
   };
 
   const getStatusBadge = (status: UserStatus) => {
@@ -241,7 +293,7 @@ export default function UsersPage() {
               type="text"
               placeholder="Tìm kiếm theo tên hoặc email..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
             />
           </div>
@@ -250,7 +302,7 @@ export default function UsersPage() {
               value={filterRole}
               onChange={(val) => {
                 setFilterRole(val);
-                fetchUsers(1, searchTerm, val, filterStatus);
+                setPage(1);
               }}
               options={[
                 { value: 'all', label: 'Tất cả vai trò' },
@@ -263,7 +315,7 @@ export default function UsersPage() {
               value={filterStatus}
               onChange={(val) => {
                 setFilterStatus(val);
-                fetchUsers(1, searchTerm, filterRole, val);
+                setPage(1);
               }}
               options={[
                 { value: 'all', label: 'Tất cả trạng thái' },
@@ -401,7 +453,7 @@ export default function UsersPage() {
       <UserImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
-        onImport={importUsersCsv}
+        onImport={handleImport}
       />
 
       <UserViewModal

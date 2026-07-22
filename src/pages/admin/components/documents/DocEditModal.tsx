@@ -1,5 +1,5 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Edit3, Type, X } from 'lucide-react';
 import { Button, SearchableSelect } from '../../../../components/ui';
@@ -23,40 +23,24 @@ export function DocEditModal({ isOpen, onClose, onSave, selectedDoc, workspaces 
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const [isLoadingContent, setIsLoadingContent] = useState(false);
+
+  const { data: fetchedContent = '', isLoading: isLoadingContent } = useQuery({
+    queryKey: ['documents', 'content', selectedDoc?._id],
+    queryFn: () => (selectedDoc?._id ? documentService.getContent(selectedDoc._id) : Promise.resolve('')),
+    enabled: Boolean(isOpen && selectedDoc && selectedDoc.documentType === 'online'),
+    staleTime: 1000 * 60 * 5,
+  });
 
   useEffect(() => {
-    let isMounted = true;
     if (isOpen && selectedDoc) {
       setDocName(selectedDoc.name);
       setSelectedWorkspaceId(selectedDoc.workspaceIds?.[0] || '');
       setIsDirty(false);
-
-      if (selectedDoc.documentType === 'online') {
-        setIsLoadingContent(true);
-        documentService.getContent(selectedDoc._id)
-          .then(content => {
-            if (isMounted) {
-              setInitialContent(content);
-              contentRef.current = content;
-              setIsLoadingContent(false);
-            }
-          })
-          .catch(() => {
-            if (isMounted) {
-              setInitialContent('');
-              contentRef.current = '';
-              setIsLoadingContent(false);
-              toast.error('Lỗi khi tải nội dung tài liệu');
-            }
-          });
-      } else {
-        setInitialContent('');
-        contentRef.current = '';
-      }
+      const content = selectedDoc.documentType === 'online' ? fetchedContent : '';
+      setInitialContent(content);
+      contentRef.current = content;
     }
-    return () => { isMounted = false; };
-  }, [isOpen, selectedDoc]);
+  }, [isOpen, selectedDoc, fetchedContent]);
 
   if (!isOpen || !selectedDoc) return null;
 

@@ -1,22 +1,49 @@
 
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Search, Edit, Trash2, Eye, Archive, RotateCcw, Users } from 'lucide-react';
 import { Button, Card, Badge, Table, TableRow, TableCell } from '../../components/ui';
-import { useWorkspacesStore } from '../../stores';
 import { userService } from '../../services';
 import type { Workspace, User, WorkspaceType } from '../../types';
 import toast from 'react-hot-toast';
 import { WorkspaceFormModal } from './components/workspaces/WorkspaceFormModal';
 import { WorkspaceViewModal } from './components/workspaces/WorkspaceViewModal';
+import {
+  useWorkspacesQuery,
+  useCreateWorkspaceMutation,
+  useUpdateWorkspaceMutation,
+  useDeleteWorkspaceMutation,
+  useArchiveWorkspaceMutation,
+  useRestoreWorkspaceMutation,
+} from '../../hooks/queries';
+import { useQuery } from '@tanstack/react-query';
 
 export default function WorkspacesPage() {
-  const {
-    workspaces, absoluteTotal, isLoading,
-    fetchWorkspaces, setFilter, deleteWorkspace, archiveWorkspace, restoreWorkspace,
-    createWorkspace, updateWorkspace
-  } = useWorkspacesStore();
+  // ─── Server State (React Query) ─────────────────────────────────────────────
+  const { data: workspacesRaw = [], isLoading } = useWorkspacesQuery();
   
-  const [allUsers, setAllUsers] = useState<User[]>([]);
+  // Fetch users for owner selection — cached separately
+  const { data: allUsersRaw } = useQuery({
+    queryKey: ['users', 'all-for-form'],
+    queryFn: () => userService.getAllUsers({ limit: 1000 }),
+    staleTime: 1000 * 60 * 5,
+  });
+  const allUsers: User[] = useMemo(() => {
+    const raw = allUsersRaw as unknown;
+    if (Array.isArray(raw)) return raw as User[];
+    if (raw && typeof raw === 'object') {
+      const obj = raw as Record<string, unknown>;
+      if (Array.isArray(obj.data)) return obj.data as User[];
+    }
+    return [];
+  }, [allUsersRaw]);
+
+  const createWorkspaceMutation = useCreateWorkspaceMutation();
+  const updateWorkspaceMutation = useUpdateWorkspaceMutation();
+  const deleteWorkspaceMutation = useDeleteWorkspaceMutation();
+  const archiveWorkspaceMutation = useArchiveWorkspaceMutation();
+  const restoreWorkspaceMutation = useRestoreWorkspaceMutation();
+
+  // ─── UI State ───────────────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -44,33 +71,43 @@ export default function WorkspacesPage() {
   const [viewedWorkspace, setViewedWorkspace] = useState<Workspace | null>(null);
   const [workspaceMembers, setWorkspaceMembers] = useState<{ userId: User; role: string }[]>([]);
 
-  useEffect(() => {
-    fetchWorkspaces(1);
-    
-    // Fetch users for owner selection
-    const loadUsers = async () => {
-      try {
-        const response = await userService.getAllUsers({ limit: 1000 }) as unknown;
-        if (Array.isArray(response)) {
-          setAllUsers(response as User[]);
-        } else if (response && typeof response === 'object') {
-          const resObj = response as Record<string, unknown>;
-          if (resObj.data) {
-            setAllUsers(resObj.data as User[]);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load users:', error);
-      }
-    };
-    loadUsers();
-  }, [fetchWorkspaces]);
+  // ─── Derived / filtered data from cache ─────────────────────────────────────
+  const workspaces = useMemo(() => {
+    if (Array.isArray(workspacesRaw)) return workspacesRaw as Workspace[];
+    if (workspacesRaw && typeof workspacesRaw === 'object') {
+      const obj = workspacesRaw as Record<string, unknown>;
+      if (Array.isArray(obj.data)) return obj.data as Workspace[];
+      if (Array.isArray(obj.workspaces)) return obj.workspaces as Workspace[];
+    }
+    return [];
+  }, [workspacesRaw]);
+  const absoluteTotal = workspaces.length;
 
-  const processedWorkspaces = workspaces.filter(ws => {
-    const matchesSearch = ws.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (ws.description && ws.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesSearch;
-  });
+  const processedWorkspaces = useMemo(() => {
+    let result = [...workspaces];
+
+    // Filter by status
+    if (statusFilter === 'deleted') {
+      result = result.filter(ws => ws.deletedAt != null);
+    } else if (statusFilter === 'archived') {
+      result = result.filter(ws => ws.status === 'archived' && ws.deletedAt == null);
+    } else if (statusFilter !== 'all') {
+      result = result.filter(ws => ws.status === statusFilter && ws.deletedAt == null);
+    } else {
+      result = result.filter(ws => ws.deletedAt == null);
+    }
+
+    // Filter by search
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      result = result.filter(ws =>
+        ws.name.toLowerCase().includes(q) ||
+        (ws.description && ws.description.toLowerCase().includes(q))
+      );
+    }
+
+    return result;
+  }, [workspaces, statusFilter, searchTerm]);
 
   const totalPagesClient = Math.ceil(processedWorkspaces.length / itemsPerPage);
   const paginatedWorkspaces = processedWorkspaces.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -81,9 +118,7 @@ export default function WorkspacesPage() {
 
   const handleFilterChange = (status: string) => {
     setStatusFilter(status);
-    setFilter(status);
     setCurrentPage(1);
-    fetchWorkspaces(1, status);
   };
 
   const handleAddClick = () => {
@@ -107,14 +142,13 @@ export default function WorkspacesPage() {
   const handleSaveWorkspace = async (id: string | null, data: { name: string; key: string; description: string; ownerId?: string; type?: string; avatar?: string }) => {
     const payload = { ...data, type: data.type as WorkspaceType };
     if (id) {
-      await updateWorkspace(id, payload);
+      await updateWorkspaceMutation.mutateAsync({ id, data: payload });
       toast.success('Cập nhật workspace thành công');
     } else {
-      await createWorkspace(payload);
+      await createWorkspaceMutation.mutateAsync(payload);
       toast.success('Tạo workspace thành công');
     }
     setShowModal(false);
-    fetchWorkspaces(currentPage, statusFilter);
   };
 
   const handleArchive = (id: string) => {
@@ -124,7 +158,7 @@ export default function WorkspacesPage() {
       message: 'Bạn có chắc chắn muốn lưu trữ workspace này? Workspace sẽ bị ẩn khỏi danh sách hoạt động.',
       type: 'warning',
       onConfirm: async () => {
-        await archiveWorkspace(id);
+        await archiveWorkspaceMutation.mutateAsync(id);
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
       }
     });
@@ -137,7 +171,7 @@ export default function WorkspacesPage() {
       message: 'Bạn có chắc chắn muốn khôi phục workspace này để nó hoạt động trở lại?',
       type: 'info',
       onConfirm: async () => {
-        await restoreWorkspace(id);
+        await restoreWorkspaceMutation.mutateAsync(id);
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
       }
     });
@@ -150,7 +184,7 @@ export default function WorkspacesPage() {
       message: 'Bạn có chắc chắn muốn xóa workspace này? Hành động này không thể hoàn tác.',
       type: 'danger',
       onConfirm: async () => {
-        await deleteWorkspace(id);
+        await deleteWorkspaceMutation.mutateAsync(id);
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
       }
     });

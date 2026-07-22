@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Search, Globe } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { userService } from '../../../../services';
 import type { User } from '../../../../types';
 
@@ -9,8 +10,6 @@ interface ActivitySidebarProps {
 }
 
 export function ActivitySidebar({ selectedUserId, onUserSelect }: ActivitySidebarProps) {
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -19,32 +18,21 @@ export function ActivitySidebar({ selectedUserId, onUserSelect }: ActivitySideba
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchAllUsers = async () => {
-      setIsLoading(true);
-      try {
-        const response = await userService.getAllUsers({ limit: 999999999 }) as unknown;
-        if (isMounted) {
-          if (Array.isArray(response)) {
-            setUsers(response as User[]);
-          } else if (response && typeof response === 'object') {
-            const resObj = response as Record<string, unknown>;
-            const extractedUsers = (resObj.data || resObj.users || resObj.items || resObj.results || []) as User[];
-            setUsers(extractedUsers);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch users for sidebar', error);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-    fetchAllUsers();
-    return () => { isMounted = false; };
-  }, []);
+  // React Query cached user list — 5 min stale time
+  const { data: rawUsers, isLoading } = useQuery({
+    queryKey: ['users', 'sidebar-all'],
+    queryFn: () => userService.getAllUsers({ limit: 1000 }),
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
+  });
+
+  const users: User[] = useMemo(() => {
+    if (Array.isArray(rawUsers)) return rawUsers as User[];
+    if (rawUsers && typeof rawUsers === 'object') {
+      const resObj = rawUsers as Record<string, unknown>;
+      return (resObj.data || resObj.users || resObj.items || resObj.results || []) as User[];
+    }
+    return [];
+  }, [rawUsers]);
 
   const filteredUsers = useMemo(() => {
     if (!debouncedSearch) return users;
