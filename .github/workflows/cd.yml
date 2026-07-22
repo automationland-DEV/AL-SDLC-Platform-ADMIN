@@ -45,7 +45,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: VITE_API_URL=${{ secrets.VITE_API_URL }}
+          build-args: |
+            VITE_API_URL=${{ secrets.VITE_API_URL }}
+            VITE_FRONTEND_URL=${{ secrets.VITE_FRONTEND_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
