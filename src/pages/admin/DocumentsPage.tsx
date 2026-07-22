@@ -3,7 +3,7 @@ import { Search, Edit, Trash2, Eye, Download, Upload, FileText } from 'lucide-re
 import toast from 'react-hot-toast';
 import { Button, Badge, Table, TableRow, TableCell, SearchableSelect, ConfirmModal } from '../../components/ui';
 import { documentService } from '../../services';
-import type { Document } from '../../types';
+import type { Document, Workspace } from '../../types';
 
 import { DocOnlineModal } from './components/documents/DocOnlineModal';
 import { DocUploadModal } from './components/documents/DocUploadModal';

@@ -28,7 +28,7 @@ export function ActivitySidebar({ selectedUserId, onUserSelect }: ActivitySideba
   const users: User[] = useMemo(() => {
     if (Array.isArray(rawUsers)) return rawUsers as User[];
     if (rawUsers && typeof rawUsers === 'object') {
-      const resObj = rawUsers as Record<string, unknown>;
+      const resObj = rawUsers as unknown as Record<string, unknown>;
       return (resObj.data || resObj.users || resObj.items || resObj.results || []) as User[];
     }
     return [];

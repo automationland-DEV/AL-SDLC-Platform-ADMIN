@@ -15,6 +15,7 @@ import {
 
 import { useAuthStore } from '../../stores/authStore';
 import { useUsersQuery, useWorkspacesQuery, useDocumentsQuery } from '../../hooks/queries';
+import type { Workspace } from '../../types';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
@@ -52,7 +53,7 @@ export default function DashboardPage() {
   const users = extractList<{ id: string; fullName?: string; email: string; avatar?: string; role: string }>(usersData, 'users');
   const totalUsers = extractTotal(usersData);
 
-  const workspaces = extractList<{ id: string; name: string; status?: string; deletedAt?: string | null }>(workspacesRaw, 'workspaces');
+  const workspaces = extractList<Workspace>(workspacesRaw, 'workspaces');
   const totalWorkspaces = extractTotal(workspacesRaw);
 
   const totalDocuments = extractTotal(documentsData);
