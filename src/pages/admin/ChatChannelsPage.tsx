@@ -136,12 +136,12 @@ export default function ChatChannelsPage() {
 
 
   const getTypeBadge = (type?: string) => {
-    const variants: Record<string, 'info' | 'purple' | 'amber' | 'cyan' | 'default'> = {
+    const variants: Record<string, 'info' | 'purple' | 'warning' | 'cyan' | 'default'> = {
       general: 'info',
       announcement: 'purple',
       workspace: 'cyan',
       custom: 'default',
-      dm: 'amber',
+      dm: 'warning',
     };
     const labels: Record<string, string> = {
       general: 'CHUNG',
