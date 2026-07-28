@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 
 import { Button, SearchableSelect } from '../../../../components/ui';
 import { FolderPlus, X, Columns, Repeat, Check } from 'lucide-react';
+import { useTranslation } from '../../../../i18n/useTranslation';
 import type { Workspace, User } from '../../../../types';
 
 const SAMPLE_AVATARS = [
@@ -36,6 +37,7 @@ export function WorkspaceFormModal({ isOpen, onClose, selectedWorkspace, users =
   const [avatar, setAvatar] = useState(SAMPLE_AVATARS[0]);
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const { t, language } = useTranslation();
 
   useEffect(() => {
     if (isOpen) {
@@ -64,7 +66,7 @@ export function WorkspaceFormModal({ isOpen, onClose, selectedWorkspace, users =
 
   const handleSave = async () => {
     if (!name.trim() || !key.trim()) {
-      setFormError('Vui lòng nhập đầy đủ Tên và Key');
+      setFormError(language === 'vi' ? 'Vui lòng nhập đầy đủ Tên và Key' : 'Please input both Name and Key');
       return;
     }
     setFormError('');
@@ -75,7 +77,7 @@ export function WorkspaceFormModal({ isOpen, onClose, selectedWorkspace, users =
     } catch (error) {
       const err = error as { response?: { data?: { message?: string } }, message?: string };
       console.error('Failed to save workspace:', err);
-      toast.error(err.response?.data?.message || err.message || 'Lưu workspace thất bại');
+      toast.error(err.response?.data?.message || err.message || (language === 'vi' ? 'Lưu workspace thất bại' : 'Failed to save workspace'));
     } finally {
       setIsSaving(false);
     }
@@ -93,7 +95,9 @@ export function WorkspaceFormModal({ isOpen, onClose, selectedWorkspace, users =
             </div>
             <div>
               <h3 className="text-xl font-bold text-[var(--text-primary)]">
-                {selectedWorkspace ? 'Chỉnh sửa Workspace' : 'Tạo Workspace mới'}
+                {selectedWorkspace 
+                  ? (language === 'vi' ? 'Chỉnh sửa Workspace' : 'Edit Workspace') 
+                  : (language === 'vi' ? 'Tạo Workspace mới' : 'Create New Workspace')}
               </h3>
             </div>
           </div>
@@ -118,12 +122,12 @@ export function WorkspaceFormModal({ isOpen, onClose, selectedWorkspace, users =
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-                Tên Workspace <span className="text-red-500">*</span>
+                {language === 'vi' ? 'Tên Workspace' : 'Workspace Name'} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 required
-                placeholder="Ví dụ: Engineering Team"
+                placeholder={language === 'vi' ? 'Ví dụ: Engineering Team' : 'e.g. Engineering Team'}
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
@@ -137,12 +141,12 @@ export function WorkspaceFormModal({ isOpen, onClose, selectedWorkspace, users =
 
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-                Key (Mã) <span className="text-red-500">*</span>
+                {language === 'vi' ? 'Key (Mã)' : 'Key (Code)'} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 required
-                placeholder="Ví dụ: ENG"
+                placeholder={language === 'vi' ? 'Ví dụ: ENG' : 'e.g. ENG'}
                 value={key}
                 onChange={(e) => setKey(e.target.value.toUpperCase())}
                 className="w-full px-4 py-2.5 border border-[var(--border-color)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 bg-[var(--bg-tertiary)] hover:bg-[var(--input-bg)] text-[var(--text-primary)] font-mono transition-all shadow-sm"
@@ -152,27 +156,27 @@ export function WorkspaceFormModal({ isOpen, onClose, selectedWorkspace, users =
 
             <div className="space-y-2 md:col-span-2">
               <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-                Mô tả
+                {t('table.description')}
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
                 className="w-full px-4 py-3 border border-[var(--border-color)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 bg-[var(--bg-tertiary)] hover:bg-[var(--input-bg)] text-[var(--text-primary)] transition-all shadow-sm resize-none"
-                placeholder="Mô tả ngắn gọn về workspace này..."
+                placeholder={language === 'vi' ? 'Mô tả ngắn gọn về workspace này...' : 'Brief description about this workspace...'}
               />
             </div>
 
             <div className="space-y-2 md:col-span-2">
               <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-                Chủ sở hữu (Dành riêng cho Admin)
+                {language === 'vi' ? 'Chủ sở hữu (Dành riêng cho Admin)' : 'Owner (Admin only)'}
               </label>
               <div className="rounded-xl shadow-sm relative">
                 <SearchableSelect
                   options={users.map(u => ({ value: (u.id || (u as { _id?: string })._id || '') as string, label: u.fullName || u.email }))}
                   value={ownerId}
                   onChange={setOwnerId}
-                  placeholder="Chọn chủ sở hữu..."
+                  placeholder={language === 'vi' ? 'Chọn chủ sở hữu...' : 'Select owner...'}
                 />
               </div>
             </div>
@@ -184,9 +188,11 @@ export function WorkspaceFormModal({ isOpen, onClose, selectedWorkspace, users =
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-[var(--text-primary)]">
-                Ảnh đại diện (Avatar)
+                {language === 'vi' ? 'Ảnh đại diện (Avatar)' : 'Avatar'}
               </label>
-              <p className="text-xs text-[var(--text-secondary)]">Thư viện ảnh mẫu</p>
+              <p className="text-xs text-[var(--text-secondary)]">
+                {language === 'vi' ? 'Thư viện ảnh mẫu' : 'Sample library'}
+              </p>
             </div>
             
             <div className="grid grid-cols-5 gap-3 sm:grid-cols-10">
@@ -217,7 +223,7 @@ export function WorkspaceFormModal({ isOpen, onClose, selectedWorkspace, users =
           {/* Template Section */}
           <div className="space-y-3">
             <label className="block text-sm font-semibold text-[var(--text-primary)]">
-              Chọn loại (template) *
+              {language === 'vi' ? 'Chọn loại (template) *' : 'Select type (template) *'}
             </label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
@@ -232,7 +238,9 @@ export function WorkspaceFormModal({ isOpen, onClose, selectedWorkspace, users =
                 {template === "kanban" && <div className="absolute top-4 right-4 w-4 h-4 rounded-full bg-primary-600 border-4 border-primary-100 dark:border-primary-900" />}
                 <Columns className={`w-8 h-8 mb-3 ${template === "kanban" ? "text-primary-600" : "text-[var(--text-muted)]"}`} />
                 <h3 className="font-bold text-[var(--text-primary)] mb-1">Kanban</h3>
-                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">Tập trung vào luồng công việc liên tục. Phù hợp cho hỗ trợ, vận hành.</p>
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                  {language === 'vi' ? 'Tập trung vào luồng công việc liên tục. Phù hợp cho hỗ trợ, vận hành.' : 'Focus on continuous workflow. Suitable for support and operations.'}
+                </p>
               </button>
 
               <button
@@ -247,7 +255,9 @@ export function WorkspaceFormModal({ isOpen, onClose, selectedWorkspace, users =
                 {template === "scrum" && <div className="absolute top-4 right-4 w-4 h-4 rounded-full bg-primary-600 border-4 border-primary-100 dark:border-primary-900" />}
                 <Repeat className={`w-8 h-8 mb-3 ${template === "scrum" ? "text-primary-600" : "text-[var(--text-muted)]"}`} />
                 <h3 className="font-bold text-[var(--text-primary)] mb-1">Scrum</h3>
-                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">Làm việc theo sprint định kỳ với backlog. Phù hợp cho phát triển phần mềm.</p>
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                  {language === 'vi' ? 'Làm việc theo sprint định kỳ với backlog. Phù hợp cho phát triển phần mềm.' : 'Work in periodic sprints with a backlog. Suitable for software development.'}
+                </p>
               </button>
             </div>
           </div>
@@ -255,10 +265,10 @@ export function WorkspaceFormModal({ isOpen, onClose, selectedWorkspace, users =
 
         <div className="p-5 border-t border-[var(--border-color)] rounded-b-2xl flex justify-end gap-3">
           <Button type="button" variant="secondary" onClick={onClose} className="rounded-xl px-6 font-semibold">
-            Hủy bỏ
+            {t('common.cancel')}
           </Button>
           <Button type="button" onClick={handleSave} disabled={isSaving} className="rounded-xl px-6 font-semibold bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 shadow-sm hover:shadow-md transition-all">
-            {isSaving ? 'Đang lưu...' : (selectedWorkspace ? 'Lưu thay đổi' : 'Tạo mới Workspace')}
+            {isSaving ? (language === 'vi' ? 'Đang lưu...' : 'Saving...') : (selectedWorkspace ? t('common.save') : (language === 'vi' ? 'Tạo mới Workspace' : 'Create Workspace'))}
           </Button>
         </div>
       </div>

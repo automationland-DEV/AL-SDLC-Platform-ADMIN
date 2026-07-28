@@ -1,5 +1,6 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef } from 'react';
-import { Key, Camera, Loader2, Edit2 } from 'lucide-react';
+import { Key, Camera, Loader2, Edit2, ShieldCheck } from 'lucide-react';
 import { AvatarCropperModal } from './components/AvatarCropperModal';
 import api from '../../services/api';
 import { API_ROUTES } from '../../services/apiRoutes';
@@ -19,7 +20,6 @@ export default function ProfilePage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  // Profile Form State
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
@@ -27,18 +27,15 @@ export default function ProfilePage() {
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('other');
   const [avatarUrl, setAvatarUrl] = useState('');
 
-  // Password Form State
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
     if (user) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFullName(user.fullName || '');
       setPhone(user.phone || '');
       setAddress(user.address || '');
-      // Format birthday for input type="date" if needed, assuming user.birthday is ISO string or YYYY-MM-DD
       setBirthday(user.birthday ? user.birthday.split('T')[0] : '');
       setGender(user.gender || 'other');
       setAvatarUrl(user.avatar || '');
@@ -54,7 +51,6 @@ export default function ProfilePage() {
       return;
     }
     
-    // Read the file for the cropper
     const reader = new FileReader();
     reader.addEventListener('load', () => {
       setSelectedImage(reader.result?.toString() || null);
@@ -99,100 +95,92 @@ export default function ProfilePage() {
 
     try {
       setIsSavingProfile(true);
-      const updatedUser = await userService.updateProfile({ 
+      const updatedUser = await userService.updateProfile({
         fullName,
         phone,
         address,
-        birthday: birthday || undefined,
+        birthday,
         gender,
-        avatar: avatarUrl || undefined
       });
-      setUser(updatedUser as unknown as AuthUser); // Type cast if needed depending on AuthStore types
+
+      setUser(updatedUser as unknown as AuthUser);
       toast.success('Cập nhật thông tin thành công');
+      setIsEditingProfile(false);
     } catch (error) {
-      const errObj = error as Record<string, unknown>;
-      const response = errObj?.response as Record<string, unknown>;
-      const data = response?.data as Record<string, unknown>;
-      toast.error((data?.message as string) || 'Lỗi khi cập nhật thông tin');
+      console.error('Update profile error:', error);
+      toast.error('Lỗi khi cập nhật thông tin');
     } finally {
       setIsSavingProfile(false);
     }
   };
 
   const handleUpdatePassword = async () => {
-    if (!currentPassword) {
-      toast.error('Vui lòng nhập mật khẩu hiện tại');
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error('Vui lòng điền đầy đủ thông tin mật khẩu');
       return;
     }
-    if (newPassword.length < 8) {
-      toast.error('Mật khẩu mới phải có ít nhất 8 ký tự');
-      return;
-    }
+
     if (newPassword !== confirmPassword) {
-      toast.error('Mật khẩu xác nhận không khớp');
+      toast.error('Mật khẩu mới không trùng khớp');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast.error('Mật khẩu mới phải có ít nhất 6 ký tự');
       return;
     }
 
     try {
       setIsSavingPassword(true);
-      await userService.updateProfile({ 
-        currentPassword, 
-        password: newPassword 
+      await userService.updateProfile({
+        currentPassword,
+        password: newPassword,
       });
+
       toast.success('Đổi mật khẩu thành công');
       setCurrentPassword('');
       setNewPassword('');
-      toast.success('Cập nhật mật khẩu thành công');
+      setConfirmPassword('');
     } catch (error) {
-      const errObj = error as Record<string, unknown>;
-      const response = errObj?.response as Record<string, unknown>;
-      const data = response?.data as Record<string, unknown>;
-      toast.error((data?.message as string) || 'Mật khẩu cũ không chính xác hoặc có lỗi xảy ra');
+      console.error('Change password error:', error);
+      toast.error('Lỗi khi đổi mật khẩu (Mật khẩu hiện tại có thể không đúng)');
     } finally {
       setIsSavingPassword(false);
     }
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl">
+    <div className="flex-1 overflow-y-auto min-h-0 space-y-6 w-full font-sans pr-1">
       <div>
-        <h2 className="text-2xl font-bold text-[var(--text-primary)]">Hồ sơ cá nhân</h2>
-        <p className="text-[var(--text-secondary)] mt-1">Cập nhật thông tin tài khoản và bảo mật.</p>
+        <h2 className="text-xl font-bold text-[var(--text-primary)] uppercase tracking-tight">Hồ sơ Quản trị viên (Admin Profile)</h2>
+        <p className="text-xs text-[var(--text-muted)] font-mono-code mt-0.5">Quản lý thông tin định danh và bảo mật tài khoản hệ thống</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        {/* Thông tin cá nhân */}
-        <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-5 shadow-sm">
-          <div className="flex items-center gap-5 mb-6 border-b border-[var(--border-color)] pb-6">
-            <div className="relative shrink-0">
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt={fullName || 'Avatar'}
-                    className="object-cover w-full h-full"
-                  />
-                ) : (
-                  <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {(fullName || user?.email || 'U').charAt(0).toUpperCase()}
-                  </span>
-                )}
-              </div>
-
-              {avatarUploading && (
-                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
-                  <Loader2 className="w-6 h-6 text-white animate-spin" />
+      <div className="space-y-6">
+        {/* Profile Card */}
+        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-6 shadow-xs">
+          <div className="flex flex-col sm:flex-row items-center gap-5 pb-6 border-b border-[var(--border-color)] mb-6">
+            <div className="relative group shrink-0">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={fullName}
+                  className="w-20 h-20 rounded-xl object-cover border-2 border-[var(--border-color)] shadow-xs"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-xl bg-sky-500/10 border-2 border-sky-500/30 flex items-center justify-center font-mono-code font-bold text-2xl text-sky-500 shadow-xs">
+                  {fullName ? fullName.charAt(0).toUpperCase() : 'A'}
                 </div>
               )}
-
+              
               <button
                 type="button"
-                disabled={avatarUploading}
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute bottom-0 right-0 w-7 h-7 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-full flex items-center justify-center transition-colors"
-                aria-label="Đổi ảnh đại diện"
+                disabled={avatarUploading}
+                className="absolute inset-0 bg-slate-950/60 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white"
+                title="Thay đổi ảnh đại diện"
               >
-                <Camera className="w-3.5 h-3.5" />
+                {avatarUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
               </button>
 
               <input
@@ -204,65 +192,66 @@ export default function ProfilePage() {
               />
             </div>
 
-            <div>
-              <p className="text-[15px] font-medium text-[var(--text-primary)]">
-                {fullName || "Chưa cập nhật tên"}
-              </p>
-              <p className="text-[13px] text-[var(--text-secondary)] mt-0.5">
+            <div className="text-center sm:text-left min-w-0 flex-1">
+              <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  {fullName || 'Administrator'}
+                </h3>
+                <span className="px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/30 text-sky-600 dark:text-sky-400 font-mono-code text-[10px] font-bold">
+                  {user?.role || 'SUPER_ADMIN'}
+                </span>
+              </div>
+              <p className="text-xs font-mono-code text-[var(--text-muted)] mt-1 truncate">
                 {user?.email}
-              </p>
-              <p className="text-[11px] text-[var(--text-muted)] mt-1.5">
-                JPG, PNG, GIF, WEBP - max 10MB
               </p>
             </div>
             
-            <div className="ml-auto">
+            <div className="sm:ml-auto">
               {!isEditingProfile && (
                 <Button 
                   variant="secondary" 
                   size="sm" 
                   onClick={() => setIsEditingProfile(true)}
-                  className="flex items-center gap-1.5"
                 >
-                  <Edit2 className="w-4 h-4" />
-                  Sửa hồ sơ
+                  <Edit2 className="w-3.5 h-3.5" />
+                  Chỉnh sửa hồ sơ
                 </Button>
               )}
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-[var(--text-primary)]">Họ và tên</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Họ và tên</label>
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Nhập họ và tên"
                 disabled={!isEditingProfile}
-                className={`w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)] ${!isEditingProfile ? 'opacity-60 cursor-not-allowed' : ''}`}
+                className={`w-full px-3.5 py-2 border border-[var(--border-color)] rounded-lg text-xs font-medium focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all ${!isEditingProfile ? 'opacity-60 cursor-not-allowed' : ''}`}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-[var(--text-primary)]">Email</label>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Email hệ thống</label>
               <input
                 type="email"
                 value={user?.email || ''}
                 disabled
-                className="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed"
+                className="w-full px-3.5 py-2 border border-[var(--border-color)] rounded-lg text-xs font-mono-code bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-[var(--text-primary)]">Ngày sinh</label>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Ngày sinh</label>
               <DatePicker
                 value={birthday}
                 onChange={(val) => setBirthday(val)}
-                className="w-full"
+                className="w-full text-xs"
                 disabled={!isEditingProfile}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-[var(--text-primary)]">Giới tính</label>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Giới tính</label>
               <Select
                 value={gender}
                 onChange={(val) => setGender(val as 'male' | 'female' | 'other')}
@@ -275,35 +264,36 @@ export default function ProfilePage() {
                 disabled={!isEditingProfile}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-[var(--text-primary)]">Số điện thoại</label>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Số điện thoại</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Nhập số điện thoại"
                 disabled={!isEditingProfile}
-                className={`w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)] ${!isEditingProfile ? 'opacity-60 cursor-not-allowed' : ''}`}
+                className={`w-full px-3.5 py-2 border border-[var(--border-color)] rounded-lg text-xs font-mono-code focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all ${!isEditingProfile ? 'opacity-60 cursor-not-allowed' : ''}`}
               />
             </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-semibold text-[var(--text-primary)]">Địa chỉ</label>
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Địa chỉ liên hệ</label>
               <input
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Nhập địa chỉ"
                 disabled={!isEditingProfile}
-                className={`w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)] ${!isEditingProfile ? 'opacity-60 cursor-not-allowed' : ''}`}
+                className={`w-full px-3.5 py-2 border border-[var(--border-color)] rounded-lg text-xs focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all ${!isEditingProfile ? 'opacity-60 cursor-not-allowed' : ''}`}
               />
             </div>
           </div>
           {isEditingProfile && (
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="secondary" onClick={() => setIsEditingProfile(false)} disabled={isSavingProfile}>
+            <div className="mt-6 flex justify-end gap-2.5 pt-4 border-t border-[var(--border-color)]">
+              <Button variant="secondary" size="sm" onClick={() => setIsEditingProfile(false)} disabled={isSavingProfile}>
                 Hủy
               </Button>
-              <Button onClick={() => { handleUpdateProfile(); setIsEditingProfile(false); }} disabled={isSavingProfile}>
+              <Button size="sm" onClick={() => { handleUpdateProfile(); }} disabled={isSavingProfile}>
+                {isSavingProfile && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Lưu thay đổi
               </Button>
             </div>
@@ -318,62 +308,62 @@ export default function ProfilePage() {
           />
         )}
 
-        {/* Đổi mật khẩu */}
-        <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-4 border-b border-[var(--border-color)] pb-4">
-            <div className="w-10 h-10 rounded-lg bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-600 dark:text-rose-400">
-              <Key className="w-5 h-5" />
+        {/* Change Password Panel */}
+        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-6 shadow-xs">
+          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-[var(--border-color)]">
+            <div className="w-9 h-9 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-500 flex items-center justify-center shrink-0">
+              <Key size={18} />
             </div>
             <div>
-              <h4 className="font-semibold text-[var(--text-primary)]">Đổi mật khẩu</h4>
-              <p className="text-xs text-[var(--text-secondary)]">Cập nhật mật khẩu để bảo vệ tài khoản.</p>
+              <h4 className="text-sm font-bold text-[var(--text-primary)]">Đổi mật khẩu bảo mật</h4>
+              <p className="text-xs text-[var(--text-muted)]">Cập nhật mật khẩu mã hóa để bảo vệ quyền truy cập Portal.</p>
             </div>
           </div>
           
           {user?.googleId ? (
-            <div className="p-4 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 text-sm">
-              Tài khoản của bạn được liên kết với Google. Bạn không thể thay đổi mật khẩu tại đây.
+            <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold flex items-center gap-2">
+              <ShieldCheck size={16} className="shrink-0" />
+              Tài khoản của bạn đang xác thực qua Google SSO. Bạn không cần thay đổi mật khẩu tại đây.
             </div>
           ) : (
-            <>
-              <div className="space-y-4 max-w-md">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-[var(--text-primary)]">Mật khẩu hiện tại</label>
-                  <input
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Nhập mật khẩu hiện tại"
-                    className="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-[var(--text-primary)]">Mật khẩu mới</label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Nhập mật khẩu mới"
-                    className="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-[var(--text-primary)]">Xác nhận mật khẩu mới</label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Xác nhận mật khẩu mới"
-                    className="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-                  />
-                </div>
+            <div className="space-y-4 max-w-md">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Mật khẩu hiện tại</label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full px-3.5 py-2 border border-[var(--border-color)] rounded-lg text-xs font-mono-code focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all"
+                />
               </div>
-              <div className="mt-6 flex justify-end">
-                <Button variant="danger" onClick={handleUpdatePassword} disabled={isSavingPassword}>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Mật khẩu mới</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full px-3.5 py-2 border border-[var(--border-color)] rounded-lg text-xs font-mono-code focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Xác nhận mật khẩu mới</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full px-3.5 py-2 border border-[var(--border-color)] rounded-lg text-xs font-mono-code focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all"
+                />
+              </div>
+              <div className="pt-2">
+                <Button variant="danger" size="sm" onClick={handleUpdatePassword} disabled={isSavingPassword}>
+                  {isSavingPassword && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Cập nhật mật khẩu
                 </Button>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>

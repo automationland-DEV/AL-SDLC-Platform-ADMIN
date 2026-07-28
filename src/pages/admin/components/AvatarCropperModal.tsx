@@ -43,7 +43,7 @@ export function AvatarCropperModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-[var(--card-bg)] w-full max-w-md rounded-2xl shadow-xl border border-[var(--border-color)] overflow-hidden flex flex-col">
+      <div className="bg-[var(--bg-card)] w-full max-w-md rounded-2xl shadow-xl border border-[var(--border-color)] overflow-hidden flex flex-col">
         <div className="p-4 border-b border-[var(--border-color)]">
           <h3 className="text-lg font-bold text-[var(--text-primary)]">Chỉnh sửa ảnh đại diện</h3>
         </div>

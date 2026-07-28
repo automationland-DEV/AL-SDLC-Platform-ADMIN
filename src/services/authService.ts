@@ -1,5 +1,5 @@
 import api from './api';
-import { API_ROUTES } from './apiRoutes';
+import { API_ROUTES, API_BASE_URL } from './apiRoutes';
 import type { AuthUser, LoginRequest, LoginResponse, User, PaginatedResponse } from '../types';
 
 // Auth Service
@@ -8,32 +8,55 @@ export const authService = {
     const response = await api.post<LoginResponse>(API_ROUTES.AUTH.LOGIN, data, {
       withCredentials: true,
     });
+    const resData = response.data as unknown as Record<string, unknown>;
+    const token =
+      (resData?.accessToken as string) ||
+      (resData?.access_token as string) ||
+      ((resData?.data as Record<string, unknown>)?.accessToken as string) ||
+      ((resData?.data as Record<string, unknown>)?.access_token as string);
+
+    if (token) {
+      localStorage.setItem('accessToken', token);
+    }
+
     return response.data;
   },
 
   logout: async (): Promise<void> => {
-    await api.post(API_ROUTES.AUTH.LOGOUT, {}, { withCredentials: true });
-    localStorage.removeItem('accessToken');
+    try {
+      await api.post(API_ROUTES.AUTH.LOGOUT, {}, { withCredentials: true });
+    } catch {
+      // Ignore logout errors
+    } finally {
+      localStorage.removeItem('accessToken');
+    }
   },
 
   getCurrentUser: async (): Promise<AuthUser> => {
     const response = await api.get<AuthUser>(API_ROUTES.AUTH.ME, {
       withCredentials: true,
     });
+    const data = response.data as unknown as Record<string, unknown>;
+    if (data && data.data && typeof data.data === 'object') {
+      return data.data as AuthUser;
+    }
     return response.data;
   },
 
   checkSuperAdmin: (user: User | null): boolean => {
-    return user?.role === 'super_admin';
+    if (!user || !user.role) return false;
+    const r = user.role.toLowerCase();
+    return r === 'super_admin' || r === 'admin';
   },
 
-  // Google OAuth - redirect to backend
   initiateGoogleLogin: (): void => {
     const callbackUrl = `${window.location.origin}/login`;
-    window.location.href = `${API_ROUTES.AUTH.GOOGLE}?callback_url=${encodeURIComponent(callbackUrl)}`;
+    const fullUrl = API_ROUTES.AUTH.GOOGLE.startsWith('http')
+      ? API_ROUTES.AUTH.GOOGLE
+      : `${API_BASE_URL}${API_ROUTES.AUTH.GOOGLE}`;
+    window.location.href = `${fullUrl}?callback_url=${encodeURIComponent(callbackUrl)}`;
   },
 
-  // Handle SSO callback after OAuth redirect
   handleSsoCallback: async (): Promise<AuthUser | null> => {
     try {
       const response = await api.post<{ user: AuthUser }>(
@@ -41,14 +64,27 @@ export const authService = {
         {},
         { withCredentials: true }
       );
-      return response.data.user;
+      const resData = response.data as unknown as Record<string, unknown>;
+      const token =
+        (resData?.accessToken as string) ||
+        (resData?.access_token as string) ||
+        ((resData?.data as Record<string, unknown>)?.accessToken as string);
+
+      if (token) {
+        localStorage.setItem('accessToken', token);
+      }
+
+      return (
+        response.data?.user ||
+        ((response.data as unknown as Record<string, unknown>)?.data as AuthUser) ||
+        (response.data as unknown as AuthUser)
+      );
     } catch {
       return null;
     }
   },
 };
 
-// User Service
 export const userService = {
   getAllUsers: async (params?: { page?: number; limit?: number; search?: string; role?: string; status?: string }): Promise<PaginatedResponse<User>> => {
     const response = await api.get<PaginatedResponse<User>>(API_ROUTES.AUTH.USERS, { params });
@@ -60,7 +96,7 @@ export const userService = {
     return response.data;
   },
 
-  updateProfile: async (data: Partial<User> & { currentPassword?: string, password?: string }): Promise<User> => {
+  updateProfile: async (data: Partial<User> & { currentPassword?: string; password?: string }): Promise<User> => {
     const response = await api.put<User>(API_ROUTES.USERS.PROFILE, data);
     return response.data;
   },

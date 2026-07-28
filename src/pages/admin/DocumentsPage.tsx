@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Search, Edit, Trash2, Eye, Download, Upload, FileText } from 'lucide-react';
+import { Search, Edit, Trash2, Eye, Download, Upload, FileText, FileCode } from 'lucide-react';
+import { useTranslation } from '../../i18n/useTranslation';
 import toast from 'react-hot-toast';
 import { Button, Badge, Table, TableRow, TableCell, SearchableSelect, ConfirmModal } from '../../components/ui';
 import { documentService } from '../../services';
@@ -24,7 +25,6 @@ export default function DocumentsPage() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [wsFilter, setWsFilter] = useState('all');
 
-  // ─── Server State (React Query) ─────────────────────────────────────────────
   const { data: documentsData, isLoading } = useDocumentsQuery({
     page,
     type: typeFilter !== 'all' ? typeFilter : undefined,
@@ -37,22 +37,21 @@ export default function DocumentsPage() {
   const uploadMutation = useUploadDocumentMutation();
   const updateDocumentMutation = useUpdateDocumentMutation();
 
-  // Robust data extraction for Documents
   const parseDocumentsResponse = (raw: unknown) => {
-    let documents: Document[] = [];
+    let documentsList: Document[] = [];
     let total = 0;
-    let totalPages = 1;
+    let totalPagesCount = 1;
 
     if (Array.isArray(raw)) {
-      documents = raw as Document[];
-      total = documents.length;
-      totalPages = 1;
+      documentsList = raw as Document[];
+      total = documentsList.length;
+      totalPagesCount = 1;
     } else if (raw && typeof raw === 'object') {
       const obj = raw as Record<string, unknown>;
       if (Array.isArray(obj.data)) {
-        documents = obj.data as Document[];
+        documentsList = obj.data as Document[];
       } else if (Array.isArray(obj.documents)) {
-        documents = obj.documents as Document[];
+        documentsList = obj.documents as Document[];
       }
 
       if (typeof obj.total === 'number') {
@@ -60,17 +59,17 @@ export default function DocumentsPage() {
       } else if (obj.pagination && typeof obj.pagination === 'object') {
         const pag = obj.pagination as Record<string, unknown>;
         if (typeof pag.total === 'number') total = pag.total;
-        if (typeof pag.totalPages === 'number') totalPages = pag.totalPages;
+        if (typeof pag.totalPages === 'number') totalPagesCount = pag.totalPages;
       } else {
-        total = documents.length;
+        total = documentsList.length;
       }
 
       if (typeof obj.totalPages === 'number') {
-        totalPages = obj.totalPages;
+        totalPagesCount = obj.totalPages;
       }
     }
 
-    return { documents, absoluteTotal: total, totalPages };
+    return { documents: documentsList, absoluteTotal: total, totalPages: totalPagesCount };
   };
 
   const { documents, absoluteTotal, totalPages } = parseDocumentsResponse(documentsData);
@@ -101,6 +100,98 @@ export default function DocumentsPage() {
     type: 'danger'
   });
 
+  const handleCreateOnline = async (name: string, content: string, workspaceId: string) => {
+    try {
+      await createOnlineMutation.mutateAsync({
+        name,
+        content,
+        workspaceIds: workspaceId ? [workspaceId] : [],
+      });
+      setShowOnlineModal(false);
+      toast.success('Tạo tài liệu online thành công');
+    } catch (error) {
+      console.error(error);
+      toast.error('Lỗi khi tạo tài liệu');
+      throw error;
+    }
+  };
+
+  const handleUploadFile = async (file: File, name: string, workspaceId: string) => {
+    try {
+      await uploadMutation.mutateAsync({
+        file,
+        name,
+        workspaceIds: workspaceId ? [workspaceId] : [],
+      });
+      setShowUploadModal(false);
+      toast.success('Upload file thành công');
+    } catch (error) {
+      console.error(error);
+      toast.error('Lỗi khi upload file');
+      throw error;
+    }
+  };
+
+  const handleUpdateDoc = async (name: string, content: string, workspaceId: string) => {
+    if (!selectedDoc) return;
+    try {
+      await updateDocumentMutation.mutateAsync({
+        id: selectedDoc._id,
+        data: {
+          name,
+          content,
+          workspaceIds: workspaceId ? [workspaceId] : [],
+        },
+      });
+      setShowEditModal(false);
+      setSelectedDoc(null);
+      toast.success('Cập nhật tài liệu thành công');
+    } catch (error) {
+      console.error(error);
+      toast.error('Lỗi khi cập nhật tài liệu');
+      throw error;
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Xóa Document',
+      message: 'Bạn có chắc chắn muốn xóa tài liệu này khỏi kho lưu trữ?',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteDocumentMutation.mutateAsync(id);
+          toast.success('Xóa tài liệu thành công');
+        } catch (error) {
+          console.error(error);
+          toast.error('Lỗi khi xóa tài liệu');
+        } finally {
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
+  };
+
+  const handleDownload = async (doc: Document) => {
+    try {
+      toast.loading('Đang tải file...', { id: 'download' });
+      const { data: blobData, filename } = await documentService.download(doc._id, doc.documentType === 'online');
+      const url = window.URL.createObjectURL(blobData);
+      const a = window.document.createElement('a');
+      a.href = url;
+      a.download = filename || doc.originalName || doc.name || 'document';
+      window.document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      window.document.body.removeChild(a);
+      toast.success('Tải file thành công', { id: 'download' });
+    } catch (error) {
+      console.error(error);
+      toast.error('Lỗi khi tải file', { id: 'download' });
+    }
+  };
+
   const handleFilterChange = (type: string) => {
     setTypeFilter(type);
     setPage(1);
@@ -116,137 +207,6 @@ export default function DocumentsPage() {
     setTypeFilter('all');
     setWsFilter('all');
     setPage(1);
-  };
-
-  const handleDelete = (id: string) => {
-    setConfirmModal({
-      isOpen: true,
-      title: 'Xác nhận xóa',
-      message: 'Bạn có chắc muốn xóa tài liệu này?',
-      type: 'danger',
-      onConfirm: async () => {
-        try {
-          await deleteDocumentMutation.mutateAsync(id);
-          toast.success('Xóa tài liệu thành công');
-          setConfirmModal(prev => ({ ...prev, isOpen: false }));
-        } catch (error: unknown) {
-          const err = error as { response?: { data?: { message?: string } }; message?: string };
-          toast.error(err.response?.data?.message || err.message || 'Xóa tài liệu thất bại');
-        }
-      }
-    });
-  };
-
-  const handleCreateOnline = async (docName: string, docContent: string, workspaceId: string) => {
-    try {
-      const wIds = workspaceId ? [workspaceId] : [];
-      await createOnlineMutation.mutateAsync({ name: docName, content: docContent, workspaceIds: wIds });
-      setShowOnlineModal(false);
-      toast.success('Tạo tài liệu online thành công');
-    } catch (error: unknown) {
-      console.error('Failed to create online document:', error);
-      throw error;
-    }
-  };
-
-  const handleCloseOnlineModal = (isDirty: boolean) => {
-    if (isDirty) {
-      setConfirmModal({
-        isOpen: true,
-        title: 'Xác nhận đóng',
-        message: 'Bạn có thay đổi chưa lưu. Đóng mà không lưu?',
-        type: 'warning',
-        onConfirm: () => {
-          setShowOnlineModal(false);
-          setConfirmModal(prev => ({ ...prev, isOpen: false }));
-        }
-      });
-      return;
-    }
-    setShowOnlineModal(false);
-  };
-
-  const handleCloseEditModal = (isDirty: boolean) => {
-    if (isDirty) {
-      setConfirmModal({
-        isOpen: true,
-        title: 'Xác nhận đóng',
-        message: 'Bạn có thay đổi chưa lưu. Đóng mà không lưu?',
-        type: 'warning',
-        onConfirm: () => {
-          setShowEditModal(false);
-          setSelectedDoc(null);
-          setConfirmModal(prev => ({ ...prev, isOpen: false }));
-        }
-      });
-      return;
-    }
-    setShowEditModal(false);
-    setSelectedDoc(null);
-  };
-
-  const handleUploadFile = async (file: File, docName: string, workspaceId: string) => {
-    try {
-      const wIds = workspaceId ? [workspaceId] : [];
-      await uploadMutation.mutateAsync({ file, name: docName, workspaceIds: wIds });
-      setShowUploadModal(false);
-      toast.success('Upload tài liệu thành công');
-    } catch (error: unknown) {
-      console.error('Failed to upload document:', error);
-      throw error;
-    }
-  };
-
-  const handleSaveEdit = async (docName: string, docContent: string, workspaceId: string) => {
-    if (!selectedDoc) return;
-    try {
-      const wIds = workspaceId ? [workspaceId] : [];
-      const nameChanged = selectedDoc.name !== docName;
-      const workspaceChanged = JSON.stringify(selectedDoc.workspaceIds || []) !== JSON.stringify(wIds);
-
-      if (nameChanged || workspaceChanged) {
-        await updateDocumentMutation.mutateAsync({ id: selectedDoc._id, data: { name: docName, workspaceIds: wIds } });
-      }
-      
-      if (selectedDoc.documentType === 'online' && docContent !== undefined) {
-        await documentService.updateContent(selectedDoc._id, docContent);
-      }
-
-      setShowEditModal(false);
-      setSelectedDoc(null);
-      toast.success('Cập nhật tài liệu thành công');
-    } catch (error: unknown) {
-      console.error('Failed to update document:', error);
-      toast.error('Cập nhật thất bại. Bạn chỉ có thể sửa tài liệu do chính mình tạo.');
-      throw error;
-    }
-  };
-
-  const handleDownload = async (doc: Document) => {
-    try {
-      toast.loading('Đang tải xuống...', { id: 'download-doc' });
-      const isOnline = doc.documentType === 'online';
-      const { data, filename } = await documentService.download(doc._id, isOnline);
-      
-      const url = window.URL.createObjectURL(data);
-      const link = document.createElement('a');
-      link.href = url;
-      
-      const fallbackName = doc.documentType === 'online'
-        ? `${doc.name}.docx`
-        : (doc.originalName || `${doc.name}${doc.extension || ''}`);
-        
-      link.setAttribute('download', filename || fallbackName);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      toast.success('Tải xuống thành công', { id: 'download-doc' });
-    } catch (error) {
-      console.error('Download error:', error);
-      toast.error('Lỗi khi tải tài liệu', { id: 'download-doc' });
-    }
   };
 
   const openViewModal = async (doc: Document) => {
@@ -268,14 +228,8 @@ export default function DocumentsPage() {
     }
   };
 
-  const openOnlineModal = () => {
-    setShowOnlineModal(true);
-  };
-
-  const openUploadModal = () => {
-    setShowUploadModal(true);
-  };
-
+  const openOnlineModal = () => setShowOnlineModal(true);
+  const openUploadModal = () => setShowUploadModal(true);
   const openEditModal = (doc: Document) => {
     setSelectedDoc(doc);
     setShowEditModal(true);
@@ -288,14 +242,13 @@ export default function DocumentsPage() {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
-  const getTypeIcon = (type?: string) => {
-    return type === 'online' ? <FileText className="w-4 h-4" /> : <Upload className="w-4 h-4" />;
-  };
-
   const getTypeBadge = (type?: string) => {
-    const variant = type === 'online' ? 'info' : 'default';
-    const label = type === 'online' ? 'Online' : 'Upload';
-    return <Badge variant={variant}><span className="flex items-center gap-1">{getTypeIcon(type)} {label}</span></Badge>;
+    const isOnline = type === 'online';
+    return (
+      <Badge variant={isOnline ? 'info' : 'success'} dot mono>
+        {isOnline ? 'ONLINE_DOC' : 'UPLOAD_FILE'}
+      </Badge>
+    );
   };
 
   const getWorkspaceName = (wsId: string) => {
@@ -303,213 +256,239 @@ export default function DocumentsPage() {
     return ws ? ws.name : 'WS';
   };
 
+  const { t, language } = useTranslation();
+
   return (
-    <div className="flex flex-col h-[calc(100vh-7rem)] space-y-3">
+    <div className="flex-1 flex flex-col min-h-0 space-y-3 font-sans">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
+      <div className="shrink-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-[var(--text-primary)]">Quản lý Documents</h2>
-          <p className="text-[var(--text-secondary)] mt-1">Tổng cộng {absoluteTotal} documents</p>
+          <h2 className="text-xl font-bold text-[var(--text-primary)] uppercase tracking-tight">{t('documents.title')}</h2>
+          <p className="text-xs text-[var(--text-muted)] font-mono-code mt-0.5">{t('documents.subtitle', { count: absoluteTotal })}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <Button variant="secondary" onClick={openOnlineModal}>
-            <FileText className="w-4 h-4 mr-2" />
-            Tạo Online
+          <Button variant="secondary" size="sm" onClick={openOnlineModal}>
+            <FileText className="w-4 h-4" />
+            {t('documents.createOnline')}
           </Button>
-          <Button onClick={openUploadModal}>
-            <Upload className="w-4 h-4 mr-2" />
-            Upload File
+          <Button size="sm" onClick={openUploadModal}>
+            <Upload className="w-4 h-4" />
+            {t('documents.uploadFile')}
           </Button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] px-4 py-2.5">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="relative flex-1 min-w-[300px]">
+      {/* Filters Toolbar */}
+      <div className="shrink-0 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)] p-2.5">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[240px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
             <input
               type="text"
-              placeholder="Tìm kiếm tài liệu..."
+              placeholder={t('documents.searchPlaceholder')}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-[var(--input-bg)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(1);
+              }}
+              className="w-full pl-9 pr-4 py-2 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 font-mono-code transition-all"
             />
           </div>
 
-          {/* Workspace Filter Dropdown */}
-          <div className="flex-1 min-w-[250px]">
+          <div className="flex-1 min-w-[200px]">
             <SearchableSelect
               value={wsFilter}
               onChange={handleWorkspaceFilterChange}
               options={[
-                { value: 'all', label: 'Tất cả workspace' },
-                ...workspaces.map((ws) => ({ value: ws._id, label: ws.name }))
+                { value: 'all', label: t('documents.allWorkspaces') },
+                ...workspaces.map((w) => ({ value: w._id, label: w.name })),
               ]}
-              placeholder="Tất cả workspace"
+              placeholder={t('documents.allWorkspaces')}
             />
           </div>
 
-          {/* Type Filter Tabs */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleFilterChange('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all cursor-pointer ${typeFilter === 'all'
-                ? 'bg-primary-50 border-primary-200 text-primary-700 dark:bg-primary-900/30 dark:border-primary-700/50 dark:text-primary-300 shadow-sm'
-                : 'bg-transparent border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)]'
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {[
+              { id: 'all', labelKey: 'documents.tabAll' as const },
+              { id: 'online', labelKey: 'documents.tabOnline' as const },
+              { id: 'uploaded', labelKey: 'documents.tabUploaded' as const },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => handleFilterChange(tab.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all duration-180 cursor-pointer ${
+                  typeFilter === tab.id
+                    ? 'bg-sky-600 text-white shadow-xs'
+                    : 'text-[var(--text-secondary)] bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)]'
                 }`}
-            >
-              Tất cả
-            </button>
-            <button
-              onClick={() => handleFilterChange('upload')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all cursor-pointer ${typeFilter === 'upload'
-                ? 'bg-primary-50 border-primary-200 text-primary-700 dark:bg-primary-900/30 dark:border-primary-700/50 dark:text-primary-300 shadow-sm'
-                : 'bg-transparent border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)]'
-                }`}
-            >
-              Upload
-            </button>
-            <button
-              onClick={() => handleFilterChange('online')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all cursor-pointer ${typeFilter === 'online'
-                ? 'bg-primary-50 border-primary-200 text-primary-700 dark:bg-primary-900/30 dark:border-primary-700/50 dark:text-primary-300 shadow-sm'
-                : 'bg-transparent border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)]'
-                }`}
-            >
-              Online
-            </button>
+              >
+                {t(tab.labelKey)}
+              </button>
+            ))}
           </div>
 
-          {/* Reset Button */}
           {(searchTerm !== '' || typeFilter !== 'all' || wsFilter !== 'all') && (
             <button
               onClick={handleResetFilters}
-              className="px-4 py-2 rounded-lg text-sm font-medium border border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-900/30 dark:hover:text-red-400 dark:hover:border-red-800/50 transition-colors ml-auto"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors ml-auto cursor-pointer"
             >
-              Làm mới
+              {t('common.reset')}
             </button>
           )}
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--border-color)] flex flex-col flex-1 min-h-0 overflow-hidden relative">
+      {/* Main Documents Table / Cards */}
+      <div className="flex-1 flex flex-col min-h-0 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)] overflow-hidden shadow-xs">
         {isLoading && documents.length === 0 ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-600 border-t-transparent"></div>
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-7 w-7 border-2 border-sky-500 border-t-transparent"></div>
           </div>
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto min-h-0">
+            {/* Desktop Table View */}
+            <div className="hidden md:flex flex-col flex-1 min-h-0 overflow-y-auto">
               <Table 
                 fixedLayout
                 headers={[
-                  { label: 'ID', className: 'w-[8%]' },
-                  { label: 'Tên', className: 'w-[25%]' },
-                  { label: 'Loại', align: 'center', className: 'w-[10%]' },
-                  { label: 'Kích thước', align: 'center', className: 'w-[10%]' },
-                  { label: 'Workspace', align: 'center', className: 'w-[15%]' },
-                  { label: 'Người tạo', align: 'center', className: 'w-[15%]' },
-                  { label: 'Ngày tạo', align: 'center', className: 'w-[10%]' },
-                  { label: 'Thao tác', align: 'center', className: 'w-[7%]' }
+                  { label: 'DOC_ID', className: 'w-[10%]' },
+                  { label: t('table.name'), className: 'w-[28%]' },
+                  { label: t('table.type'), align: 'center', className: 'w-[14%]' },
+                  { label: t('table.size'), align: 'center', className: 'w-[12%]' },
+                  { label: 'Workspaces', align: 'center', className: 'w-[14%]' },
+                  { label: t('table.createdAt'), align: 'center', className: 'w-[14%]' },
+                  { label: t('table.actions'), align: 'center', className: 'w-[8%]' }
                 ]}
               >
-              {documents.map((doc) => (
-                <TableRow key={doc._id}>
-                  <TableCell>#{doc._id?.slice(-6)}</TableCell>
-                  <TableCell className="max-w-0">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 flex-shrink-0 rounded-lg flex items-center justify-center ${doc.documentType === 'online' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
-                        {getTypeIcon(doc.documentType)}
+                {documents.map((doc) => (
+                  <TableRow key={doc._id}>
+                    <TableCell className="font-mono-code text-xs text-[var(--text-muted)]">
+                      #{doc._id?.slice(-6)}
+                    </TableCell>
+                    <TableCell className="max-w-0">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${
+                          doc.documentType === 'online'
+                            ? 'bg-sky-500/10 border-sky-500/30 text-sky-500'
+                            : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
+                        }`}>
+                          {doc.documentType === 'online' ? <FileCode size={16} /> : <FileText size={16} />}
+                        </div>
+                        <div className="truncate min-w-0" title={doc.name}>
+                          <p className="font-bold text-xs text-[var(--text-primary)] truncate">{doc.name}</p>
+                          {doc.originalName && doc.originalName !== doc.name && (
+                            <p className="text-[11px] font-mono-code text-[var(--text-muted)] truncate">{doc.originalName}</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0 truncate" title={doc.name}>
-                        <p className="font-medium truncate">{doc.name}</p>
-                        {doc.originalName && doc.originalName !== doc.name && (
-                          <p className="text-xs text-[var(--text-secondary)] truncate" title={doc.originalName}>{doc.originalName}</p>
+                    </TableCell>
+                    <TableCell className="text-center">{getTypeBadge(doc.documentType)}</TableCell>
+                    <TableCell className="font-mono-code text-xs text-[var(--text-muted)] text-center">
+                      {formatFileSize(doc.size)}
+                    </TableCell>
+                    <TableCell className="max-w-0 text-center">
+                      <div className="flex items-center justify-center gap-1 flex-wrap">
+                        {doc.workspaceIds?.slice(0, 2).map((wsId) => (
+                          <span key={wsId} className="px-2 py-0.5 bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-[var(--text-secondary)] rounded font-mono-code text-[10px] truncate max-w-[90px]" title={getWorkspaceName(wsId)}>
+                            {getWorkspaceName(wsId)}
+                          </span>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono-code text-xs text-[var(--text-muted)] text-center">
+                      {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString('vi-VN') : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => openViewModal(doc)}
+                          className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-sky-500 transition-colors cursor-pointer"
+                          title="Xem"
+                        >
+                          <Eye size={15} />
+                        </button>
+                        {doc.documentType === 'online' && (
+                          <button
+                            onClick={() => openEditModal(doc)}
+                            className="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-amber-500 transition-colors cursor-pointer"
+                            title="Sửa"
+                          >
+                            <Edit size={15} />
+                          </button>
                         )}
+                        {doc.documentType === 'upload' && (
+                          <button
+                            onClick={() => handleDownload(doc)}
+                            className="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-emerald-500 transition-colors cursor-pointer"
+                            title="Tải về"
+                          >
+                            <Download size={15} />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDelete(doc._id)}
+                          className="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-rose-500 transition-colors cursor-pointer"
+                          title="Xóa"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </Table>
+            </div>
+
+            {/* Mobile Responsive Cards Grid (<768px) */}
+            <div className="block md:hidden flex-1 min-h-0 overflow-y-auto divide-y divide-[var(--border-color)]">
+              {documents.map((doc) => (
+                <div key={doc._id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${
+                        doc.documentType === 'online'
+                          ? 'bg-sky-500/10 border-sky-500/30 text-sky-500'
+                          : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
+                      }`}>
+                        {doc.documentType === 'online' ? <FileCode size={16} /> : <FileText size={16} />}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-[var(--text-primary)]">{doc.name}</p>
+                        <p className="text-[11px] font-mono-code text-[var(--text-muted)]">Size: {formatFileSize(doc.size)}</p>
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="text-center">{getTypeBadge(doc.documentType)}</TableCell>
-                  <TableCell className="text-center">{formatFileSize(doc.size)}</TableCell>
-                  <TableCell className="max-w-0">
-                    <div className="flex items-center justify-center gap-1 flex-wrap truncate">
-                      {doc.workspaceIds?.slice(0, 2).map((wsId) => (
-                        <span key={wsId} className="px-2 py-0.5 bg-[var(--bg-tertiary)] text-[var(--text-primary)] rounded text-xs truncate max-w-[80px]" title={getWorkspaceName(wsId)}>
-                          {getWorkspaceName(wsId)}
-                        </span>
-                      ))}
-                      {(doc.workspaceIds?.length || 0) > 2 && (
-                        <span className="text-xs text-[var(--text-secondary)]">+{(doc.workspaceIds?.length || 0) - 2}</span>
+                    {getTypeBadge(doc.documentType)}
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-[var(--border-color)]">
+                    <span className="font-mono-code text-[11px] text-[var(--text-muted)]">#{doc._id?.slice(-6)}</span>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openViewModal(doc)}><Eye size={14} /></Button>
+                      {doc.documentType === 'upload' && (
+                        <Button variant="secondary" size="sm" onClick={() => handleDownload(doc)}><Download size={14} /></Button>
                       )}
+                      <Button variant="danger" size="sm" onClick={() => handleDelete(doc._id)}><Trash2 size={14} /></Button>
                     </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {doc.uploadedBy
-                      ? typeof doc.uploadedBy === 'object'
-                        ? doc.uploadedBy.fullName || doc.uploadedBy.email || 'Unknown'
-                        : 'Unknown'
-                      : '-'}
-                  </TableCell>
-                  <TableCell className="text-center">{doc.createdAt ? new Date(doc.createdAt).toLocaleDateString('vi-VN') : '-'}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        onClick={() => openViewModal(doc)}
-                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-primary-600"
-                        title="Xem"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDownload(doc)}
-                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-green-600"
-                        title="Tải xuống"
-                      >
-                        <Download className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => openEditModal(doc)}
-                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-primary-600"
-                        title="Sửa"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(doc._id)}
-                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-red-600"
-                        title="Xóa"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                  </div>
+                </div>
               ))}
-            </Table>
+            </div>
 
             {/* Empty State */}
             {documents.length === 0 && !isLoading && (
-              <div className="text-center py-12">
-                <FileText className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-4" />
-                <p className="text-[var(--text-secondary)]">Chưa có tài liệu nào</p>
-              </div>
-            )}
-            </div>
-
-            {/* Overlay loading indicator for pagination */}
-            {isLoading && documents.length > 0 && (
-              <div className="absolute inset-0 bg-[var(--card-bg)]/50 flex items-center justify-center z-10 backdrop-blur-[1px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-600 border-t-transparent"></div>
+              <div className="text-center py-16 text-[var(--text-muted)] space-y-2">
+                <FileText className="w-10 h-10 mx-auto stroke-1" />
+                <p className="text-xs font-medium">
+                  {language === 'vi' ? 'Không tìm thấy tài liệu nào trong kho.' : 'No documents found in store.'}
+                </p>
               </div>
             )}
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-2.5 border-t border-[var(--border-color)] gap-3 sm:gap-0">
-                <p className="text-sm text-[var(--text-secondary)] text-center sm:text-left">
-                  Trang {page} / {totalPages}
+              <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3 border-t border-[var(--border-color)] gap-3 bg-[var(--bg-tertiary)]/30">
+                <p className="text-xs font-mono-code text-[var(--text-muted)]">
+                  {language === 'vi' ? 'Trang' : 'Page'} {page} / {totalPages} ({language === 'vi' ? 'Tổng' : 'Total'} {absoluteTotal} {language === 'vi' ? 'bản ghi' : 'records'})
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
@@ -518,7 +497,7 @@ export default function DocumentsPage() {
                     disabled={page <= 1}
                     onClick={() => setPage(page - 1)}
                   >
-                    Trước
+                    {language === 'vi' ? 'Trang trước' : 'Previous'}
                   </Button>
                   <Button
                     variant="secondary"
@@ -526,7 +505,7 @@ export default function DocumentsPage() {
                     disabled={page >= totalPages}
                     onClick={() => setPage(page + 1)}
                   >
-                    Sau
+                    {language === 'vi' ? 'Trang sau' : 'Next'}
                   </Button>
                 </div>
               </div>
@@ -535,9 +514,10 @@ export default function DocumentsPage() {
         )}
       </div>
 
+      {/* Modals */}
       <DocOnlineModal
         isOpen={showOnlineModal}
-        onClose={handleCloseOnlineModal}
+        onClose={() => setShowOnlineModal(false)}
         onSave={handleCreateOnline}
         workspaces={workspaces}
       />
@@ -549,34 +529,36 @@ export default function DocumentsPage() {
         workspaces={workspaces}
       />
 
-      {selectedDoc && (
-        <DocEditModal
-          isOpen={showEditModal}
-          onClose={handleCloseEditModal}
-          onSave={handleSaveEdit}
-          selectedDoc={selectedDoc}
-          workspaces={workspaces}
-        />
-      )}
+      <DocEditModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setSelectedDoc(null);
+        }}
+        selectedDoc={selectedDoc}
+        onSave={handleUpdateDoc}
+        workspaces={workspaces}
+      />
 
-      {selectedDocToView && (
-        <DocViewModal
-          isOpen={showViewModal}
-          onClose={() => setShowViewModal(false)}
-          document={selectedDocToView}
-          onDownload={() => handleDownload(selectedDocToView)}
-          formatFileSize={formatFileSize}
-          workspaces={workspaces}
-        />
-      )}
+      <DocViewModal
+        isOpen={showViewModal}
+        onClose={() => {
+          setShowViewModal(false);
+          setSelectedDocToView(null);
+        }}
+        document={selectedDocToView}
+        onDownload={handleDownload}
+        formatFileSize={formatFileSize}
+        workspaces={workspaces}
+      />
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         title={confirmModal.title}
         message={confirmModal.message}
+        type={confirmModal.type}
         onConfirm={confirmModal.onConfirm}
         onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-        type={confirmModal.type}
       />
     </div>
   );

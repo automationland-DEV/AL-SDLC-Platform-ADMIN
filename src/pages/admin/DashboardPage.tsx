@@ -11,21 +11,21 @@ import {
   ChevronRight,
   Database,
   Lock,
+  Cpu,
 } from 'lucide-react';
 
 import { useAuthStore } from '../../stores/authStore';
 import { useUsersQuery, useWorkspacesQuery, useDocumentsQuery } from '../../hooks/queries';
+import { useTranslation } from '../../i18n/useTranslation';
 import type { Workspace } from '../../types';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
 
-  // React Query — data is cached; navigating back won't trigger a new API call
   const { data: usersData, isLoading: usersLoading } = useUsersQuery({ page: 1 });
   const { data: workspacesRaw, isLoading: workspacesLoading } = useWorkspacesQuery();
   const { data: documentsData, isLoading: documentsLoading } = useDocumentsQuery({ page: 1 });
 
-  // Safe data extraction handling array, flat pagination, or nested pagination
   const extractList = <T,>(raw: unknown, key?: string): T[] => {
     if (Array.isArray(raw)) return raw as T[];
     if (raw && typeof raw === 'object') {
@@ -60,36 +60,38 @@ export default function DashboardPage() {
 
   const isLoading = usersLoading || workspacesLoading || documentsLoading;
 
+  const { t, language } = useTranslation();
+
   const stats = [
     {
-      label: 'Tổng Users',
+      label: language === 'vi' ? 'TỔNG NGUỜI DÙNG' : 'TOTAL USERS',
       value: totalUsers,
       icon: Users,
       link: '/users',
       trend: '+12.5%',
       trendUp: true,
-      color: 'blue',
-      dateRange: 'vs tháng trước'
+      color: 'sky',
+      dateRange: language === 'vi' ? 'vs tháng trước' : 'vs last month'
     },
     {
-      label: 'Workspaces',
+      label: language === 'vi' ? 'WORKSPACES HOẠT ĐỘNG' : 'ACTIVE WORKSPACES',
       value: totalWorkspaces,
       icon: Briefcase,
       link: '/workspaces',
       trend: '+8.4%',
       trendUp: true,
-      color: 'purple',
-      dateRange: 'vs tháng trước'
+      color: 'violet',
+      dateRange: language === 'vi' ? 'vs tháng trước' : 'vs last month'
     },
     {
-      label: 'Documents',
+      label: language === 'vi' ? 'TÀI LIỆU DỰ ÁN' : 'PROJECT DOCUMENTS',
       value: totalDocuments,
       icon: FileText,
       link: '/documents',
       trend: '+15.3%',
       trendUp: true,
       color: 'emerald',
-      dateRange: 'vs tháng trước'
+      dateRange: language === 'vi' ? 'vs tháng trước' : 'vs last month'
     },
   ];
 
@@ -98,13 +100,18 @@ export default function DashboardPage() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
+    if (language === 'en') {
+      if (hour < 12) return 'Good morning';
+      if (hour < 18) return 'Good afternoon';
+      return 'Good evening';
+    }
     if (hour < 12) return 'Chào buổi sáng';
     if (hour < 18) return 'Chào buổi chiều';
     return 'Chào buổi tối';
   };
 
   const formatDate = () => {
-    return new Date().toLocaleDateString('vi-VN', {
+    return new Date().toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -115,105 +122,85 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-28 bg-[var(--bg-tertiary)] rounded-2xl" />
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
+        <div className="h-28 bg-[var(--bg-tertiary)] rounded-xl" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 bg-[var(--card-bg)] rounded-xl" />
+            <div key={i} className="h-32 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]" />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="h-80 bg-[var(--card-bg)] rounded-xl" />
-          <div className="h-80 bg-[var(--card-bg)] rounded-xl" />
+          <div className="h-80 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]" />
+          <div className="h-80 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 text-[var(--text-primary)]">
-      {/* Modernized Hero Banner: Subtle glass/mesh effect instead of heavy gradient */}
-      <div className="relative overflow-hidden bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6 md:p-8 shadow-sm">
-        {/* Soft decorative background blobs */}
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-indigo-50 dark:bg-indigo-900/20 rounded-full blur-3xl opacity-60 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-48 h-48 bg-blue-50 dark:bg-blue-900/20 rounded-full blur-3xl opacity-60 pointer-events-none" />
-
+    <div className="flex-1 overflow-y-auto min-h-0 space-y-6 text-[var(--text-primary)] font-sans pr-1">
+      {/* Console Hero Banner */}
+      <div className="relative overflow-hidden bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-6 md:p-8 shadow-xs">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <p className="text-[var(--text-secondary)] text-sm font-medium mb-1">{formatDate()}</p>
-            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
-              {getGreeting()}, {user?.fullName?.split(' ').pop() || 'Admin'}
-            </h1>
-            <p className="text-[var(--text-secondary)] mt-1">
-              Theo dõi tổng quan hoạt động của hệ thống hôm nay.
+            <p className="text-[var(--text-muted)] text-xs font-mono-code uppercase tracking-wider mb-1">
+              {formatDate()}
             </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-full px-4 py-1.5 flex items-center gap-2 shadow-sm">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-              </span>
-              <span className="text-emerald-700 dark:text-emerald-400 text-sm font-medium">Hệ thống ổn định</span>
-            </div>
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+              {getGreeting()}, <span className="text-sky-500 font-mono-code">{user?.fullName?.split(' ').pop() || 'Admin'}</span>
+            </h1>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">
+              {language === 'vi' ? 'Bảng điều khiển giám sát telemetry và quản trị vòng đời phát triển phần mềm (SDLC).' : 'Telemetry monitoring and software development life cycle (SDLC) administration console.'}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* KPI Stats Grid (Cohesive visual hierarchy) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
+      {/* KPI Stats Bento Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {stats.map((stat) => {
           const Icon = stat.icon;
-          
-          let bgClass = '';
-          let textClass = '';
-          const iconBg = 'bg-white dark:bg-gray-800';
 
-          if (stat.color === 'blue') {
-            bgClass = 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30';
-            textClass = 'text-blue-600 dark:text-blue-400';
-          } else if (stat.color === 'purple') {
-            bgClass = 'bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-900/30';
-            textClass = 'text-purple-600 dark:text-purple-400';
+          let borderAccent = 'border-[var(--border-color)] hover:border-sky-500/50';
+          let iconBg = 'bg-sky-500/10 text-sky-500';
+
+          if (stat.color === 'violet') {
+            borderAccent = 'border-[var(--border-color)] hover:border-violet-500/50';
+            iconBg = 'bg-violet-500/10 text-violet-500';
           } else if (stat.color === 'emerald') {
-            bgClass = 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30';
-            textClass = 'text-emerald-600 dark:text-emerald-400';
+            borderAccent = 'border-[var(--border-color)] hover:border-emerald-500/50';
+            iconBg = 'bg-emerald-500/10 text-emerald-500';
           }
 
           return (
             <Link key={stat.label} to={stat.link} className="group block focus:outline-none">
-              <div className={`${bgClass} border rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-200 h-full flex flex-col justify-between relative overflow-hidden`}>
+              <div className={`bg-[var(--bg-card)] border ${borderAccent} rounded-xl p-5 shadow-xs hover:-translate-y-0.5 transition-all duration-200 h-full flex flex-col justify-between`}>
                 <div className="flex justify-between items-start">
-                  <div className="flex flex-col z-10">
-                    <span className={`text-xs font-bold uppercase tracking-wider mb-2 ${textClass}`}>
+                  <div>
+                    <span className="text-[10px] font-mono-code font-bold uppercase tracking-wider text-[var(--text-muted)] block mb-1">
                       {stat.label}
                     </span>
-                    <span className="text-3xl font-black text-gray-900 dark:text-white">
+                    <span className="text-3xl font-black font-mono-code text-[var(--text-primary)]">
                       {stat.value || '0'}
                     </span>
                   </div>
-                  <div className={`w-12 h-12 rounded-full ${iconBg} flex items-center justify-center shadow-sm ${textClass} group-hover:scale-110 transition-transform duration-200 z-10`}>
-                    <Icon className="w-6 h-6" />
+                  <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center font-bold shrink-0`}>
+                    <Icon size={20} />
                   </div>
                 </div>
-                
-                <div className="mt-8 flex flex-col gap-1 z-10">
-                  {stat.trendUp !== null ? (
-                    <div className={`flex items-center gap-1 text-sm font-bold ${
-                      stat.trendUp ? 'text-emerald-500' : 'text-rose-500'
+
+                <div className="mt-6 pt-3 border-t border-[var(--border-color)] flex items-center justify-between text-xs">
+                  <div className={`flex items-center gap-1 font-mono-code font-bold ${stat.trendUp ? 'text-emerald-500' : 'text-rose-500'
                     }`}>
-                      {stat.trendUp ? (
-                        <TrendingUp className="w-4 h-4 stroke-[3]" />
-                      ) : (
-                        <TrendingDown className="w-4 h-4 stroke-[3]" />
-                      )}
-                      <span>{stat.trend}</span>
-                    </div>
-                  ) : (
-                    <div className="text-sm font-bold text-gray-500">-</div>
-                  )}
-                  <div className="text-xs font-semibold text-gray-500 dark:text-gray-400">
-                    {stat.dateRange}
+                    {stat.trendUp ? (
+                      <TrendingUp size={14} />
+                    ) : (
+                      <TrendingDown size={14} />
+                    )}
+                    <span>{stat.trend}</span>
                   </div>
+                  <span className="text-[11px] text-[var(--text-muted)]">
+                    {stat.dateRange}
+                  </span>
                 </div>
               </div>
             </Link>
@@ -221,262 +208,255 @@ export default function DashboardPage() {
         })}
       </div>
 
-
-      {/* Lists Grid */}
+      {/* Activity Lists Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Users List */}
-        <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300 overflow-hidden flex flex-col relative">
-          {/* Subtle gradient blob for depth */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 dark:bg-indigo-900/10 rounded-full blur-2xl opacity-50 pointer-events-none" />
-          
-          <div className="p-6 border-b border-[var(--border-color)] flex items-center justify-between relative z-10">
+        {/* Recent Users Card */}
+        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl shadow-xs overflow-hidden flex flex-col">
+          <div className="p-4 px-5 border-b border-[var(--border-color)] flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-[var(--text-primary)]">Users gần đây</h2>
-              <p className="text-sm text-[var(--text-secondary)]">Người dùng mới đăng ký</p>
+              <h2 className="text-sm font-bold text-[var(--text-primary)]">
+                {language === 'vi' ? 'NGƯỜI DÙNG MỚI ĐĂNG KÝ' : 'RECENTLY REGISTERED USERS'}
+              </h2>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                {language === 'vi' ? 'Tài khoản thành viên mới trong hệ thống' : 'New member accounts in system'}
+              </p>
             </div>
-            <Link to="/users" className="text-sm font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20">
-              Xem tất cả <ChevronRight className="w-4 h-4 ml-0.5" />
+            <Link
+              to="/users"
+              className="text-xs font-bold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+            >
+              {t('dashboard.viewAll')} <ChevronRight size={14} />
             </Link>
           </div>
-          
-          <div className="flex-1 p-2">
+
+          <div className="p-3 divide-y divide-[var(--border-color)] flex-1">
             {recentUsers.length > 0 ? (
-              <div className="flex flex-col gap-1">
-                {recentUsers.map((u, i) => {
-                  const avatarColorClass = [
-                    'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:border-indigo-800',
-                    'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-800',
-                    'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/50 dark:text-rose-300 dark:border-rose-800',
-                    'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/50 dark:text-amber-300 dark:border-amber-800',
-                    'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/50 dark:text-purple-300 dark:border-purple-800',
-                  ][i % 5];
-                  const fallbackId = (u.id || (u as { _id?: string })._id || '0000').toString();
-                  const displayName = u.fullName || `Người dùng ẩn danh #${fallbackId.slice(-4)}`;
-                  
-                  return (
-                    <div
-                      key={u.id}
-                      className="flex items-center justify-between p-3 rounded-lg hover:bg-[var(--hover-bg)] transition-colors group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          {u.avatar ? (
-                            <img src={u.avatar} alt={displayName} className="w-10 h-10 rounded-full object-cover border border-[var(--border-color)]" />
-                          ) : (
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm border ${avatarColorClass}`}>
-                              {displayName.charAt(0).toUpperCase()}
-                            </div>
-                          )}
+              recentUsers.map((u) => {
+                const fallbackId = (u.id || (u as { _id?: string })._id || '0000').toString();
+                const displayName = u.fullName || `User #${fallbackId.slice(-4)}`;
+
+                return (
+                  <div
+                    key={u.id}
+                    className="flex items-center justify-between py-2.5 px-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {u.avatar ? (
+                        <img src={u.avatar} alt={displayName} className="w-8 h-8 rounded-lg object-cover border border-[var(--border-color)] shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center font-mono-code font-bold text-xs shrink-0">
+                          {displayName.charAt(0).toUpperCase()}
                         </div>
-                        <div>
-                          <p className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                            {displayName}
-                          </p>
-                          <p className="text-xs text-[var(--text-secondary)] truncate max-w-[180px]">
-                            {u.email}
-                          </p>
-                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-[var(--text-primary)] truncate group-hover:text-sky-500 transition-colors">
+                          {displayName}
+                        </p>
+                        <p className="text-[11px] font-mono-code text-[var(--text-muted)] truncate">
+                          {u.email}
+                        </p>
                       </div>
-                    <div>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${
-                        u.role === 'super_admin'
-                          ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-500/10 dark:border-indigo-500/20 dark:text-indigo-400'
-                          : 'bg-[var(--bg-tertiary)] border-[var(--border-color)] text-[var(--text-secondary)]'
-                      }`}>
-                        {u.role === 'super_admin' ? 'Super Admin' : 'User'}
-                      </span>
                     </div>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono-code font-bold uppercase shrink-0 ${u.role === 'super_admin'
+                      ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/30'
+                      : 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20'
+                      }`}>
+                      {u.role === 'super_admin' ? 'SUPER_ADMIN' : 'USER'}
+                    </span>
                   </div>
                 );
-              })}
-              </div>
+              })
             ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-12 h-12 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center mb-3 text-[var(--text-muted)]">
-                  <Users className="w-6 h-6" />
-                </div>
-                <p className="text-sm text-[var(--text-secondary)]">Chưa có người dùng nào</p>
+              <div className="py-8 text-center text-xs text-[var(--text-muted)]">
+                {language === 'vi' ? 'Chưa có dữ liệu người dùng' : 'No user data available'}
               </div>
             )}
           </div>
         </div>
 
-        {/* Recent Workspaces List */}
-        <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300 overflow-hidden flex flex-col relative">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50 dark:bg-purple-900/10 rounded-full blur-2xl opacity-50 pointer-events-none" />
-
-          <div className="p-6 border-b border-[var(--border-color)] flex items-center justify-between relative z-10">
+        {/* Recent Workspaces Card */}
+        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl shadow-xs overflow-hidden flex flex-col">
+          <div className="p-4 px-5 border-b border-[var(--border-color)] flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-[var(--text-primary)]">Workspaces gần đây</h2>
-              <p className="text-sm text-[var(--text-secondary)]">Các không gian mới cập nhật</p>
+              <h2 className="text-sm font-bold text-[var(--text-primary)]">
+                {language === 'vi' ? 'WORKSPACES CẬP NHẬT GẦN ĐÂY' : 'RECENTLY UPDATED WORKSPACES'}
+              </h2>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                {language === 'vi' ? 'Không gian làm việc dự án active' : 'Active project workspaces'}
+              </p>
             </div>
-            <Link to="/workspaces" className="text-sm font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 flex items-center transition-colors px-3 py-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20">
-              Xem tất cả <ChevronRight className="w-4 h-4 ml-0.5" />
+            <Link
+              to="/workspaces"
+              className="text-xs font-bold text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+            >
+              {t('dashboard.viewAll')} <ChevronRight size={14} />
             </Link>
           </div>
-          
-          <div className="flex-1 p-2">
+
+          <div className="p-3 divide-y divide-[var(--border-color)] flex-1">
             {recentWorkspaces.length > 0 ? (
-              <div className="flex flex-col gap-1">
-                {recentWorkspaces.map((ws) => (
-                  <div
-                    key={ws._id}
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-[var(--hover-bg)] transition-colors group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-secondary)] font-bold text-sm">
-                        {ws.key?.slice(0, 2).toUpperCase() || 'WS'}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                          {ws.name}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-0.5 text-xs text-[var(--text-secondary)]">
-                          <Users className="w-3.5 h-3.5" />
-                          <span>{ws.members?.length || 0} thành viên</span>
-                        </div>
-                      </div>
+              recentWorkspaces.map((ws) => (
+                <div
+                  key={ws._id}
+                  className="flex items-center justify-between py-2.5 px-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/30 text-violet-500 flex items-center justify-center font-mono-code font-bold text-xs shrink-0">
+                      {ws.key?.slice(0, 2).toUpperCase() || 'WS'}
                     </div>
-                    <div>
-                      {ws.deletedAt ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400">
-                          Đã xóa
-                        </span>
-                      ) : (
-                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${
-                          ws.status === 'active' || ws.status === undefined
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400'
-                            : 'bg-[var(--bg-tertiary)] border-[var(--border-color)] text-[var(--text-secondary)]'
-                        }`}>
-                          {ws.status === 'active' || ws.status === undefined ? 'Hoạt động' : 'Lưu trữ'}
-                        </span>
-                      )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[var(--text-primary)] truncate group-hover:text-violet-500 transition-colors">
+                        {ws.name}
+                      </p>
+                      <p className="text-[11px] font-mono-code text-[var(--text-muted)] truncate">
+                        {ws.members?.length || 0} members • Key: {ws.key || 'N/A'}
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-12 h-12 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center mb-3 text-[var(--text-muted)]">
-                  <BriefcaseIcon className="w-6 h-6" />
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono-code font-bold uppercase shrink-0 ${ws.status === 'active' || !ws.status
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                    : 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20'
+                    }`}>
+                    {ws.status === 'active' || !ws.status ? 'HOẠT ĐỘNG' : 'LƯU TRỮ'}
+                  </span>
                 </div>
-                <p className="text-sm text-[var(--text-secondary)]">Chưa có workspace nào</p>
+              ))
+            ) : (
+              <div className="py-8 text-center text-xs text-[var(--text-muted)]">
+                {t('dashboard.noWorkspaces')}
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Bottom Section: Quick Actions & System Status in 2 Columns */}
+      {/* Quick Actions & Technical Telemetry */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Quick Actions (Minimalist cards) */}
-        <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl shadow-sm overflow-hidden flex flex-col">
-          <div className="p-5 border-b border-[var(--border-color)]">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Thao tác nhanh</h2>
-            <p className="text-sm text-[var(--text-secondary)]">Phím tắt quản trị hệ thống</p>
+        {/* Quick Actions Card */}
+        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl shadow-xs overflow-hidden flex flex-col">
+          <div className="p-4 px-5 border-b border-[var(--border-color)]">
+            <h2 className="text-sm font-bold text-[var(--text-primary)]">
+              {language === 'vi' ? 'PHÍM TẮT QUẢN TRỊ DEVOPS' : 'DEVOPS ADMIN SHORTCUTS'}
+            </h2>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              {language === 'vi' ? 'Thực thi tác vụ nhanh trong hệ thống' : 'Quick system action shortcuts'}
+            </p>
           </div>
-          <div className="p-5 grid grid-cols-2 gap-4">
+          <div className="p-4 grid grid-cols-2 gap-3">
             <Link
               to="/users"
-              className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-color)] hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-all group"
+              className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-color)] hover:border-sky-500/40 hover:bg-sky-500/5 transition-all group cursor-pointer"
             >
-              <div className="p-2 bg-[var(--bg-tertiary)] rounded-md text-[var(--text-secondary)] group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                <UserPlus className="w-5 h-5" />
+              <div className="p-2 bg-sky-500/10 rounded-md text-sky-500 group-hover:scale-105 transition-transform shrink-0">
+                <UserPlus size={16} />
               </div>
               <div>
-                <p className="text-sm font-medium text-[var(--text-primary)]">Thêm User</p>
+                <p className="text-xs font-bold text-[var(--text-primary)]">{t('nav.users')}</p>
+                <p className="text-[10px] text-[var(--text-muted)]">
+                  {language === 'vi' ? 'Thêm & Phân quyền' : 'Add & Permissions'}
+                </p>
               </div>
             </Link>
+
             <Link
               to="/workspaces"
-              className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-color)] hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-all group"
+              className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-color)] hover:border-violet-500/40 hover:bg-violet-500/5 transition-all group cursor-pointer"
             >
-              <div className="p-2 bg-[var(--bg-tertiary)] rounded-md text-[var(--text-secondary)] group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                <BriefcaseIcon className="w-5 h-5" />
+              <div className="p-2 bg-violet-500/10 rounded-md text-violet-500 group-hover:scale-105 transition-transform shrink-0">
+                <BriefcaseIcon size={16} />
               </div>
               <div>
-                <p className="text-sm font-medium text-[var(--text-primary)]">Tạo Workspace</p>
+                <p className="text-xs font-bold text-[var(--text-primary)]">{t('workspaces.createBtn')}</p>
+                <p className="text-[10px] text-[var(--text-muted)]">
+                  {language === 'vi' ? 'Không gian dự án' : 'Project space'}
+                </p>
               </div>
             </Link>
+
             <Link
               to="/documents"
-              className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-color)] hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-all group"
+              className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-color)] hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all group cursor-pointer"
             >
-              <div className="p-2 bg-[var(--bg-tertiary)] rounded-md text-[var(--text-secondary)] group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                <FileText className="w-5 h-5" />
+              <div className="p-2 bg-emerald-500/10 rounded-md text-emerald-500 group-hover:scale-105 transition-transform shrink-0">
+                <FileText size={16} />
               </div>
               <div>
-                <p className="text-sm font-medium text-[var(--text-primary)]">Tải Document</p>
+                <p className="text-xs font-bold text-[var(--text-primary)]">{language === 'vi' ? 'Tài liệu Kho' : 'Document Storage'}</p>
+                <p className="text-[10px] text-[var(--text-muted)]">
+                  {language === 'vi' ? 'Tải lên & Lưu trữ' : 'Upload & Manage'}
+                </p>
               </div>
             </Link>
+
             <Link
               to="/activity"
-              className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-color)] hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-all group"
+              className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-color)] hover:border-amber-500/40 hover:bg-amber-500/5 transition-all group cursor-pointer"
             >
-              <div className="p-2 bg-[var(--bg-tertiary)] rounded-md text-[var(--text-secondary)] group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                <Activity className="w-5 h-5" />
+              <div className="p-2 bg-amber-500/10 rounded-md text-amber-500 group-hover:scale-105 transition-transform shrink-0">
+                <Activity size={16} />
               </div>
               <div>
-                <p className="text-sm font-medium text-[var(--text-primary)]">Xem nhật ký</p>
+                <p className="text-xs font-bold text-[var(--text-primary)]">Audit Terminal</p>
+                <p className="text-[10px] text-[var(--text-muted)]">
+                  {language === 'vi' ? 'Nhật ký sự kiện' : 'System Event logs'}
+                </p>
               </div>
             </Link>
           </div>
         </div>
 
-        {/* System Status */}
-        <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl shadow-sm overflow-hidden flex flex-col">
-          <div className="p-5 border-b border-[var(--border-color)]">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Trạng thái hệ thống</h2>
-            <p className="text-sm text-[var(--text-secondary)]">Tình trạng các dịch vụ</p>
+        {/* System Telemetry Status */}
+        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl shadow-xs overflow-hidden flex flex-col">
+          <div className="p-4 px-5 border-b border-[var(--border-color)]">
+            <h2 className="text-sm font-bold text-[var(--text-primary)]">{t('dashboard.telemetryTitle')}</h2>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              {t('dashboard.telemetrySubtitle')}
+            </p>
           </div>
-          <div className="p-5 flex flex-col gap-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--hover-bg)] border border-[var(--border-color)]">
+          <div className="p-4 flex flex-col gap-2.5">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-tertiary)]/50 border border-[var(--border-color)]">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-[var(--card-bg)] rounded shadow-sm text-[var(--text-secondary)] dark:text-slate-300">
-                  <Activity className="w-4 h-4" />
+                <div className="p-2 bg-[var(--bg-card)] rounded-md text-sky-500 border border-[var(--border-color)] shrink-0">
+                  <Cpu size={16} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-[var(--text-primary)]">API Server</p>
-                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">Thời gian phản hồi: 45ms</p>
+                  <p className="text-xs font-bold text-[var(--text-primary)]">API Node Server</p>
+                  <p className="text-[11px] font-mono-code text-[var(--text-muted)]">Latency: 38ms • Uptime: 99.98%</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-full">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                Online
-              </div>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono-code font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                HEALTHY
+              </span>
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--hover-bg)] border border-[var(--border-color)]">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-tertiary)]/50 border border-[var(--border-color)]">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-[var(--card-bg)] rounded shadow-sm text-[var(--text-secondary)] dark:text-slate-300">
-                  <Database className="w-4 h-4" />
+                <div className="p-2 bg-[var(--bg-card)] rounded-md text-violet-500 border border-[var(--border-color)] shrink-0">
+                  <Database size={16} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-[var(--text-primary)]">Database</p>
-                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">Tải CPU: 12%</p>
+                  <p className="text-xs font-bold text-[var(--text-primary)]">MongoDB Instance</p>
+                  <p className="text-[11px] font-mono-code text-[var(--text-muted)]">CPU: 14% • Pool Connections: 32</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-full">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                Online
-              </div>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono-code font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                CONNECTED
+              </span>
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--hover-bg)] border border-[var(--border-color)]">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-tertiary)]/50 border border-[var(--border-color)]">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-[var(--card-bg)] rounded shadow-sm text-[var(--text-secondary)] dark:text-slate-300">
-                  <Lock className="w-4 h-4" />
+                <div className="p-2 bg-[var(--bg-card)] rounded-md text-emerald-500 border border-[var(--border-color)] shrink-0">
+                  <Lock size={16} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-[var(--text-primary)]">Authentication</p>
-                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">Hệ thống cấp quyền</p>
+                  <p className="text-xs font-bold text-[var(--text-primary)]">OAuth & JWT Security</p>
+                  <p className="text-[11px] font-mono-code text-[var(--text-muted)]">Active Tokens: 128 • RSA-256</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-full">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                Online
-              </div>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono-code font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                SECURE
+              </span>
             </div>
           </div>
         </div>

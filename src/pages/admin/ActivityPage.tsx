@@ -4,6 +4,7 @@ import { Filter, RefreshCw, Users, ChevronDown } from 'lucide-react';
 import { Button } from '../../components/ui';
 import { useActivityStore } from '../../stores';
 import { useActivityStatsQuery } from '../../hooks/queries';
+import { useTranslation } from '../../i18n/useTranslation';
 
 import {
   ActivitySidebar,
@@ -59,9 +60,11 @@ export default function ActivityPage() {
   const hasActiveFilters = Object.entries(filters).some(([k, v]) => k !== 'userId' && v !== '');
 
 
+  const { t, language } = useTranslation();
+
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
+    <div className="h-full min-h-0 flex flex-col space-y-4 font-sans">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start flex-1 min-h-0">
         {/* Mobile User List Toggle */}
         <div className="md:hidden relative z-30">
           <Button 
@@ -71,13 +74,15 @@ export default function ActivityPage() {
           >
             <span className="flex items-center gap-2">
               <Users className="w-4 h-4" />
-              {selectedUserId === 'all' ? 'Tất cả hệ thống' : 'Đang chọn 1 User'}
+              {selectedUserId === 'all' 
+                ? (language === 'vi' ? 'Tất cả hệ thống' : 'All system') 
+                : (language === 'vi' ? 'Đang chọn 1 User' : '1 User selected')}
             </span>
             <ChevronDown className={`w-4 h-4 transition-transform ${showMobileUsers ? 'rotate-180' : ''}`} />
           </Button>
 
           {/* Mobile Sidebar Dropdown */}
-          <div className={`${showMobileUsers ? 'absolute top-full left-0 right-0 mt-2 shadow-2xl rounded-xl border border-[var(--border-color)] overflow-hidden bg-[var(--card-bg)]' : 'hidden'}`}>
+          <div className={`${showMobileUsers ? 'absolute top-full left-0 right-0 mt-2 shadow-2xl rounded-xl border border-[var(--border-color)] overflow-hidden bg-[var(--bg-card)]' : 'hidden'}`}>
             <ActivitySidebar selectedUserId={selectedUserId} onUserSelect={(id) => {
                handleUserSelect(id);
                setShowMobileUsers(false);
@@ -85,8 +90,8 @@ export default function ActivityPage() {
           </div>
         </div>
 
-        {/* Desktop Sidebar: User List */}
-        <div className="hidden md:block col-span-1">
+        {/* Left Column: Users List (Desktop) */}
+        <div className="hidden md:block col-span-1 h-full min-h-0">
           <ActivitySidebar selectedUserId={selectedUserId} onUserSelect={(id) => {
              handleUserSelect(id);
              setShowMobileUsers(false);
@@ -94,10 +99,10 @@ export default function ActivityPage() {
         </div>
 
         {/* Right Column: Activity Logs */}
-        <div className="col-span-1 md:col-span-3 flex flex-col h-[calc(100vh-11rem)] md:h-[calc(100vh-7rem)] space-y-4">
+        <div className="col-span-1 md:col-span-3 flex flex-col h-full min-h-0 space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 relative z-20">
             <h2 className="text-lg font-bold text-[var(--text-primary)]">
-              Nhật ký hoạt động {selectedUserId !== 'all' && '- Chi tiết User'}
+              {t('activity.title')} {selectedUserId !== 'all' && (language === 'vi' ? '- Chi tiết User' : '- User details')}
             </h2>
             <div className="flex items-center gap-2">
               <Button
@@ -107,12 +112,12 @@ export default function ActivityPage() {
                 className="relative pr-6"
               >
                 <Filter className="w-4 h-4 mr-1" />
-                Bộ lọc
+                {language === 'vi' ? 'Bộ lọc' : 'Filters'}
                 <span className={`absolute right-2 top-1/2 -translate-y-1/2 w-2 h-2 bg-primary-600 dark:bg-primary-400 rounded-full transition-all duration-200 ${hasActiveFilters ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} />
               </Button>
               <Button variant="secondary" size="sm" onClick={handleSearch}>
                 <RefreshCw className={`w-4 h-4 mr-1 ${logsLoading ? 'animate-spin' : ''}`} />
-                Làm mới
+                {t('common.reset')}
               </Button>
             </div>
 

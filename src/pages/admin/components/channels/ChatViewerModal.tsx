@@ -337,7 +337,7 @@ export default function ChatViewerModal({ isOpen, onClose, channel }: ChatViewer
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-0 sm:p-4">
-      <div className={`w-full max-w-6xl h-[100dvh] sm:h-[85vh] bg-[var(--card-bg)] rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-[var(--border-color)] overflow-hidden flex flex-col transition-all duration-300`}>
+      <div className={`w-full max-w-6xl h-[100dvh] sm:h-[85vh] bg-[var(--bg-card)] rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-[var(--border-color)] overflow-hidden flex flex-col transition-all duration-300`}>
         {/* Header */}
         <div className="flex-shrink-0 relative bg-[var(--bg-secondary)] border-b border-[var(--border-color)] px-3 py-3 sm:px-6 sm:py-4 flex items-start sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">

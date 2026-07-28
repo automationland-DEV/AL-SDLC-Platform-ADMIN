@@ -61,7 +61,7 @@ export default function ChannelViewModal({ isOpen, onClose, channel, onDelete }:
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="w-full max-w-2xl bg-[var(--card-bg)] rounded-2xl shadow-2xl border border-[var(--border-color)] overflow-hidden">
+      <div className="w-full max-w-2xl bg-[var(--bg-card)] rounded-2xl shadow-2xl border border-[var(--border-color)] overflow-hidden">
         {/* Header */}
         <div className="relative bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-5">
           <div className="flex items-center gap-3">

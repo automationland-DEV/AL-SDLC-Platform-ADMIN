@@ -1,6 +1,6 @@
-
 import { useState } from 'react';
-import { Plus, Search, Edit, Trash2, Eye, Upload, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, Upload, ArrowUpDown, ChevronUp, ChevronDown, User as UserIcon } from 'lucide-react';
+import { useTranslation } from '../../i18n/useTranslation';
 import toast from 'react-hot-toast';
 import { Button, Badge, Table, TableRow, TableCell, ConfirmModal, Select } from '../../components/ui';
 import type { User, UserRole, UserStatus } from '../../types';
@@ -16,7 +16,6 @@ import {
   useImportUsersCsvMutation,
 } from '../../hooks/queries';
 
-// Helper for safe error extraction
 const getErrorMessage = (error: unknown, defaultMsg: string) => {
   try {
     const errObj = error as Record<string, unknown>;
@@ -38,7 +37,6 @@ const getErrorMessage = (error: unknown, defaultMsg: string) => {
 };
 
 export default function UsersPage() {
-  // ─── UI State (Zustand removed, all local) ────────────────────────────────
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -46,7 +44,6 @@ export default function UsersPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'createdAt', direction: 'asc' | 'desc' } | null>(null);
 
-  // Modal state
   const [showModal, setShowModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -66,7 +63,6 @@ export default function UsersPage() {
     type: 'danger'
   });
 
-  // ─── Server State (React Query) ────────────────────────────────────────────
   const { data, isLoading } = useUsersQuery({
     page,
     search: debouncedSearch || undefined,
@@ -80,22 +76,21 @@ export default function UsersPage() {
   const updateStatusMutation = useUpdateUserStatusMutation();
   const importCsvMutation = useImportUsersCsvMutation();
 
-  // Derived data with full format fallback
   const parseUsersResponse = (raw: unknown) => {
-    let users: User[] = [];
+    let usersList: User[] = [];
     let total = 0;
-    let totalPages = 1;
+    let totalPagesCount = 1;
 
     if (Array.isArray(raw)) {
-      users = raw as User[];
-      total = users.length;
-      totalPages = 1;
+      usersList = raw as User[];
+      total = usersList.length;
+      totalPagesCount = 1;
     } else if (raw && typeof raw === 'object') {
       const obj = raw as Record<string, unknown>;
       if (Array.isArray(obj.data)) {
-        users = obj.data as User[];
+        usersList = obj.data as User[];
       } else if (Array.isArray(obj.users)) {
-        users = obj.users as User[];
+        usersList = obj.users as User[];
       }
 
       if (typeof obj.total === 'number') {
@@ -103,22 +98,21 @@ export default function UsersPage() {
       } else if (obj.pagination && typeof obj.pagination === 'object') {
         const pag = obj.pagination as Record<string, unknown>;
         if (typeof pag.total === 'number') total = pag.total;
-        if (typeof pag.totalPages === 'number') totalPages = pag.totalPages;
+        if (typeof pag.totalPages === 'number') totalPagesCount = pag.totalPages;
       } else {
-        total = users.length;
+        total = usersList.length;
       }
 
       if (typeof obj.totalPages === 'number') {
-        totalPages = obj.totalPages;
+        totalPagesCount = obj.totalPages;
       }
     }
 
-    return { users, absoluteTotal: total, totalPages };
+    return { users: usersList, absoluteTotal: total, totalPages: totalPagesCount };
   };
 
   const { users, absoluteTotal, totalPages } = parseUsersResponse(data);
 
-  // ─── Search debounce ───────────────────────────────────────────────────────
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     setPage(1);
@@ -126,7 +120,6 @@ export default function UsersPage() {
     return () => clearTimeout(id);
   };
 
-  // ─── Handlers ──────────────────────────────────────────────────────────────
   const handleViewClick = async (user: User) => {
     setViewedUser(user);
     setShowViewModal(true);
@@ -208,18 +201,22 @@ export default function UsersPage() {
       suspended: 'danger',
     };
     const labels: Record<UserStatus, string> = {
-      active: 'Hoạt động',
-      inactive: 'Không hoạt động',
-      pending_verification: 'Chờ xác thực',
-      suspended: 'Đình chỉ',
+      active: language === 'vi' ? 'HOẠT ĐỘNG' : 'ACTIVE',
+      inactive: language === 'vi' ? 'KHÔNG HOẠT ĐỘNG' : 'INACTIVE',
+      pending_verification: language === 'vi' ? 'CHỜ XÁC THỰC' : 'PENDING VERIFICATION',
+      suspended: language === 'vi' ? 'ĐÌNH CHỈ' : 'SUSPENDED',
     };
-    return <Badge variant={variants[status] || 'default'}>{labels[status] || status}</Badge>;
+    return (
+      <Badge variant={variants[status] || 'default'} dot mono>
+        {labels[status] || status.toUpperCase()}
+      </Badge>
+    );
   };
 
   const getRoleBadge = (role: UserRole) => {
     return (
-      <Badge variant={role === 'super_admin' ? 'danger' : 'default'}>
-        {role === 'super_admin' ? 'Super Admin' : 'User'}
+      <Badge variant={role === 'super_admin' ? 'info' : 'default'} mono>
+        {role === 'super_admin' ? 'SUPER_ADMIN' : 'USER'}
       </Badge>
     );
   };
@@ -227,7 +224,6 @@ export default function UsersPage() {
   const getProcessedUsers = () => {
     const processed = [...users];
 
-    // Sort
     if (sortConfig) {
       processed.sort((a, b) => {
         if (sortConfig.key === 'name') {
@@ -261,43 +257,45 @@ export default function UsersPage() {
 
   const renderSortIcon = (key: 'name' | 'createdAt') => {
     if (sortConfig?.key !== key) return <ArrowUpDown className="w-3 h-3 ml-1 inline-block opacity-50" />;
-    return sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 ml-1 inline-block" /> : <ChevronDown className="w-3 h-3 ml-1 inline-block" />;
+    return sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 ml-1 inline-block text-sky-500" /> : <ChevronDown className="w-3 h-3 ml-1 inline-block text-sky-500" />;
   };
 
+  const { t, language } = useTranslation();
+
   return (
-    <div className="flex flex-col h-[calc(100vh-7rem)] space-y-3">
+    <div className="flex-1 flex flex-col min-h-0 space-y-3 font-sans">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
+      <div className="shrink-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-[var(--text-primary)]">Quản lý Users</h2>
-          <p className="text-[var(--text-secondary)] mt-1">Tổng cộng {absoluteTotal} users</p>
+          <h2 className="text-xl font-bold text-[var(--text-primary)] uppercase tracking-tight">{t('users.title')}</h2>
+          <p className="text-xs text-[var(--text-muted)] font-mono-code mt-0.5">{t('users.subtitle', { count: absoluteTotal })}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <Button variant="secondary" onClick={() => setShowImportModal(true)}>
-            <Upload className="w-4 h-4 mr-2" />
-            Import từ CSV
+          <Button variant="secondary" size="sm" onClick={() => setShowImportModal(true)}>
+            <Upload className="w-4 h-4" />
+            {t('users.importCsv')}
           </Button>
-          <Button onClick={() => { setSelectedUser(null); setShowModal(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            Thêm User
+          <Button size="sm" onClick={() => { setSelectedUser(null); setShowModal(true); }}>
+            <Plus className="w-4 h-4" />
+            {t('users.addUser')}
           </Button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] px-4 py-2.5">
-        <div className="flex flex-col md:flex-row items-center gap-4">
+      {/* Filters Toolbar */}
+      <div className="shrink-0 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)] p-2.5">
+        <div className="flex flex-col md:flex-row items-center gap-3">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
             <input
               type="text"
-              placeholder="Tìm kiếm theo tên hoặc email..."
+              placeholder={t('users.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+              className="w-full pl-9 pr-4 py-2 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 font-mono-code transition-all"
             />
           </div>
-          <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3">
+          <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2.5">
             <Select
               value={filterRole}
               onChange={(val) => {
@@ -305,11 +303,11 @@ export default function UsersPage() {
                 setPage(1);
               }}
               options={[
-                { value: 'all', label: 'Tất cả vai trò' },
+                { value: 'all', label: language === 'vi' ? 'Tất cả vai trò' : 'All Roles' },
                 { value: 'user', label: 'User' },
                 { value: 'super_admin', label: 'Super Admin' }
               ]}
-              className="w-full sm:w-auto flex-1 sm:min-w-[160px] md:min-w-[180px]"
+              className="w-full sm:w-auto sm:min-w-[150px]"
             />
             <Select
               value={filterStatus}
@@ -318,104 +316,155 @@ export default function UsersPage() {
                 setPage(1);
               }}
               options={[
-                { value: 'all', label: 'Tất cả trạng thái' },
-                { value: 'active', label: 'Hoạt động' },
-                { value: 'inactive', label: 'Không hoạt động' },
-                { value: 'pending_verification', label: 'Chờ xác thực' },
-                { value: 'suspended', label: 'Đình chỉ' }
+                { value: 'all', label: language === 'vi' ? 'Tất cả trạng thái' : 'All Statuses' },
+                { value: 'active', label: language === 'vi' ? 'Hoạt động' : 'Active' },
+                { value: 'inactive', label: language === 'vi' ? 'Không hoạt động' : 'Inactive' },
+                { value: 'pending_verification', label: language === 'vi' ? 'Chờ xác thực' : 'Pending Verification' },
+                { value: 'suspended', label: language === 'vi' ? 'Đình chỉ' : 'Suspended' }
               ]}
-              className="w-full sm:w-auto flex-1 sm:min-w-[180px] md:min-w-[200px]"
+              className="w-full sm:w-auto sm:min-w-[170px]"
             />
           </div>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--border-color)] flex flex-col flex-1 min-h-0 overflow-hidden">
+      {/* Main Users Table / Responsive Mobile Cards */}
+      <div className="flex-1 flex flex-col min-h-0 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)] overflow-hidden shadow-xs">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-600 border-t-transparent"></div>
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-7 w-7 border-2 border-sky-500 border-t-transparent"></div>
           </div>
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto min-h-0">
+            {/* Desktop Table View */}
+            <div className="hidden md:flex flex-col flex-1 min-h-0 overflow-y-auto">
               <Table 
                 fixedLayout
                 headers={[
-                  { label: 'ID', className: 'w-[8%]' },
-                  { label: <button key="name" className="flex items-center font-semibold hover:text-primary-600 transition-colors uppercase" onClick={() => handleSort('name')}>Tên {renderSortIcon('name')}</button>, className: 'w-[25%]' },
-                  { label: 'Email', className: 'w-[25%]' },
-                  { label: 'Vai trò', align: 'center', className: 'w-[10%]' },
-                  { label: 'Trạng thái', align: 'center', className: 'w-[15%]' },
-                  { label: <button key="created" className="flex items-center justify-center w-full font-semibold hover:text-primary-600 transition-colors uppercase" onClick={() => handleSort('createdAt')}>Ngày tạo {renderSortIcon('createdAt')}</button>, align: 'center', className: 'w-[10%]' },
-                  { label: 'Thao tác', align: 'center', className: 'w-[7%]' }
+                  { label: 'USER_ID', className: 'w-[12%]' },
+                  { label: <button key="name" className="flex items-center font-bold hover:text-sky-500 transition-colors uppercase cursor-pointer" onClick={() => handleSort('name')}>{t('table.name')} {renderSortIcon('name')}</button>, className: 'w-[28%]' },
+                  { label: t('table.email'), className: 'w-[26%]' },
+                  { label: t('table.role'), align: 'center', className: 'w-[12%]' },
+                  { label: t('table.status'), align: 'center', className: 'w-[12%]' },
+                  { label: <button key="created" className="flex items-center justify-center w-full font-bold hover:text-sky-500 transition-colors uppercase cursor-pointer" onClick={() => handleSort('createdAt')}>{t('table.createdAt')} {renderSortIcon('createdAt')}</button>, align: 'center', className: 'w-[10%]' },
+                  { label: t('table.actions'), align: 'center', className: 'w-[8%]' }
                 ]}
               >
-              {processedUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="text-[var(--text-muted)]">#{user.id?.slice(-6)}</TableCell>
-                  <TableCell className="max-w-0">
-                    <div className="flex items-center gap-3">
-                      {user.avatar ? (
-                        <img src={user.avatar} alt="" className="w-8 h-8 rounded-full" />
-                      ) : (
-                        <div className="w-8 h-8 flex-shrink-0 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center">
-                          <span className="text-sm font-medium text-primary-600 dark:text-primary-300">
-                            {user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
-                          </span>
-                        </div>
-                      )}
-                      <div className="font-medium text-[var(--text-primary)] truncate flex-1 min-w-0" title={user.fullName}>{user.fullName}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="max-w-0">
-                    <div className="text-[var(--text-secondary)] truncate" title={user.email}>{user.email}</div>
-                  </TableCell>
-                  <TableCell className="text-center">{getRoleBadge(user.role)}</TableCell>
-                  <TableCell className="text-center">{getStatusBadge(user.status)}</TableCell>
-                  <TableCell className="text-[var(--text-secondary)] text-center">{user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : '-'}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        onClick={() => handleViewClick(user)}
-                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-primary-600 cursor-pointer"
-                        title="Xem"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleEditClick(user)}
-                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-primary-600 cursor-pointer"
-                        title="Sửa"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(user.id)}
-                        className="p-1.5 rounded hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-red-600 cursor-pointer"
-                        title="Xóa"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </Table>
-
-            {/* Empty state */}
-            {processedUsers.length === 0 && !isLoading && (
-              <div className="text-center py-12 text-[var(--text-secondary)]">
-                <p>Không tìm thấy user nào phù hợp.</p>
-              </div>
-            )}
+                {processedUsers.map((userItem) => (
+                  <TableRow key={userItem.id}>
+                    <TableCell className="font-mono-code text-xs text-[var(--text-muted)]">
+                      #{userItem.id?.slice(-6) || 'N/A'}
+                    </TableCell>
+                    <TableCell className="max-w-0">
+                      <div className="flex items-center gap-3">
+                        {userItem.avatar ? (
+                          <img src={userItem.avatar} alt="" className="w-8 h-8 rounded-lg object-cover border border-[var(--border-color)] shrink-0" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center font-mono-code font-bold text-xs text-sky-500 shrink-0">
+                            {userItem.fullName ? userItem.fullName.charAt(0).toUpperCase() : 'U'}
+                          </div>
+                        )}
+                        <span className="font-semibold text-xs text-[var(--text-primary)] truncate" title={userItem.fullName}>
+                          {userItem.fullName || 'Chưa cập nhật'}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-0">
+                      <span className="font-mono-code text-xs text-[var(--text-secondary)] truncate block" title={userItem.email}>
+                        {userItem.email}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center">{getRoleBadge(userItem.role)}</TableCell>
+                    <TableCell className="text-center">{getStatusBadge(userItem.status)}</TableCell>
+                    <TableCell className="font-mono-code text-xs text-[var(--text-muted)] text-center">
+                      {userItem.createdAt ? new Date(userItem.createdAt).toLocaleDateString('vi-VN') : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => handleViewClick(userItem)}
+                          className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-sky-500 transition-colors cursor-pointer"
+                          title="Xem thông tin"
+                        >
+                          <Eye size={15} />
+                        </button>
+                        <button
+                          onClick={() => handleEditClick(userItem)}
+                          className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-sky-500 transition-colors cursor-pointer"
+                          title="Chỉnh sửa"
+                        >
+                          <Edit size={15} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(userItem.id)}
+                          className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-rose-500 transition-colors cursor-pointer"
+                          title="Xóa"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </Table>
             </div>
 
-            {/* Pagination */}
+            {/* Mobile Responsive Cards Grid (<768px) */}
+            <div className="block md:hidden flex-1 min-h-0 overflow-y-auto divide-y divide-[var(--border-color)]">
+              {processedUsers.map((userItem) => (
+                <div key={userItem.id} className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      {userItem.avatar ? (
+                        <img src={userItem.avatar} alt="" className="w-9 h-9 rounded-lg object-cover border border-[var(--border-color)] shrink-0" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center font-mono-code font-bold text-xs text-sky-500 shrink-0">
+                          {userItem.fullName ? userItem.fullName.charAt(0).toUpperCase() : 'U'}
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-xs font-bold text-[var(--text-primary)]">{userItem.fullName || 'Chưa cập nhật'}</p>
+                        <p className="text-[11px] font-mono-code text-[var(--text-muted)]">{userItem.email}</p>
+                      </div>
+                    </div>
+                    {getRoleBadge(userItem.role)}
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <span className="font-mono-code text-[11px] text-[var(--text-muted)]">#{userItem.id?.slice(-6)}</span>
+                    {getStatusBadge(userItem.status)}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-color)]">
+                    <Button variant="ghost" size="sm" onClick={() => handleViewClick(userItem)}>
+                      <Eye size={14} /> Xem
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => handleEditClick(userItem)}>
+                      <Edit size={14} /> Sửa
+                    </Button>
+                    <Button variant="danger" size="sm" onClick={() => handleDelete(userItem.id)}>
+                      <Trash2 size={14} /> Xóa
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Empty State */}
+            {processedUsers.length === 0 && !isLoading && (
+              <div className="text-center py-16 text-[var(--text-muted)] space-y-2">
+                <UserIcon className="w-10 h-10 mx-auto stroke-1" />
+                <p className="text-xs font-medium">
+                  {language === 'vi' ? 'Không tìm thấy tài khoản người dùng tương ứng.' : 'No matching user accounts found.'}
+                </p>
+              </div>
+            )}
+
+            {/* Pagination Footer */}
             {totalPages > 1 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-2.5 border-t border-[var(--border-color)] gap-3 sm:gap-0">
-                <p className="text-sm text-[var(--text-secondary)] text-center sm:text-left">
-                  Trang {page} / {totalPages}
+              <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3 border-t border-[var(--border-color)] gap-3 bg-[var(--bg-tertiary)]/30">
+                <p className="text-xs font-mono-code text-[var(--text-muted)]">
+                  {language === 'vi' ? 'Trang' : 'Page'} {page} / {totalPages} ({language === 'vi' ? 'Tổng' : 'Total'} {absoluteTotal} {language === 'vi' ? 'bản ghi' : 'records'})
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
@@ -424,7 +473,7 @@ export default function UsersPage() {
                     disabled={page <= 1}
                     onClick={() => handlePageChange(page - 1)}
                   >
-                    Trước
+                    {language === 'vi' ? 'Trang trước' : 'Previous'}
                   </Button>
                   <Button
                     variant="secondary"
@@ -432,7 +481,7 @@ export default function UsersPage() {
                     disabled={page >= totalPages}
                     onClick={() => handlePageChange(page + 1)}
                   >
-                    Sau
+                    {language === 'vi' ? 'Trang sau' : 'Next'}
                   </Button>
                 </div>
               </div>
@@ -441,7 +490,7 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* User Form Modal */}
+      {/* Modals */}
       <UserFormModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
@@ -462,7 +511,6 @@ export default function UsersPage() {
         user={viewedUser}
       />
 
-      {/* Confirm Modal */}
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         title={confirmModal.title}

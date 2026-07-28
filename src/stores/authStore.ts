@@ -30,7 +30,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   error: null,
 
   setUser: (user) =>
-    set({ user, isAuthenticated: !!user }),
+    set({ user, isAuthenticated: !!user, isInitialized: true }),
 
   setLoading: (isLoading) => set({ isLoading }),
 
@@ -42,10 +42,14 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await authService.login({ email, password });
-      set({ user: response.user, isAuthenticated: true, isLoading: false });
+      let userObj = response?.user;
+      if (!userObj) {
+        userObj = await authService.getCurrentUser();
+      }
+      set({ user: userObj, isAuthenticated: true, isLoading: false, isInitialized: true });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Login failed';
-      set({ error: message, isLoading: false });
+      set({ error: message, isLoading: false, isInitialized: true });
       throw error;
     }
   },
@@ -55,21 +59,24 @@ export const useAuthStore = create<AuthStore>((set) => ({
     try {
       await authService.logout();
     } finally {
-      set({ user: null, isAuthenticated: false, isLoading: false });
+      localStorage.removeItem('accessToken');
+      set({ user: null, isAuthenticated: false, isLoading: false, isInitialized: true });
     }
   },
 
   checkAuth: async () => {
-    // Skip if already initialized
     const state = useAuthStore.getState();
     if (state.isInitialized && state.isAuthenticated) return;
 
     set({ isLoading: true });
     try {
       const user = await authService.getCurrentUser();
-      set({ user, isAuthenticated: true, isLoading: false, isInitialized: true });
+      if (user && user.role) {
+        set({ user, isAuthenticated: true, isLoading: false, isInitialized: true });
+      } else {
+        set({ user: null, isAuthenticated: false, isLoading: false, isInitialized: true });
+      }
     } catch {
-      // Clear any invalid tokens
       localStorage.removeItem('accessToken');
       set({ user: null, isAuthenticated: false, isLoading: false, isInitialized: true });
     }
@@ -79,4 +86,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
 // Selector helpers
 export const selectUser = (state: AuthStore) => state.user;
 export const selectIsAuthenticated = (state: AuthStore) => state.isAuthenticated;
-export const selectIsSuperAdmin = (state: AuthStore) => state.user?.role === 'super_admin';
+export const selectIsSuperAdmin = (state: AuthStore) => {
+  const r = state.user?.role ? String(state.user.role).toLowerCase() : '';
+  return r === 'super_admin' || r === 'admin';
+};

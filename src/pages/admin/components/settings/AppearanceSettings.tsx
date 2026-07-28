@@ -1,43 +1,93 @@
-import { Sun, Moon, Monitor } from 'lucide-react';
+import { Sun, Moon, Monitor, Globe } from 'lucide-react';
 import { useSettings } from '../../../../hooks/useSettings';
-import type { ThemeMode, FontSize } from '../../../../hooks/useSettings';
+import { useTranslation } from '../../../../i18n/useTranslation';
+import type { ThemeMode, FontSize, LanguageMode } from '../../../../hooks/useSettings';
 
 export function AppearanceSettings() {
   const { theme, setTheme, fontSize, setFontSize } = useSettings();
+  const { t, language, setLanguage } = useTranslation();
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl">
-      
-      {/* Appearance Section */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
-        <div className="mb-6">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Giao diện</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Tùy chỉnh giao diện và trải nghiệm ứng dụng.</p>
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl">
+
+      {/* Language Section */}
+      <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-5">
+        <div className="flex items-center gap-2.5 mb-5">
+          <Globe className="w-4 h-4 text-sky-500 shrink-0" />
+          <div>
+            <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wide">{t('settings.language')}</h3>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('settings.languageDesc')}</p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           {[
-            { id: 'light', label: 'Sáng', desc: 'Luôn sáng', icon: Sun },
-            { id: 'dark', label: 'Tối', desc: 'Luôn tối', icon: Moon },
-            { id: 'system', label: 'Theo hệ thống', desc: 'Đồng bộ với thiết bị', icon: Monitor }
-          ].map(mode => {
+            { id: 'vi' as LanguageMode, flag: '🇻🇳', label: 'Tiếng Việt', desc: 'Vietnamese' },
+            { id: 'en' as LanguageMode, flag: '🇺🇸', label: 'English', desc: 'Tiếng Anh' },
+          ].map((lang) => {
+            const isSelected = language === lang.id;
+            return (
+              <button
+                key={lang.id}
+                onClick={() => setLanguage(lang.id)}
+                className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer text-left ${
+                  isSelected
+                    ? 'border-sky-500 bg-sky-500/5 dark:bg-sky-500/10'
+                    : 'border-[var(--border-color)] hover:border-sky-300 hover:bg-[var(--bg-hover)]'
+                }`}
+              >
+                <span className="text-2xl shrink-0">{lang.flag}</span>
+                <div>
+                  <p className={`text-sm font-bold ${isSelected ? 'text-sky-600 dark:text-sky-400' : 'text-[var(--text-primary)]'}`}>
+                    {lang.label}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${isSelected ? 'text-sky-500' : 'text-[var(--text-muted)]'}`}>
+                    {lang.desc}
+                  </p>
+                </div>
+                {isSelected && (
+                  <div className="ml-auto w-5 h-5 rounded-full bg-sky-500 flex items-center justify-center shrink-0">
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Appearance Section */}
+      <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-5">
+        <div className="mb-5">
+          <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wide">{t('settings.appearance')}</h3>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('settings.appearanceDesc')}</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {[
+            { id: 'light', labelKey: 'settings.light' as const, desc: language === 'vi' ? 'Luôn sáng' : 'Always light', icon: Sun },
+            { id: 'dark', labelKey: 'settings.dark' as const, desc: language === 'vi' ? 'Luôn tối' : 'Always dark', icon: Moon },
+            { id: 'system', labelKey: 'settings.system' as const, desc: language === 'vi' ? 'Đồng bộ với thiết bị' : 'Sync with device', icon: Monitor },
+          ].map((mode) => {
             const Icon = mode.icon;
             const isSelected = theme === mode.id;
             return (
               <button
                 key={mode.id}
                 onClick={() => setTheme(mode.id as ThemeMode)}
-                className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${
-                  isSelected 
-                    ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' 
-                    : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-blue-300 hover:bg-gray-50 dark:hover:bg-gray-750'
+                className={`flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all cursor-pointer ${
+                  isSelected
+                    ? 'border-sky-500 bg-sky-500/5 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400'
+                    : 'border-[var(--border-color)] text-[var(--text-secondary)] hover:border-sky-300 hover:bg-[var(--bg-hover)]'
                 }`}
               >
-                <Icon className={`w-6 h-6 mb-3 ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'}`} />
-                <span className={`text-sm font-medium ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-200'}`}>
-                  {mode.label}
+                <Icon className={`w-5 h-5 mb-2.5 ${isSelected ? 'text-sky-600 dark:text-sky-400' : 'text-[var(--text-muted)]'}`} />
+                <span className={`text-xs font-bold ${isSelected ? 'text-sky-600 dark:text-sky-400' : 'text-[var(--text-primary)]'}`}>
+                  {t(mode.labelKey)}
                 </span>
-                <span className={`text-xs mt-1 ${isSelected ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400'}`}>
+                <span className={`text-[11px] mt-0.5 ${isSelected ? 'text-sky-500' : 'text-[var(--text-muted)]'}`}>
                   {mode.desc}
                 </span>
               </button>
@@ -47,37 +97,37 @@ export function AppearanceSettings() {
       </div>
 
       {/* Text Size Section */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
-        <div className="mb-6">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Kích thước chữ</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Điều chỉnh độ lớn của văn bản trên toàn hệ thống.</p>
+      <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-5">
+        <div className="mb-5">
+          <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wide">{t('settings.textSize')}</h3>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('settings.textSizeDesc')}</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { id: 'small', label: 'Nhỏ', desc: 'Hiển thị gọn gàng', sizeClass: 'text-xs' },
-            { id: 'medium', label: 'Mặc định', desc: 'Kích thước chuẩn', sizeClass: 'text-sm' },
-            { id: 'large', label: 'Lớn', desc: 'Dễ đọc hơn', sizeClass: 'text-base' },
-            { id: 'xlarge', label: 'Rất lớn', desc: 'Kích thước tối đa', sizeClass: 'text-lg' }
-          ].map(size => {
+            { id: 'small', label: language === 'vi' ? 'Nhỏ' : 'Small', desc: language === 'vi' ? 'Gọn gàng' : 'Compact', sizeClass: 'text-xs' },
+            { id: 'medium', label: language === 'vi' ? 'Mặc định' : 'Default', desc: language === 'vi' ? 'Tiêu chuẩn' : 'Standard', sizeClass: 'text-sm' },
+            { id: 'large', label: language === 'vi' ? 'Lớn' : 'Large', desc: language === 'vi' ? 'Dễ đọc' : 'Readable', sizeClass: 'text-base' },
+            { id: 'xlarge', label: language === 'vi' ? 'Rất lớn' : 'Extra Large', desc: language === 'vi' ? 'Tối đa' : 'Maximum', sizeClass: 'text-lg' },
+          ].map((size) => {
             const isSelected = fontSize === size.id;
             return (
               <button
                 key={size.id}
                 onClick={() => setFontSize(size.id as FontSize)}
-                className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${
-                  isSelected 
-                    ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' 
-                    : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-blue-300 hover:bg-gray-50 dark:hover:bg-gray-750'
+                className={`flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all cursor-pointer ${
+                  isSelected
+                    ? 'border-sky-500 bg-sky-500/5 dark:bg-sky-500/10'
+                    : 'border-[var(--border-color)] hover:border-sky-300 hover:bg-[var(--bg-hover)]'
                 }`}
               >
-                <div className={`font-bold mb-3 ${size.sizeClass} ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'}`}>
+                <div className={`font-extrabold mb-2 ${size.sizeClass} ${isSelected ? 'text-sky-600 dark:text-sky-400' : 'text-[var(--text-muted)]'}`}>
                   A
                 </div>
-                <span className={`text-sm font-medium ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-200'}`}>
+                <span className={`text-xs font-bold ${isSelected ? 'text-sky-600 dark:text-sky-400' : 'text-[var(--text-primary)]'}`}>
                   {size.label}
                 </span>
-                <span className={`text-xs mt-1 ${isSelected ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400'}`}>
+                <span className={`text-[11px] mt-0.5 ${isSelected ? 'text-sky-500' : 'text-[var(--text-muted)]'}`}>
                   {size.desc}
                 </span>
               </button>

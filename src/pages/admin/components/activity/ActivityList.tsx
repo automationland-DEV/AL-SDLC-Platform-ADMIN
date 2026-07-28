@@ -3,22 +3,23 @@ import { LogIn, LogOut, AlertTriangle, Info, Shield, Clock, User as UserIcon, Ma
 import { Badge, Button } from '../../../../components/ui';
 import { useActivityStore } from '../../../../stores';
 import { useActivityLogsQuery } from '../../../../hooks/queries';
+import { useTranslation } from '../../../../i18n/useTranslation';
 import type { AuditLogQueryParams } from '../../../../services/auditService';
 
-const EVENT_LABELS: Record<string, string> = {
-  LOGIN_SUCCESS: 'Đăng nhập thành công',
-  LOGIN_FAILED: 'Đăng nhập thất bại',
-  LOGOUT: 'Đăng xuất',
-  REGISTER_SUCCESS: 'Đăng ký thành công',
-  REGISTER_FAILED: 'Đăng ký thất bại',
-  REFRESH_SUCCESS: 'Làm mới token thành công',
-  REFRESH_FAILED: 'Làm mới token thất bại',
-  TOKEN_FAMILY_REVOKED: 'Token bị thu hồi',
-  UNAUTHORIZED_ACCESS: 'Truy cập trái phép',
-  TASK_VIEWED: 'Xem task',
-  TASK_CREATE_SUCCESS: 'Tạo task thành công',
-  TASK_UPDATE_SUCCESS: 'Cập nhật task thành công',
-  TASK_DELETE_SUCCESS: 'Xóa task thành công',
+const EVENT_LABELS: Record<string, { vi: string; en: string }> = {
+  LOGIN_SUCCESS: { vi: 'Đăng nhập thành công', en: 'Login success' },
+  LOGIN_FAILED: { vi: 'Đăng nhập thất bại', en: 'Login failed' },
+  LOGOUT: { vi: 'Đăng xuất', en: 'Logout' },
+  REGISTER_SUCCESS: { vi: 'Đăng ký thành công', en: 'Registration success' },
+  REGISTER_FAILED: { vi: 'Đăng ký thất bại', en: 'Registration failed' },
+  REFRESH_SUCCESS: { vi: 'Làm mới token thành công', en: 'Token refreshed successfully' },
+  REFRESH_FAILED: { vi: 'Làm mới token thất bại', en: 'Token refresh failed' },
+  TOKEN_FAMILY_REVOKED: { vi: 'Token bị thu hồi', en: 'Token family revoked' },
+  UNAUTHORIZED_ACCESS: { vi: 'Truy cập trái phép', en: 'Unauthorized access' },
+  TASK_VIEWED: { vi: 'Xem task', en: 'Task viewed' },
+  TASK_CREATE_SUCCESS: { vi: 'Tạo task thành công', en: 'Task created successfully' },
+  TASK_UPDATE_SUCCESS: { vi: 'Cập nhật task thành công', en: 'Task updated successfully' },
+  TASK_DELETE_SUCCESS: { vi: 'Xóa task thành công', en: 'Task deleted successfully' },
 };
 
 const SEVERITY_CONFIG = {
@@ -34,6 +35,7 @@ interface ActivityListProps {
 export function ActivityList({ selectedUserId }: ActivityListProps) {
   const { filters } = useActivityStore();
   const [page, setPage] = useState(1);
+  const { language } = useTranslation();
 
   // Build query params from store filters + page
   const queryParams: AuditLogQueryParams = { page, limit: 20 };
@@ -55,7 +57,7 @@ export function ActivityList({ selectedUserId }: ActivityListProps) {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleString('vi-VN', {
+    return date.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -65,17 +67,17 @@ export function ActivityList({ selectedUserId }: ActivityListProps) {
   };
 
   return (
-    <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--border-color)] flex flex-col flex-1 min-h-0 overflow-hidden">
+    <div className="bg-[var(--bg-card)] rounded-xl shadow-sm border border-[var(--border-color)] flex flex-col flex-1 min-h-0 overflow-hidden">
       <div className="px-6 py-4 border-b border-[var(--border-color)]">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-[var(--text-primary)]">
-            Lịch sử hoạt động
+            {language === 'vi' ? 'Lịch sử hoạt động' : 'Activity History'}
             <span className="ml-2 text-sm font-normal text-[var(--text-secondary)]">
-              ({total.toLocaleString()} sự kiện)
+              ({total.toLocaleString()} {language === 'vi' ? 'sự kiện' : 'events'})
             </span>
           </h3>
           <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-            <span>Trang {page} / {totalPages || 1}</span>
+            <span>{language === 'vi' ? 'Trang' : 'Page'} {page} / {totalPages || 1}</span>
           </div>
         </div>
       </div>
@@ -85,22 +87,28 @@ export function ActivityList({ selectedUserId }: ActivityListProps) {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-12 space-y-4">
           <RefreshCw className="w-6 h-6 animate-spin text-primary-600" />
-          <span className="text-sm text-[var(--text-secondary)]">Đang tải dữ liệu...</span>
+          <span className="text-sm text-[var(--text-secondary)]">
+            {language === 'vi' ? 'Đang tải dữ liệu...' : 'Loading data...'}
+          </span>
         </div>
       ) : logs.length === 0 ? (
         <div className="text-center py-16">
           <Activity className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-4" />
           <p className="text-[var(--text-secondary)]">
-            {selectedUserId === 'all' ? 'Không có hoạt động nào được ghi nhận' : 'Người dùng này chưa có hoạt động nào'}
+            {selectedUserId === 'all' 
+              ? (language === 'vi' ? 'Không có hoạt động nào được ghi nhận' : 'No activities recorded') 
+              : (language === 'vi' ? 'Người dùng này chưa có hoạt động nào' : 'This user has no activities')}
           </p>
-          <p className="text-sm text-[var(--text-muted)] mt-1">Thử thay đổi bộ lọc hoặc quay lại sau</p>
+          <p className="text-sm text-[var(--text-muted)] mt-1">
+            {language === 'vi' ? 'Thử thay đổi bộ lọc hoặc quay lại sau' : 'Try changing filters or check back later'}
+          </p>
         </div>
       ) : (
         <div className="divide-y divide-[var(--border-color)]">
           {logs.map((log) => {
             const severity = SEVERITY_CONFIG[log.severity] || SEVERITY_CONFIG['INFO'];
             const SeverityIcon = severity.icon;
-            const eventLabel = EVENT_LABELS[log.type] || log.type;
+            const eventLabel = EVENT_LABELS[log.type] ? EVENT_LABELS[log.type][language] : log.type;
             const isAuthEvent = log.type.includes('LOGIN') || log.type.includes('LOGOUT') || log.type.includes('REGISTER');
 
             return (
@@ -191,7 +199,7 @@ export function ActivityList({ selectedUserId }: ActivityListProps) {
               disabled={page <= 1 || isLoading}
               onClick={() => handlePageChange(page - 1)}
             >
-              Trước
+              {language === 'vi' ? 'Trước' : 'Previous'}
             </Button>
             <div className="flex items-center gap-1">
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -227,7 +235,7 @@ export function ActivityList({ selectedUserId }: ActivityListProps) {
               disabled={page >= totalPages || isLoading}
               onClick={() => handlePageChange(page + 1)}
             >
-              Sau
+              {language === 'vi' ? 'Sau' : 'Next'}
             </Button>
           </div>
         </div>

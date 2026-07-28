@@ -1,5 +1,6 @@
 import { Activity, Clock, AlertTriangle, Info } from 'lucide-react';
 import { useActivityStatsQuery, useActivityLogsQuery } from '../../../../hooks/queries';
+import { useTranslation } from '../../../../i18n/useTranslation';
 
 interface ActivityStatsProps {
   selectedUserId: string;
@@ -7,6 +8,7 @@ interface ActivityStatsProps {
 
 export function ActivityStats({ selectedUserId }: ActivityStatsProps) {
   const { data: stats } = useActivityStatsQuery();
+  const { language } = useTranslation();
   // For user-specific view: get total from logs query
   const { data: logsData } = useActivityLogsQuery(
     selectedUserId !== 'all' ? { userId: selectedUserId, page: 1, limit: 1 } : { page: 1, limit: 1 }
@@ -17,7 +19,7 @@ export function ActivityStats({ selectedUserId }: ActivityStatsProps) {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleString('vi-VN', {
+    return date.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -35,7 +37,7 @@ export function ActivityStats({ selectedUserId }: ActivityStatsProps) {
               <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-xs text-[var(--text-secondary)]">Tổng sự kiện</p>
+              <p className="text-xs text-[var(--text-secondary)]">{language === 'vi' ? 'Tổng sự kiện' : 'Total events'}</p>
               <p className="text-base font-bold text-[var(--text-primary)]">{stats.total.toLocaleString()}</p>
             </div>
           </div>
@@ -46,7 +48,7 @@ export function ActivityStats({ selectedUserId }: ActivityStatsProps) {
               <Clock className="w-4 h-4 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-xs text-[var(--text-secondary)]">24 giờ qua</p>
+              <p className="text-xs text-[var(--text-secondary)]">{language === 'vi' ? '24 giờ qua' : 'Last 24 hours'}</p>
               <p className="text-base font-bold text-[var(--text-primary)]">{stats.recentCount}</p>
             </div>
           </div>
@@ -57,7 +59,7 @@ export function ActivityStats({ selectedUserId }: ActivityStatsProps) {
               <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
             </div>
             <div>
-              <p className="text-xs text-[var(--text-secondary)]">Cảnh báo</p>
+              <p className="text-xs text-[var(--text-secondary)]">{language === 'vi' ? 'Cảnh báo' : 'Warnings'}</p>
               <p className="text-base font-bold text-[var(--text-primary)]">
                 {(stats.bySeverity['WARN'] || 0) + (stats.bySeverity['CRITICAL'] || 0)}
               </p>
@@ -70,7 +72,7 @@ export function ActivityStats({ selectedUserId }: ActivityStatsProps) {
               <Info className="w-4 h-4 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <p className="text-xs text-[var(--text-secondary)]">Loại sự kiện</p>
+              <p className="text-xs text-[var(--text-secondary)]">{language === 'vi' ? 'Loại sự kiện' : 'Event types'}</p>
               <p className="text-base font-bold text-[var(--text-primary)]">{Object.keys(stats.byType).length}</p>
             </div>
           </div>
@@ -88,7 +90,7 @@ export function ActivityStats({ selectedUserId }: ActivityStatsProps) {
               <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-xs text-[var(--text-secondary)]">Sự kiện đã lọc</p>
+              <p className="text-xs text-[var(--text-secondary)]">{language === 'vi' ? 'Sự kiện đã lọc' : 'Filtered events'}</p>
               <p className="text-base font-bold text-[var(--text-primary)]">{total.toLocaleString()}</p>
             </div>
           </div>
@@ -99,9 +101,9 @@ export function ActivityStats({ selectedUserId }: ActivityStatsProps) {
               <Clock className="w-4 h-4 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-xs text-[var(--text-secondary)]">Hoạt động mới nhất</p>
+              <p className="text-xs text-[var(--text-secondary)]">{language === 'vi' ? 'Hoạt động mới nhất' : 'Latest activity'}</p>
               <p className="text-sm font-bold text-[var(--text-primary)] mt-1">
-                {lastActivityDate ? formatDate(lastActivityDate) : 'Chưa có'}
+                {lastActivityDate ? formatDate(lastActivityDate) : (language === 'vi' ? 'Chưa có' : 'None')}
               </p>
             </div>
           </div>

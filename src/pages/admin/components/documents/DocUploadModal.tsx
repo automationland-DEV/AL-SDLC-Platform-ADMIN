@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Upload, File, X, UploadCloud } from 'lucide-react';
 import { Button, SearchableSelect } from '../../../../components/ui';
+import { useTranslation } from '../../../../i18n/useTranslation';
 import type { Workspace } from '../../../../types';
 
 interface DocUploadModalProps {
@@ -19,6 +20,7 @@ export function DocUploadModal({ isOpen, onClose, onUpload, workspaces }: DocUpl
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { t, language } = useTranslation();
 
   useEffect(() => {
     if (!isOpen) {
@@ -35,7 +37,7 @@ export function DocUploadModal({ isOpen, onClose, onUpload, workspaces }: DocUpl
 
   const handleUpload = async () => {
     if (!selectedFile) {
-      toast.error('Vui lòng chọn file cần upload');
+      toast.error(language === 'vi' ? 'Vui lòng chọn file cần upload' : 'Please select a file to upload');
       return;
     }
     setIsSaving(true);
@@ -78,7 +80,7 @@ export function DocUploadModal({ isOpen, onClose, onUpload, workspaces }: DocUpl
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300">
-      <div className="w-full max-w-3xl shadow-2xl relative flex flex-col border border-[var(--border-color)] bg-[var(--card-bg)] rounded-2xl transform transition-all">
+      <div className="w-full max-w-3xl shadow-2xl relative flex flex-col border border-[var(--border-color)] bg-[var(--bg-card)] rounded-2xl transform transition-all">
         {/* Header */}
         <div className="p-5 rounded-t-2xl border-b border-[var(--border-color)]">
           <div className="flex items-center gap-3">
@@ -86,8 +88,12 @@ export function DocUploadModal({ isOpen, onClose, onUpload, workspaces }: DocUpl
               <Upload className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-[var(--text-primary)]">Tải lên Tài liệu</h3>
-              <p className="text-sm text-[var(--text-secondary)] mt-0.5">Thêm tài liệu mới vào hệ thống</p>
+              <h3 className="text-xl font-bold text-[var(--text-primary)]">
+                {language === 'vi' ? 'Tải lên Tài liệu' : 'Upload Document'}
+              </h3>
+              <p className="text-sm text-[var(--text-secondary)] mt-0.5">
+                {language === 'vi' ? 'Thêm tài liệu mới vào hệ thống' : 'Add new documents to system'}
+              </p>
             </div>
           </div>
         </div>
@@ -146,7 +152,7 @@ export function DocUploadModal({ isOpen, onClose, onUpload, workspaces }: DocUpl
                   }}
                   className="mt-4 px-4 py-1.5 rounded-full text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors flex items-center gap-1 z-10 relative cursor-pointer shadow-sm"
                 >
-                  <X className="w-3 h-3" /> Gỡ bỏ file
+                  <X className="w-3 h-3" /> {language === 'vi' ? 'Gỡ bỏ file' : 'Remove file'}
                 </button>
               </div>
             ) : (
@@ -155,13 +161,13 @@ export function DocUploadModal({ isOpen, onClose, onUpload, workspaces }: DocUpl
                   <UploadCloud className="w-8 h-8" />
                 </div>
                 <p className="text-base font-semibold text-[var(--text-primary)]">
-                  Click hoặc kéo thả file vào đây
+                  {language === 'vi' ? 'Click hoặc kéo thả file vào đây' : 'Click or drag & drop file here'}
                 </p>
                 <p className="text-sm text-[var(--text-secondary)] mt-2">
-                  Hỗ trợ Word, Excel, PDF, Hình ảnh...
+                  {language === 'vi' ? 'Hỗ trợ Word, Excel, PDF, Hình ảnh...' : 'Supports Word, Excel, PDF, Images...'}
                 </p>
                 <p className="text-xs text-[var(--text-muted)] mt-1">
-                  Kích thước tối đa 50MB
+                  {language === 'vi' ? 'Kích thước tối đa 50MB' : 'Max size 50MB'}
                 </p>
               </div>
             )}
@@ -171,11 +177,11 @@ export function DocUploadModal({ isOpen, onClose, onUpload, workspaces }: DocUpl
             {/* Display Name Input */}
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-[var(--text-primary)]">
-                Tên hiển thị <span className="text-[var(--text-muted)] font-normal">(Tùy chọn)</span>
+                {language === 'vi' ? 'Tên hiển thị' : 'Display Name'} <span className="text-[var(--text-muted)] font-normal">({language === 'vi' ? 'Tùy chọn' : 'Optional'})</span>
               </label>
               <input
                 type="text"
-                placeholder="Ví dụ: Báo cáo tháng 7..."
+                placeholder={language === 'vi' ? 'Ví dụ: Báo cáo tháng 7...' : 'e.g. July Report...'}
                 value={docName}
                 onChange={(e) => setDocName(e.target.value)}
                 className="w-full px-4 py-2.5 border border-[var(--border-color)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 bg-[var(--bg-tertiary)] hover:bg-[var(--input-bg)] text-[var(--text-primary)] transition-all shadow-sm"
@@ -185,14 +191,14 @@ export function DocUploadModal({ isOpen, onClose, onUpload, workspaces }: DocUpl
             {/* Workspace Select */}
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-[var(--text-primary)]">
-                Workspace liên kết <span className="text-[var(--text-muted)] font-normal">(Tùy chọn)</span>
+                {language === 'vi' ? 'Workspace liên kết' : 'Linked Workspace'} <span className="text-[var(--text-muted)] font-normal">({language === 'vi' ? 'Tùy chọn' : 'Optional'})</span>
               </label>
             <div className="rounded-xl shadow-sm relative">
               <SearchableSelect
                 options={workspaces.map(ws => ({ value: ws._id, label: ws.name }))}
                 value={selectedWorkspaceId}
                 onChange={setSelectedWorkspaceId}
-                placeholder="Chọn Workspace..."
+                placeholder={language === 'vi' ? 'Chọn Workspace...' : 'Select Workspace...'}
               />
             </div>
             </div>
@@ -201,10 +207,10 @@ export function DocUploadModal({ isOpen, onClose, onUpload, workspaces }: DocUpl
 
         <div className="p-5 border-t border-[var(--border-color)] flex justify-end gap-3 rounded-b-2xl relative z-10">
           <Button type="button" variant="secondary" onClick={onClose} disabled={isSaving} className="px-6 rounded-xl">
-            Hủy
+            {t('common.cancel')}
           </Button>
           <Button type="button" onClick={handleUpload} disabled={isSaving || !selectedFile} className="px-8 rounded-xl shadow-md hover:shadow-lg transition-shadow bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600">
-            {isSaving ? 'Đang tải lên...' : 'Tải lên ngay'}
+            {isSaving ? (language === 'vi' ? 'Đang tải lên...' : 'Uploading...') : (language === 'vi' ? 'Tải lên ngay' : 'Upload Now')}
           </Button>
         </div>
       </div>
