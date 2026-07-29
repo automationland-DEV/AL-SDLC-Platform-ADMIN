@@ -111,8 +111,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-xl p-6 md:p-8 relative z-10">
 
         {/* Official Brand & Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center gap-3 mb-3">
+        <div className="flex flex-col items-center justify-center gap-3 mb-8">
+          <div className="flex items-center justify-center gap-3">
             <img src="/logo.png" alt="SDLC Logo" className="h-11 w-11 rounded-xl object-contain shrink-0" />
             <div className="flex flex-col text-left">
               <span className="font-mono-code text-2xl font-black tracking-tight text-[var(--text-primary)] leading-none">
@@ -121,7 +121,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 text-xs font-mono-code">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 text-xs font-mono-code whitespace-nowrap">
             <ShieldCheck size={14} />
             Hệ thống Quản trị
           </div>

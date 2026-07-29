@@ -7,3 +7,4 @@ export { SearchableSelect } from './SearchableSelect';
 export { Select } from './Select';
 export { DatePicker } from './DatePicker';
 export { ConfirmModal } from './ConfirmModal';
+export { PageHeader } from './PageHeader';

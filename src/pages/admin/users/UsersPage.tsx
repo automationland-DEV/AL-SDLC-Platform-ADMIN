@@ -1,20 +1,14 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Edit, Trash2, Eye, Upload, ArrowUpDown, ChevronUp, ChevronDown, User as UserIcon } from 'lucide-react';
-import { useTranslation } from '../../i18n/useTranslation';
+import { useTranslation } from '../../../i18n/useTranslation';
 import toast from 'react-hot-toast';
-import { Button, Badge, Table, TableRow, TableCell, ConfirmModal, Select } from '../../components/ui';
-import type { User, UserRole, UserStatus } from '../../types';
-import { UserFormModal } from './components/users/UserFormModal';
-import { UserViewModal } from './components/users/UserViewModal';
-import { UserImportModal } from './components/users/UserImportModal';
+import { Button, Badge, Table, TableRow, TableCell, ConfirmModal, Select } from '../../../components/ui';
+import type { User, UserRole, UserStatus } from '../../../types';
 import {
   useUsersQuery,
-  useCreateUserMutation,
   useDeleteUserMutation,
-  useUpdateUserRoleMutation,
-  useUpdateUserStatusMutation,
-  useImportUsersCsvMutation,
-} from '../../hooks/queries';
+} from '../../../hooks/queries';
 
 const getErrorMessage = (error: unknown, defaultMsg: string) => {
   try {
@@ -37,6 +31,7 @@ const getErrorMessage = (error: unknown, defaultMsg: string) => {
 };
 
 export default function UsersPage() {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -44,11 +39,6 @@ export default function UsersPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'createdAt', direction: 'asc' | 'desc' } | null>(null);
 
-  const [showModal, setShowModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [viewedUser, setViewedUser] = useState<User | null>(null);
-  const [showImportModal, setShowImportModal] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -70,11 +60,7 @@ export default function UsersPage() {
     status: filterStatus !== 'all' ? filterStatus : undefined,
   });
 
-  const createUserMutation = useCreateUserMutation();
   const deleteUserMutation = useDeleteUserMutation();
-  const updateRoleMutation = useUpdateUserRoleMutation();
-  const updateStatusMutation = useUpdateUserStatusMutation();
-  const importCsvMutation = useImportUsersCsvMutation();
 
   const parseUsersResponse = (raw: unknown) => {
     let usersList: User[] = [];
@@ -120,9 +106,8 @@ export default function UsersPage() {
     return () => clearTimeout(id);
   };
 
-  const handleViewClick = async (user: User) => {
-    setViewedUser(user);
-    setShowViewModal(true);
+  const handleViewClick = (user: User) => {
+    navigate(`/users/${user.id}`);
   };
 
   const handlePageChange = (newPage: number) => {
@@ -130,37 +115,7 @@ export default function UsersPage() {
   };
 
   const handleEditClick = (user: User) => {
-    setSelectedUser(user);
-    setShowModal(true);
-  };
-
-  const handleSaveChanges = async (userId: string, role: string, status: string) => {
-    if (!selectedUser) return;
-    try {
-      if (role !== selectedUser.role) {
-        await updateRoleMutation.mutateAsync({ id: userId, role });
-      }
-      if (status !== selectedUser.status) {
-        await updateStatusMutation.mutateAsync({ id: userId, status });
-      }
-      setSelectedUser(null);
-      toast.success('Cập nhật người dùng thành công');
-    } catch (error) {
-      console.error('Failed to update user:', error);
-      toast.error(getErrorMessage(error, 'Cập nhật người dùng thất bại'));
-      throw error;
-    }
-  };
-
-  const handleCreateUser = async (userData: { email: string; password?: string; fullName?: string; role: string; status: string }) => {
-    try {
-      await createUserMutation.mutateAsync(userData as Partial<User>);
-      toast.success('Tạo người dùng thành công');
-    } catch (error) {
-      console.error('Failed to create user:', error);
-      toast.error(getErrorMessage(error, 'Tạo người dùng thất bại'));
-      throw error;
-    }
+    navigate(`/users/${user.id}/edit`);
   };
 
   const handleDelete = (id: string) => {
@@ -183,16 +138,6 @@ export default function UsersPage() {
     });
   };
 
-  const handleImport = async (file: File) => {
-    try {
-      const result = await importCsvMutation.mutateAsync(file);
-      return result;
-    } catch (error) {
-      console.error('Failed to import users:', error);
-      throw error;
-    }
-  };
-
   const getStatusBadge = (status: UserStatus) => {
     const variants: Record<UserStatus, 'success' | 'danger' | 'warning' | 'default'> = {
       active: 'success',
@@ -207,7 +152,7 @@ export default function UsersPage() {
       suspended: language === 'vi' ? 'ĐÌNH CHỈ' : 'SUSPENDED',
     };
     return (
-      <Badge variant={variants[status] || 'default'} dot mono>
+      <Badge variant={variants[status] || 'default'} mono>
         {labels[status] || status.toUpperCase()}
       </Badge>
     );
@@ -271,11 +216,11 @@ export default function UsersPage() {
           <p className="text-xs text-[var(--text-muted)] font-mono-code mt-0.5">{t('users.subtitle', { count: absoluteTotal })}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <Button variant="secondary" size="sm" onClick={() => setShowImportModal(true)}>
+          <Button variant="secondary" size="sm" onClick={() => navigate('/users/import')}>
             <Upload className="w-4 h-4" />
             {t('users.importCsv')}
           </Button>
-          <Button size="sm" onClick={() => { setSelectedUser(null); setShowModal(true); }}>
+          <Button size="sm" onClick={() => navigate('/users/new')}>
             <Plus className="w-4 h-4" />
             {t('users.addUser')}
           </Button>
@@ -490,27 +435,7 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* Modals */}
-      <UserFormModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        selectedUser={selectedUser}
-        onSave={handleSaveChanges}
-        onCreate={handleCreateUser}
-      />
-
-      <UserImportModal
-        isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onImport={handleImport}
-      />
-
-      <UserViewModal
-        isOpen={showViewModal}
-        onClose={() => setShowViewModal(false)}
-        user={viewedUser}
-      />
-
+      {/* Confirm Delete Modal (kept as modal — instant action) */}
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         title={confirmModal.title}

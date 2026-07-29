@@ -222,27 +222,27 @@ export default function ProfilePage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Họ và tên</label>
+              <label className={`block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] ${!isEditingProfile ? 'select-none pointer-events-none' : ''}`}>Họ và tên</label>
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Nhập họ và tên"
                 disabled={!isEditingProfile}
-                className={`w-full px-3.5 py-2 border border-[var(--border-color)] rounded-lg text-xs font-medium focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all ${!isEditingProfile ? 'opacity-60 cursor-not-allowed' : ''}`}
+                className={`w-full px-3.5 py-2 border border-[var(--border-color)] rounded-lg text-xs font-medium focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all ${!isEditingProfile ? 'opacity-60 cursor-not-allowed pointer-events-none select-none' : ''}`}
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Email hệ thống</label>
+              <label className={`block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] ${!isEditingProfile ? 'select-none pointer-events-none' : ''}`}>Email hệ thống</label>
               <input
                 type="email"
                 value={user?.email || ''}
                 disabled
-                className="w-full px-3.5 py-2 border border-[var(--border-color)] rounded-lg text-xs font-mono-code bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed"
+                className="w-full px-3.5 py-2 border border-[var(--border-color)] rounded-lg text-xs font-mono-code bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed pointer-events-none select-none"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Ngày sinh</label>
+              <label className={`block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] ${!isEditingProfile ? 'select-none pointer-events-none' : ''}`}>Ngày sinh</label>
               <DatePicker
                 value={birthday}
                 onChange={(val) => setBirthday(val)}
@@ -251,7 +251,7 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Giới tính</label>
+              <label className={`block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] ${!isEditingProfile ? 'select-none pointer-events-none' : ''}`}>Giới tính</label>
               <Select
                 value={gender}
                 onChange={(val) => setGender(val as 'male' | 'female' | 'other')}
@@ -265,25 +265,25 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Số điện thoại</label>
+              <label className={`block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] ${!isEditingProfile ? 'select-none pointer-events-none' : ''}`}>Số điện thoại</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Nhập số điện thoại"
                 disabled={!isEditingProfile}
-                className={`w-full px-3.5 py-2 border border-[var(--border-color)] rounded-lg text-xs font-mono-code focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all ${!isEditingProfile ? 'opacity-60 cursor-not-allowed' : ''}`}
+                className={`w-full px-3.5 py-2 border border-[var(--border-color)] rounded-lg text-xs font-mono-code focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all ${!isEditingProfile ? 'opacity-60 cursor-not-allowed pointer-events-none select-none' : ''}`}
               />
             </div>
             <div className="space-y-1.5 md:col-span-2">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Địa chỉ liên hệ</label>
+              <label className={`block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] ${!isEditingProfile ? 'select-none pointer-events-none' : ''}`}>Địa chỉ liên hệ</label>
               <input
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Nhập địa chỉ"
                 disabled={!isEditingProfile}
-                className={`w-full px-3.5 py-2 border border-[var(--border-color)] rounded-lg text-xs focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all ${!isEditingProfile ? 'opacity-60 cursor-not-allowed' : ''}`}
+                className={`w-full px-3.5 py-2 border border-[var(--border-color)] rounded-lg text-xs focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all ${!isEditingProfile ? 'opacity-60 cursor-not-allowed pointer-events-none select-none' : ''}`}
               />
             </div>
           </div>

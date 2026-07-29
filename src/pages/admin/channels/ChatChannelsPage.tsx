@@ -1,24 +1,21 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Trash2, Eye, MessageSquare } from 'lucide-react';
-import { useTranslation } from '../../i18n/useTranslation';
+import { useTranslation } from '../../../i18n/useTranslation';
 import toast from 'react-hot-toast';
-import { Button, Badge, Table, TableRow, TableCell, SearchableSelect, ConfirmModal } from '../../components/ui';
-import ChannelViewModal from './components/channels/ChannelViewModal';
-import ChatViewerModal from './components/channels/ChatViewerModal';
+import { Button, Badge, Table, TableRow, TableCell, SearchableSelect, ConfirmModal } from '../../../components/ui';
 import {
   useChannelsQuery,
   useDeleteChannelMutation,
   useWorkspacesQuery,
-} from '../../hooks/queries';
-import type { ChatChannel, Workspace } from '../../types';
+} from '../../../hooks/queries';
+import type { ChatChannel, Workspace } from '../../../types';
 
 export default function ChatChannelsPage() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [workspaceFilter, setWorkspaceFilter] = useState('all');
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showChatModal, setShowChatModal] = useState(false);
-  const [selectedChannel, setSelectedChannel] = useState<ChatChannel | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
@@ -103,13 +100,11 @@ export default function ChatChannelsPage() {
   };
 
   const openViewModal = (channel: ChatChannel) => {
-    setSelectedChannel(channel);
-    setShowViewModal(true);
+    navigate(`/channels/${channel._id}`);
   };
 
   const openChatModal = (channel: ChatChannel) => {
-    setSelectedChannel(channel);
-    setShowChatModal(true);
+    navigate(`/channels/${channel._id}/chat`);
   };
 
   const handleDelete = (id: string) => {
@@ -389,27 +384,13 @@ export default function ChatChannelsPage() {
         )}
       </div>
 
-      {/* Modals */}
-      <ChannelViewModal
-        isOpen={showViewModal}
-        onClose={() => setShowViewModal(false)}
-        channel={selectedChannel}
-        onDelete={handleDelete}
-      />
-      
-      <ChatViewerModal
-        isOpen={showChatModal}
-        onClose={() => setShowChatModal(false)}
-        channel={selectedChannel}
-      />
-
       <ConfirmModal
         isOpen={confirmModal.isOpen}
-        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
-        onConfirm={confirmModal.onConfirm}
         title={confirmModal.title}
         message={confirmModal.message}
         type={confirmModal.type}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

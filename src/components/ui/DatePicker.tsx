@@ -157,10 +157,10 @@ export function DatePicker({ value, onChange, placeholder = 'Select date', class
     <div className={`relative ${className}`} ref={dropdownRef}>
       <div
         className={`flex items-center justify-between w-full px-3 py-2 bg-[var(--input-bg)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-          disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-primary-500'
+          disabled ? 'opacity-60 cursor-not-allowed pointer-events-none select-none' : 'cursor-pointer hover:border-primary-500'
         }`}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        tabIndex={disabled ? -1 : 0}
+        tabIndex={disabled ? undefined : 0}
       >
         <span className={displayValue ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}>
           {displayValue || placeholder}

@@ -42,13 +42,13 @@ export function Select({
     <div className={`relative ${className}`} ref={dropdownRef}>
       {/* Trigger Button */}
       <div
-        className={`flex items-center justify-between w-full px-3.5 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-lg text-sm transition-all duration-180 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 ${
+        className={`flex items-center justify-between w-full px-3.5 py-2 bg-[var(--input-bg)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-lg text-sm transition-all duration-180 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 ${
           disabled
-            ? 'opacity-60 cursor-not-allowed'
+            ? 'opacity-60 cursor-not-allowed pointer-events-none select-none'
             : 'cursor-pointer hover:border-[var(--border-hover)]'
         }`}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        tabIndex={disabled ? -1 : 0}
+        tabIndex={disabled ? undefined : 0}
         onKeyDown={(e) => {
           if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();

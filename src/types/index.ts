@@ -158,3 +158,57 @@ export interface ApiResponse<T> {
   message?: string;
   error?: string;
 }
+
+// Task Types
+export interface TaskUserSummary {
+  id: string;
+  fullName?: string;
+  email?: string;
+  avatar?: string;
+}
+
+export interface TaskLabelSummary {
+  id: string;
+  name: string;
+}
+
+export interface Task {
+  id: string;
+  workspaceId: string;
+  sprintId?: string;
+  boardId?: string;
+  columnId?: string;
+  key: string;
+  title: string;
+  description: string;
+  type: string;
+  status: string;
+  priority: string;
+  rank?: string;
+  version: number;
+  assigneeId?: string;
+  labels?: TaskLabelSummary[];
+  reporterId: string;
+  storyPoints?: number;
+  startDate?: string;
+  dueDate?: string;
+  epicId?: string;
+  isArchived: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
+  archivedByUser?: TaskUserSummary;
+  isDeleted: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  timeLogged?: number;
+  timeEstimated?: number;
+}
+
+export interface TaskListResponse {
+  tasks: Task[];
+  total: number;
+  page: number;
+  limit: number;
+}

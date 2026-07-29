@@ -46,7 +46,7 @@ export function AdminLayout() {
     { path: '/users', labelKey: 'nav.users' as const, icon: Users },
     { path: '/workspaces', labelKey: 'nav.workspaces' as const, icon: Briefcase },
     { path: '/documents', labelKey: 'nav.documents' as const, icon: FileText },
-    { path: '/chat-channels', labelKey: 'nav.channels' as const, icon: MessageSquare },
+    { path: '/channels', labelKey: 'nav.channels' as const, icon: MessageSquare },
     { path: '/activity', labelKey: 'nav.activity' as const, icon: Activity },
   ];
 
@@ -61,7 +61,7 @@ export function AdminLayout() {
     }
   };
 
-  const isTablePage = ['/users', '/workspaces', '/documents', '/chat-channels', '/activity'].includes(location.pathname);
+  const isTablePage = ['/users', '/workspaces', '/documents', '/channels', '/activity'].includes(location.pathname);
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
 
   return (

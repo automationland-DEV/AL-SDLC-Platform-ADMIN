@@ -1,25 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Edit, Trash2, Eye, Download, Upload, FileText, FileCode } from 'lucide-react';
-import { useTranslation } from '../../i18n/useTranslation';
+import { useTranslation } from '../../../i18n/useTranslation';
 import toast from 'react-hot-toast';
-import { Button, Badge, Table, TableRow, TableCell, SearchableSelect, ConfirmModal } from '../../components/ui';
-import { documentService } from '../../services';
-import type { Document, Workspace } from '../../types';
+import { Button, Badge, Table, TableRow, TableCell, SearchableSelect, ConfirmModal } from '../../../components/ui';
+import { documentService } from '../../../services';
+import type { Document, Workspace } from '../../../types';
 
-import { DocOnlineModal } from './components/documents/DocOnlineModal';
-import { DocUploadModal } from './components/documents/DocUploadModal';
-import { DocEditModal } from './components/documents/DocEditModal';
-import { DocViewModal } from './components/documents/DocViewModal';
 import {
   useDocumentsQuery,
   useDeleteDocumentMutation,
-  useCreateOnlineDocumentMutation,
-  useUploadDocumentMutation,
-  useUpdateDocumentMutation,
   useWorkspacesQuery,
-} from '../../hooks/queries';
+} from '../../../hooks/queries';
 
 export default function DocumentsPage() {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -33,9 +28,6 @@ export default function DocumentsPage() {
   const { data: workspacesRaw = [] } = useWorkspacesQuery();
 
   const deleteDocumentMutation = useDeleteDocumentMutation();
-  const createOnlineMutation = useCreateOnlineDocumentMutation();
-  const uploadMutation = useUploadDocumentMutation();
-  const updateDocumentMutation = useUpdateDocumentMutation();
 
   const parseDocumentsResponse = (raw: unknown) => {
     let documentsList: Document[] = [];
@@ -79,13 +71,6 @@ export default function DocumentsPage() {
         ? ((workspacesRaw as Record<string, unknown>).data as Workspace[])
         : []);
 
-  const [showOnlineModal, setShowOnlineModal] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
-  const [selectedDocToView, setSelectedDocToView] = useState<Document | null>(null);
-
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -99,59 +84,6 @@ export default function DocumentsPage() {
     onConfirm: () => {},
     type: 'danger'
   });
-
-  const handleCreateOnline = async (name: string, content: string, workspaceId: string) => {
-    try {
-      await createOnlineMutation.mutateAsync({
-        name,
-        content,
-        workspaceIds: workspaceId ? [workspaceId] : [],
-      });
-      setShowOnlineModal(false);
-      toast.success('Tạo tài liệu online thành công');
-    } catch (error) {
-      console.error(error);
-      toast.error('Lỗi khi tạo tài liệu');
-      throw error;
-    }
-  };
-
-  const handleUploadFile = async (file: File, name: string, workspaceId: string) => {
-    try {
-      await uploadMutation.mutateAsync({
-        file,
-        name,
-        workspaceIds: workspaceId ? [workspaceId] : [],
-      });
-      setShowUploadModal(false);
-      toast.success('Upload file thành công');
-    } catch (error) {
-      console.error(error);
-      toast.error('Lỗi khi upload file');
-      throw error;
-    }
-  };
-
-  const handleUpdateDoc = async (name: string, content: string, workspaceId: string) => {
-    if (!selectedDoc) return;
-    try {
-      await updateDocumentMutation.mutateAsync({
-        id: selectedDoc._id,
-        data: {
-          name,
-          content,
-          workspaceIds: workspaceId ? [workspaceId] : [],
-        },
-      });
-      setShowEditModal(false);
-      setSelectedDoc(null);
-      toast.success('Cập nhật tài liệu thành công');
-    } catch (error) {
-      console.error(error);
-      toast.error('Lỗi khi cập nhật tài liệu');
-      throw error;
-    }
-  };
 
   const handleDelete = (id: string) => {
     setConfirmModal({
@@ -209,31 +141,10 @@ export default function DocumentsPage() {
     setPage(1);
   };
 
-  const openViewModal = async (doc: Document) => {
-    if (doc.documentType === 'online' && !doc.content) {
-      try {
-        toast.loading('Đang tải nội dung...', { id: 'load-doc' });
-        const content = await documentService.getContent(doc._id);
-        setSelectedDocToView({ ...doc, content });
-        toast.dismiss('load-doc');
-        setShowViewModal(true);
-      } catch (error) {
-        toast.dismiss('load-doc');
-        toast.error('Lỗi khi tải nội dung tài liệu');
-        console.error(error);
-      }
-    } else {
-      setSelectedDocToView(doc);
-      setShowViewModal(true);
-    }
-  };
-
-  const openOnlineModal = () => setShowOnlineModal(true);
-  const openUploadModal = () => setShowUploadModal(true);
-  const openEditModal = (doc: Document) => {
-    setSelectedDoc(doc);
-    setShowEditModal(true);
-  };
+  const openViewModal = (doc: Document) => navigate(`/documents/${doc._id}`);
+  const openOnlineModal = () => navigate('/documents/new');
+  const openUploadModal = () => navigate('/documents/upload');
+  const openEditModal = (doc: Document) => navigate(`/documents/${doc._id}/edit`);
 
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return '-';
@@ -245,7 +156,7 @@ export default function DocumentsPage() {
   const getTypeBadge = (type?: string) => {
     const isOnline = type === 'online';
     return (
-      <Badge variant={isOnline ? 'info' : 'success'} dot mono>
+      <Badge variant={isOnline ? 'info' : 'success'} mono>
         {isOnline ? 'ONLINE_DOC' : 'UPLOAD_FILE'}
       </Badge>
     );
@@ -387,9 +298,9 @@ export default function DocumentsPage() {
                       {formatFileSize(doc.size)}
                     </TableCell>
                     <TableCell className="max-w-0 text-center">
-                      <div className="flex items-center justify-center gap-1 flex-wrap">
+                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
                         {doc.workspaceIds?.slice(0, 2).map((wsId) => (
-                          <span key={wsId} className="px-2 py-0.5 bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-[var(--text-secondary)] rounded font-mono-code text-[10px] truncate max-w-[90px]" title={getWorkspaceName(wsId)}>
+                          <span key={wsId} className="px-2.5 py-1 bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-[var(--text-secondary)] rounded-md font-mono-code text-xs truncate max-w-[120px]" title={getWorkspaceName(wsId)}>
                             {getWorkspaceName(wsId)}
                           </span>
                         ))}
@@ -514,43 +425,7 @@ export default function DocumentsPage() {
         )}
       </div>
 
-      {/* Modals */}
-      <DocOnlineModal
-        isOpen={showOnlineModal}
-        onClose={() => setShowOnlineModal(false)}
-        onSave={handleCreateOnline}
-        workspaces={workspaces}
-      />
-
-      <DocUploadModal
-        isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
-        onUpload={handleUploadFile}
-        workspaces={workspaces}
-      />
-
-      <DocEditModal
-        isOpen={showEditModal}
-        onClose={() => {
-          setShowEditModal(false);
-          setSelectedDoc(null);
-        }}
-        selectedDoc={selectedDoc}
-        onSave={handleUpdateDoc}
-        workspaces={workspaces}
-      />
-
-      <DocViewModal
-        isOpen={showViewModal}
-        onClose={() => {
-          setShowViewModal(false);
-          setSelectedDocToView(null);
-        }}
-        document={selectedDocToView}
-        onDownload={handleDownload}
-        formatFileSize={formatFileSize}
-        workspaces={workspaces}
-      />
+      {/* Confirm Delete Modal (kept as modal — instant action) */}
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
