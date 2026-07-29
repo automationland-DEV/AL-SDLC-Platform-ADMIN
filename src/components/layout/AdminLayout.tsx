@@ -6,6 +6,7 @@ import {
   Briefcase,
   FileText,
   ChevronLeft,
+  ChevronRight,
   ChevronDown,
   Settings,
   LogOut,
@@ -83,16 +84,16 @@ export function AdminLayout() {
         {/* Official Brand Logo */}
         <div
           className={`h-16 flex items-center ${
-            collapsed ? 'justify-center' : 'justify-between px-4'
+            collapsed ? 'justify-center px-2' : 'justify-between px-4'
           } border-b border-[var(--border-color)] shrink-0`}
         >
           {collapsed ? (
             <button
               onClick={() => setCollapsed(false)}
-              className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] transition-colors flex items-center justify-center group cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-sky-500 transition-all duration-200 flex items-center justify-center group cursor-pointer"
               title="Mở rộng menu"
             >
-              <img src="/logo.png" alt="SDLC Logo" className="h-8 w-8 rounded-lg object-contain group-hover:scale-105 transition-transform" />
+              <ChevronRight className="w-5 h-5 group-hover:scale-110 transition-transform" />
             </button>
           ) : (
             <>
@@ -185,6 +186,11 @@ export function AdminLayout() {
             >
               <Menu className="w-5 h-5" />
             </button>
+            {collapsed && (
+              <Link to="/" className="hidden md:block shrink-0">
+                <img src="/logo.png" alt="SDLC Logo" className="h-8 w-8 rounded-lg object-contain" />
+              </Link>
+            )}
             <div className="flex items-center gap-3">
               <h2 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider truncate">
                 {currentMenuItem ? t(currentMenuItem.labelKey) : 'Admin Console'}
