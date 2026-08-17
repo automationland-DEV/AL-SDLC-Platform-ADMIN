@@ -22,7 +22,7 @@ steps:
         from_secret: vps_password
       script:
         - set -e
-        - cd /opt/sdlc
+        - cd /home/sdlc
         - docker compose build --no-cache frontend-admin
         - docker compose up -d frontend-admin
         - docker image prune -f
