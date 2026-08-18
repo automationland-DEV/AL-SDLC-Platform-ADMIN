@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "echo \"Warning: no test specified\" && exit 0"
   },
   "dependencies": {
     "@ckeditor/ckeditor5-react": "^11.2.0",
