@@ -68,4 +68,14 @@ export const API_ROUTES = {
   }
 };
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5512';
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && envUrl.trim() !== '') return envUrl;
+  
+  if (typeof window !== 'undefined' && window.location.hostname.includes('automationland.vn')) {
+    return 'https://api-sdlc-platform.automationland.vn';
+  }
+  return 'http://localhost:5512';
+};
+
+export const API_BASE_URL = getApiBaseUrl();
