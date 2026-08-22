@@ -12,6 +12,19 @@ import {
   SettingsPage,
   ChatChannelsPage,
   ProfilePage,
+  UserNewPage,
+  UserImportPage,
+  UserDetailPage,
+  UserEditPage,
+  WorkspaceNewPage,
+  WorkspaceDetailPage,
+  WorkspaceEditPage,
+  DocNewPage,
+  DocUploadPage,
+  DocDetailPage,
+  DocEditPage,
+  ChannelDetailPage,
+  ChatViewerPage,
 } from './pages/admin';
 import { useAuthStore } from './stores';
 import { Toaster } from 'react-hot-toast';
@@ -52,9 +65,26 @@ function App() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="users" element={<UsersPage />} />
+          <Route path="users/new" element={<UserNewPage />} />
+          <Route path="users/import" element={<UserImportPage />} />
+          <Route path="users/:id" element={<UserDetailPage />} />
+          <Route path="users/:id/edit" element={<UserEditPage />} />
+          
           <Route path="workspaces" element={<WorkspacesPage />} />
+          <Route path="workspaces/new" element={<WorkspaceNewPage />} />
+          <Route path="workspaces/:id" element={<WorkspaceDetailPage />} />
+          <Route path="workspaces/:id/edit" element={<WorkspaceEditPage />} />
+          
           <Route path="documents" element={<DocumentsPage />} />
-          <Route path="chat-channels" element={<ChatChannelsPage />} />
+          <Route path="documents/new" element={<DocNewPage />} />
+          <Route path="documents/upload" element={<DocUploadPage />} />
+          <Route path="documents/:id" element={<DocDetailPage />} />
+          <Route path="documents/:id/edit" element={<DocEditPage />} />
+          
+          <Route path="channels" element={<ChatChannelsPage />} />
+          <Route path="channels/:id" element={<ChannelDetailPage />} />
+          <Route path="channels/:id/chat" element={<ChatViewerPage />} />
+          <Route path="chat-channels" element={<Navigate to="/channels" replace />} />
           <Route path="activity" element={<ActivityPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="settings" element={<SettingsPage />} />

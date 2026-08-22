@@ -4,23 +4,28 @@ import { create } from "zustand";
 export type ThemeMode = "light" | "dark" | "system";
 export type FontSize = "small" | "medium" | "large" | "xlarge";
 export type AccentColor = "blue" | "indigo" | "emerald" | "rose" | "amber";
+export type LanguageMode = "vi" | "en";
 
 interface SettingsState {
   theme: ThemeMode;
   fontSize: FontSize;
   accentColor: AccentColor;
+  language: LanguageMode;
   setTheme: (theme: ThemeMode) => void;
   setFontSize: (size: FontSize) => void;
   setAccentColor: (color: AccentColor) => void;
+  setLanguage: (lang: LanguageMode) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   theme: (localStorage.getItem("admin-theme") as ThemeMode) || "system",
   fontSize: (localStorage.getItem("admin-font-size") as FontSize) || "medium",
   accentColor: (localStorage.getItem("admin-accent-color") as AccentColor) || "blue",
+  language: (localStorage.getItem("admin-lang") as LanguageMode) || "vi",
   setTheme: (theme) => set({ theme }),
   setFontSize: (fontSize) => set({ fontSize }),
   setAccentColor: (accentColor) => set({ accentColor }),
+  setLanguage: (language) => set({ language }),
 }));
 
 export const useSettings = () => {
@@ -67,6 +72,12 @@ export const useSettings = () => {
     root.classList.add(`theme-${store.accentColor}`);
     localStorage.setItem("admin-accent-color", store.accentColor);
   }, [store.accentColor]);
+
+  // Language Effect
+  useEffect(() => {
+    localStorage.setItem("admin-lang", store.language);
+    document.documentElement.lang = store.language;
+  }, [store.language]);
 
   return store;
 };

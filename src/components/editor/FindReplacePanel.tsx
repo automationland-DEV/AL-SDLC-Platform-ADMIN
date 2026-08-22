@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+ 
 // Component representing the find and replace panel in the document editor.
 "use client";
 

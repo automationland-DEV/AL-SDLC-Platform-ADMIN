@@ -11,8 +11,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!isInitialized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-600 border-t-transparent"></div>
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
+        <div className="animate-spin rounded-full h-10 w-10 border-3 border-sky-500 border-t-transparent"></div>
       </div>
     );
   }
@@ -21,7 +21,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/login" replace />;
   }
 
-  if (user?.role !== 'super_admin') {
+  const roleStr = user?.role ? String(user.role).toLowerCase() : '';
+  const isAllowed = roleStr === 'super_admin' || roleStr === 'admin';
+
+  if (!isAllowed) {
     return <Navigate to="/unauthorized" replace />;
   }
 

@@ -33,7 +33,7 @@ export function Header({ title }: HeaderProps) {
           </div>
           <div className="hidden md:block">
             <p className="text-sm font-medium text-gray-900">Admin</p>
-            <p className="text-xs text-gray-500">admin@al-sdlc.com</p>
+            <p className="text-xs text-gray-500">[EMAIL_ADDRESS]</p>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+ 
 import { useState, useEffect } from 'react';
 import { AlertTriangle, Info, AlertCircle, X, Loader2 } from 'lucide-react';
 import { Button } from './Button';
@@ -42,75 +42,59 @@ export function ConfirmModal({
   const getIcon = () => {
     switch (type) {
       case 'danger':
-        return <AlertCircle className="w-8 h-8 text-red-500" />;
+        return <AlertCircle className="w-6 h-6 text-rose-500" />;
       case 'warning':
-        return <AlertTriangle className="w-8 h-8 text-orange-500" />;
+        return <AlertTriangle className="w-6 h-6 text-amber-500" />;
       case 'info':
-        return <Info className="w-8 h-8 text-blue-500" />;
-    }
-  };
-
-  const getHeaderColors = () => {
-    switch (type) {
-      case 'danger':
-        return 'from-red-50 to-transparent dark:from-red-900/20';
-      case 'warning':
-        return 'from-orange-50 to-transparent dark:from-orange-900/20';
-      case 'info':
-        return 'from-blue-50 to-transparent dark:from-blue-900/20';
+        return <Info className="w-6 h-6 text-sky-500" />;
     }
   };
 
   const getIconBg = () => {
     switch (type) {
       case 'danger':
-        return 'bg-red-100 dark:bg-red-900/50';
+        return 'bg-rose-500/10 border-rose-500/20';
       case 'warning':
-        return 'bg-orange-100 dark:bg-orange-900/50';
+        return 'bg-amber-500/10 border-amber-500/20';
       case 'info':
-        return 'bg-blue-100 dark:bg-blue-900/50';
+        return 'bg-sky-500/10 border-sky-500/20';
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 transition-all duration-300">
-      <div className="w-full max-w-md shadow-2xl relative flex flex-col border border-[var(--border-color)] bg-[var(--bg-primary)] rounded-2xl transform transition-all scale-100 opacity-100">
-        
+    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-md flex items-center justify-center z-[100] p-4 transition-all duration-200">
+      <div className="w-full max-w-md shadow-2xl relative flex flex-col border border-[var(--border-color)] bg-[var(--bg-card)] rounded-xl transform transition-all scale-100 opacity-100 overflow-hidden">
         {/* Header */}
-        <div className={`p-6 rounded-t-2xl border-b border-[var(--border-color)] bg-gradient-to-r ${getHeaderColors()} to-transparent flex justify-between items-start`}>
-          <div className="flex gap-4">
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm shrink-0 ${getIconBg()}`}>
+        <div className="p-5 border-b border-[var(--border-color)] flex justify-between items-start gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className={`w-11 h-11 rounded-lg border flex items-center justify-center shrink-0 ${getIconBg()}`}>
               {getIcon()}
             </div>
-            <div className="pt-1">
-              <h3 className="text-xl font-bold text-[var(--text-primary)]">
-                {title}
-              </h3>
-              <p className="text-sm text-[var(--text-secondary)] mt-2 leading-relaxed">
-                {message}
-              </p>
+            <div>
+              <h3 className="text-base font-bold text-[var(--text-primary)] tracking-tight">{title}</h3>
+              <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">{message}</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onCancel}
-            className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors absolute top-4 right-4"
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex justify-end gap-3 rounded-b-2xl">
-          <Button variant="secondary" onClick={onCancel} disabled={isConfirming} className="px-6 rounded-xl bg-white dark:bg-gray-800">
+        <div className="p-4 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)]/50 flex justify-end gap-2.5">
+          <Button variant="secondary" size="sm" onClick={onCancel} disabled={isConfirming}>
             Hủy
           </Button>
           <Button
             variant={type === 'danger' ? 'danger' : 'primary'}
+            size="sm"
             onClick={handleConfirm}
             disabled={isConfirming}
-            className="px-6 rounded-xl shadow-sm flex items-center gap-2"
           >
-            {isConfirming && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isConfirming && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             {isConfirming ? 'Đang xử lý...' : 'Xác nhận'}
           </Button>
         </div>

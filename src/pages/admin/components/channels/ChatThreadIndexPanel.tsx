@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { X, MessageSquare, Loader2, ChevronLeft } from 'lucide-react';
 import { chatChannelService } from '../../../../services';
-import type { ChatMessage, User } from '../../../../types';
 
 interface ChatThreadIndexPanelProps {
   channelId: string;
@@ -10,29 +10,25 @@ interface ChatThreadIndexPanelProps {
 }
 
 export default function ChatThreadIndexPanel({ channelId, onClose, onOpenThread }: ChatThreadIndexPanelProps) {
-  const [threads, setThreads] = useState<ChatMessage[]>([]);
-  const [members, setMembers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
   const [selectedSenderId, setSelectedSenderId] = useState<string>('');
   const [showSenderDropdown, setShowSenderDropdown] = useState(false);
   const [senderSearchQuery, setSenderSearchQuery] = useState('');
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsLoading(true);
-    setIsLoading(true);
-    Promise.all([
-      chatChannelService.getActiveThreads(channelId),
-      chatChannelService.getMembers(channelId)
-    ])
-      .then(([threadsRes, membersRes]) => {
-        setThreads(threadsRes);
-        setMembers(membersRes);
-      })
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, [channelId]);
+  const { data: threads = [], isLoading: loadingThreads } = useQuery({
+    queryKey: ['channels', 'threads', channelId],
+    queryFn: () => chatChannelService.getActiveThreads(channelId),
+    enabled: Boolean(channelId),
+    staleTime: 1000 * 30,
+  });
+
+  const { data: members = [], isLoading: loadingMembers } = useQuery({
+    queryKey: ['channels', 'members', channelId],
+    queryFn: () => chatChannelService.getMembers(channelId),
+    enabled: Boolean(channelId),
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const isLoading = loadingThreads || loadingMembers;
 
   const filteredMembersForDropdown = useMemo(() => {
     if (!senderSearchQuery.trim()) return members;

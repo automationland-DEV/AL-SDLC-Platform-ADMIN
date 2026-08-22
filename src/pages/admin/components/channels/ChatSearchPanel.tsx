@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { X, Search, Loader2, FileText, File, Download, ExternalLink, ImageIcon, Play, ChevronLeft } from 'lucide-react';
 import { chatChannelService } from '../../../../services';
-import type { ChatMessage, User } from '../../../../types';
+import type { ChatMessage } from '../../../../types';
 
 interface ChatSearchPanelProps {
   channelId: string;
@@ -34,7 +35,12 @@ export default function ChatSearchPanel({ channelId, onClose, onJumpToMessage }:
   const [linksList, setLinksList] = useState<{ url: string; msg: ChatMessage }[]>([]);
   const [isLoadingLinks, setIsLoadingLinks] = useState(false);
   
-  const [members, setMembers] = useState<User[]>([]);
+  const { data: members = [] } = useQuery({
+    queryKey: ['channels', 'members', channelId],
+    queryFn: () => chatChannelService.getMembers(channelId),
+    enabled: Boolean(channelId),
+    staleTime: 1000 * 60 * 2,
+  });
   
   const [showSenderDropdown, setShowSenderDropdown] = useState(false);
   const [senderSearchQuery, setSenderSearchQuery] = useState('');
@@ -68,11 +74,6 @@ export default function ChatSearchPanel({ channelId, onClose, onJumpToMessage }:
     );
   }, [members, senderSearchQuery]);
 
-  // Fetch channel members for sender filter
-  useEffect(() => {
-    chatChannelService.getMembers(channelId).then(setMembers).catch(console.error);
-  }, [channelId]);
-
   // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -85,7 +86,7 @@ export default function ChatSearchPanel({ channelId, onClose, onJumpToMessage }:
     if (activeTab !== 'messages') return;
     
     if (!debouncedQuery.trim() && !selectedSenderId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setMessages([]);
       return;
     }
@@ -101,7 +102,7 @@ export default function ChatSearchPanel({ channelId, onClose, onJumpToMessage }:
   useEffect(() => {
     if (activeTab !== 'files' && activeTab !== 'links') return;
     
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setIsLoadingFiles(true);
     Promise.all([
       chatChannelService.getAttachments(channelId),
@@ -140,7 +141,7 @@ export default function ChatSearchPanel({ channelId, onClose, onJumpToMessage }:
   useEffect(() => {
     if (activeTab !== 'links') return;
     
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setIsLoadingLinks(true);
     chatChannelService.getMessages(channelId, undefined, 100)
       .then(res => {
