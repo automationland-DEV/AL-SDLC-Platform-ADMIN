@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+ 
 import { useState, useEffect, useRef } from 'react';
 import { Key, Camera, Loader2, Edit2, ShieldCheck } from 'lucide-react';
 import { AvatarCropperModal } from './components/AvatarCropperModal';

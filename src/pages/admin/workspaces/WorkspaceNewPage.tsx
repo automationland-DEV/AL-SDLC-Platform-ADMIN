@@ -5,7 +5,6 @@ import toast from 'react-hot-toast';
 import { Button, SearchableSelect, PageHeader } from '../../../components/ui';
 import {
   useCreateWorkspaceMutation,
-  useWorkspacesQuery,
 } from '../../../hooks/queries';
 import { useQuery } from '@tanstack/react-query';
 import { userService } from '../../../services';

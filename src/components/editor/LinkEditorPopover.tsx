@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+ 
 // Component representing link editor popover,
 // shown when editing an existing link or inserting a new link in the document.
 "use client";

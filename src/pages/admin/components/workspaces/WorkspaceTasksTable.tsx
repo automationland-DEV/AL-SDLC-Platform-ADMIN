@@ -68,7 +68,7 @@ export function WorkspaceTasksTable({ workspaceId }: WorkspaceTasksTableProps) {
     try {
       await deleteTaskMutation.mutateAsync({ workspaceId, taskId: confirmModal.taskId });
       toast.success(language === 'vi' ? 'Đã xoá task thành công' : 'Task deleted successfully');
-    } catch (error) {
+    } catch {
       toast.error(language === 'vi' ? 'Xoá task thất bại' : 'Failed to delete task');
     } finally {
       setConfirmModal({ isOpen: false, taskId: '', taskTitle: '' });

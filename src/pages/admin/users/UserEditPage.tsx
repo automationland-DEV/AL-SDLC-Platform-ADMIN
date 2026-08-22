@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { Button, Select, Badge, PageHeader } from '../../../components/ui';
 import { useUserDetailQuery, useUpdateUserRoleMutation, useUpdateUserStatusMutation } from '../../../hooks/queries';
 import { useTranslation } from '../../../i18n/useTranslation';
-import type { UserRole, UserStatus } from '../../../types';
+
 
 const getErrorMessage = (error: unknown, defaultMsg: string) => {
   try {

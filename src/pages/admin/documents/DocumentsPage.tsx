@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Edit, Trash2, Eye, Download, Upload, FileText, FileCode } from 'lucide-react';
 import { useTranslation } from '../../../i18n/useTranslation';

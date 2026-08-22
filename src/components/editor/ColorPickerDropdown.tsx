@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+ 
 // Component to select text and highlight colors in the editor, 
 // supports saving the 8 most recent colors using localStorage.
 // UI designed similarly to Google Docs with 2 distinct tabs for text and highlight color, 

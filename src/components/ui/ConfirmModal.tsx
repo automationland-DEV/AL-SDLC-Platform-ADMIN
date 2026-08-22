@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+ 
 import { useState, useEffect } from 'react';
 import { AlertTriangle, Info, AlertCircle, X, Loader2 } from 'lucide-react';
 import { Button } from './Button';

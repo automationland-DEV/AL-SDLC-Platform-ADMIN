@@ -86,7 +86,7 @@ export default function ChatSearchPanel({ channelId, onClose, onJumpToMessage }:
     if (activeTab !== 'messages') return;
     
     if (!debouncedQuery.trim() && !selectedSenderId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setMessages([]);
       return;
     }
@@ -102,7 +102,7 @@ export default function ChatSearchPanel({ channelId, onClose, onJumpToMessage }:
   useEffect(() => {
     if (activeTab !== 'files' && activeTab !== 'links') return;
     
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setIsLoadingFiles(true);
     Promise.all([
       chatChannelService.getAttachments(channelId),
@@ -141,7 +141,7 @@ export default function ChatSearchPanel({ channelId, onClose, onJumpToMessage }:
   useEffect(() => {
     if (activeTab !== 'links') return;
     
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setIsLoadingLinks(true);
     chatChannelService.getMessages(channelId, undefined, 100)
       .then(res => {

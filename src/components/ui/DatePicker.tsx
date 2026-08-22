@@ -40,7 +40,7 @@ export function DatePicker({ value, onChange, placeholder = 'Select date', class
     if (value) {
       const d = new Date(value);
       if (!isNaN(d.getTime())) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+         
         setCurrentMonth(d.getMonth());
         setCurrentYear(d.getFullYear());
       }
