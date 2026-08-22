@@ -1,5 +1,7 @@
+when:
+  - event: [push, pull_request, manual]
+
 steps:
-  test-and-build:
     image: node:20-alpine
     commands:
       - npm ci
