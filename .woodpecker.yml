@@ -20,6 +20,7 @@ steps:
         from_secret: vps_user
       password:
         from_secret: vps_password
+      command_timeout: 30m
       script:
         - set -e
         - cd /home/sdlc
