@@ -33,7 +33,7 @@ export default function DocEditPage() {
     if (!documentsData) return [];
     if (Array.isArray(documentsData)) return documentsData as Document[];
     if (typeof documentsData === 'object') {
-      const obj = documentsData as Record<string, unknown>;
+      const obj = documentsData as unknown as Record<string, unknown>;
       if (Array.isArray(obj.data)) return obj.data as Document[];
       if (Array.isArray(obj.documents)) return obj.documents as Document[];
     }

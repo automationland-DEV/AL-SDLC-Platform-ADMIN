@@ -26,7 +26,7 @@ const getPriorityBadge = (priority: string) => {
   if (p === 'highest' || p === 'critical') return <Badge variant="danger" mono>{priority}</Badge>;
   if (p === 'high') return <Badge variant="warning" mono>{priority}</Badge>;
   if (p === 'low' || p === 'lowest') return <Badge variant="default" mono>{priority}</Badge>;
-  return <Badge variant="secondary" mono>{priority}</Badge>;
+  return <Badge variant="info" mono>{priority}</Badge>;
 };
 
 export function WorkspaceTasksTable({ workspaceId }: WorkspaceTasksTableProps) {
@@ -37,7 +37,7 @@ export function WorkspaceTasksTable({ workspaceId }: WorkspaceTasksTableProps) {
   const { data, isLoading } = useWorkspaceTasksQuery(workspaceId, { 
     page, 
     limit: 10,
-    search: searchTerm || undefined 
+    search: searchTerm || '' 
   });
   
   const deleteTaskMutation = useDeleteTaskMutation();

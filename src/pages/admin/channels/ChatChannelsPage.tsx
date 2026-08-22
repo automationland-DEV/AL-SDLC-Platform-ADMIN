@@ -117,7 +117,6 @@ export default function ChatChannelsPage() {
         try {
           await deleteChannelMutation.mutateAsync(id);
           toast.success('Xóa kênh trò chuyện thành công');
-          setShowViewModal(false);
         } catch (error) {
           console.error(error);
           toast.error('Lỗi khi xóa kênh trò chuyện');
