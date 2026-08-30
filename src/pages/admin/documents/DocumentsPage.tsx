@@ -5,12 +5,12 @@ import { useTranslation } from '../../../i18n/useTranslation';
 import toast from 'react-hot-toast';
 import { Button, Badge, Table, TableRow, TableCell, SearchableSelect, ConfirmModal } from '../../../components/ui';
 import { documentService } from '../../../services';
-import type { Document, Workspace } from '../../../types';
+import type { Document } from '../../../types';
 
 import {
   useDocumentsQuery,
   useDeleteDocumentMutation,
-  useWorkspacesQuery,
+  useWorkspaceOptionsQuery,
 } from '../../../hooks/queries';
 
 export default function DocumentsPage() {
@@ -25,51 +25,14 @@ export default function DocumentsPage() {
     type: typeFilter !== 'all' ? typeFilter : undefined,
     workspaceId: wsFilter !== 'all' ? wsFilter : undefined,
   });
-  const { data: workspacesRaw = [] } = useWorkspacesQuery();
+  const { data: workspacesOptions } = useWorkspaceOptionsQuery();
+  const workspaces = workspacesOptions || [];
 
   const deleteDocumentMutation = useDeleteDocumentMutation();
 
-  const parseDocumentsResponse = (raw: unknown) => {
-    let documentsList: Document[] = [];
-    let total = 0;
-    let totalPagesCount = 1;
-
-    if (Array.isArray(raw)) {
-      documentsList = raw as Document[];
-      total = documentsList.length;
-      totalPagesCount = 1;
-    } else if (raw && typeof raw === 'object') {
-      const obj = raw as Record<string, unknown>;
-      if (Array.isArray(obj.data)) {
-        documentsList = obj.data as Document[];
-      } else if (Array.isArray(obj.documents)) {
-        documentsList = obj.documents as Document[];
-      }
-
-      if (typeof obj.total === 'number') {
-        total = obj.total;
-      } else if (obj.pagination && typeof obj.pagination === 'object') {
-        const pag = obj.pagination as Record<string, unknown>;
-        if (typeof pag.total === 'number') total = pag.total;
-        if (typeof pag.totalPages === 'number') totalPagesCount = pag.totalPages;
-      } else {
-        total = documentsList.length;
-      }
-
-      if (typeof obj.totalPages === 'number') {
-        totalPagesCount = obj.totalPages;
-      }
-    }
-
-    return { documents: documentsList, absoluteTotal: total, totalPages: totalPagesCount };
-  };
-
-  const { documents, absoluteTotal, totalPages } = parseDocumentsResponse(documentsData);
-  const workspaces = Array.isArray(workspacesRaw)
-    ? (workspacesRaw as Workspace[])
-    : (workspacesRaw && typeof workspacesRaw === 'object' && Array.isArray((workspacesRaw as Record<string, unknown>).data)
-        ? ((workspacesRaw as Record<string, unknown>).data as Workspace[])
-        : []);
+  const documents = documentsData?.data ?? [];
+  const absoluteTotal = documentsData?.total ?? 0;
+  const totalPages = documentsData?.totalPages ?? 1;
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -252,7 +215,7 @@ export default function DocumentsPage() {
       {/* Main Documents Table / Cards */}
       <div className="flex-1 flex flex-col min-h-0 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)] overflow-hidden shadow-xs">
         {isLoading && documents.length === 0 ? (
-          <div className="flex items-center justify-center py-16">
+          <div className="flex-1 flex items-center justify-center py-16">
             <div className="animate-spin rounded-full h-7 w-7 border-2 border-sky-500 border-t-transparent"></div>
           </div>
         ) : (

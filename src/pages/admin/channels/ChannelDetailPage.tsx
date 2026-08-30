@@ -5,10 +5,9 @@ import { Hash, Megaphone, Lock, Users, Clock, MessageSquare, Trash2 } from 'luci
 import toast from 'react-hot-toast';
 import { Button, ConfirmModal, PageHeader } from '../../../components/ui';
 import { chatChannelService } from '../../../services';
-import { useChannelsQuery, useDeleteChannelMutation } from '../../../hooks/queries';
+import { useDeleteChannelMutation } from '../../../hooks/queries';
 import { useTranslation } from '../../../i18n/useTranslation';
 import type { ChatChannel } from '../../../types';
-import { useMemo } from 'react';
 
 interface ChannelMember {
   _id?: string;
@@ -25,18 +24,12 @@ export default function ChannelDetailPage() {
   const navigate = useNavigate();
   const { language } = useTranslation();
 
-  const { data: channelsRaw, isLoading: isChannelsLoading } = useChannelsQuery();
-  const channels: ChatChannel[] = useMemo(() => {
-    if (Array.isArray(channelsRaw)) return channelsRaw as ChatChannel[];
-    if (channelsRaw && typeof channelsRaw === 'object') {
-      const obj = channelsRaw as Record<string, unknown>;
-      if (Array.isArray(obj.data)) return obj.data as ChatChannel[];
-      if (Array.isArray(obj.channels)) return obj.channels as ChatChannel[];
-    }
-    return [];
-  }, [channelsRaw]);
-
-  const channel = channels.find(c => c._id === id);
+  const { data: channel, isLoading: isChannelsLoading } = useQuery<ChatChannel>({
+    queryKey: ['channel', id],
+    queryFn: () => chatChannelService.getById(id!),
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5,
+  });
 
   const { data: members = [], isLoading: loadingMembers } = useQuery({
     queryKey: ['channels', 'members', id],

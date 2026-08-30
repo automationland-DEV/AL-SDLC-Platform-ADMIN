@@ -1,63 +1,48 @@
-// API Routes matching BE
 export const API_ROUTES = {
   AUTH: {
-    LOGIN: '/auth/login',
-    LOGOUT: '/auth/logout',
-    ME: '/auth/me',
-    USERS: '/auth/users',
-    USER_ROLE: (id: string) => `/auth/users/${id}/role`,
-    USER_STATUS: (id: string) => `/auth/users/${id}/status`,
-    GOOGLE: '/auth/google',
-    SSO_CALLBACK: '/auth/sso/callback',
+    LOGIN: '/admin/auth/login',
+    LOGOUT: '/admin/auth/logout',
+    ME: '/admin/auth/me',
+    USER_ROLE: (id: string) => `/admin/auth/users/${id}/role`,
+    USER_STATUS: (id: string) => `/admin/auth/users/${id}/status`,
   },
   USERS: {
-    BASE: '/users',
-    BY_ID: (id: string) => `/users/${id}`,
-    PROFILE: '/users/me',
+    BASE: '/admin/users',
+    BY_ID: (id: string) => `/admin/users/${id}`,
+    ME: '/admin/users/me',
+    ME_PASSWORD: '/admin/users/me/password',
   },
   WORKSPACES: {
-    BASE: '/workspaces',
-    ADMIN_ALL: '/workspaces/admin/all',
-    BY_ID: (id: string) => `/workspaces/${id}`,
-    MEMBERS: (id: string) => `/workspaces/${id}/members`,
-    ADD_MEMBER: (id: string) => `/workspaces/${id}/members`,
-    UPDATE_MEMBER: (workspaceId: string, userId: string) => `/workspaces/${workspaceId}/members/${userId}`,
-    REMOVE_MEMBER: (workspaceId: string, userId: string) => `/workspaces/${workspaceId}/members/${userId}`,
-    RESTORE: (id: string) => `/workspaces/${id}/restore`,
-    ARCHIVE: (id: string) => `/workspaces/${id}/archive`,
+    BASE: '/admin/workspaces',
+    OPTIONS: '/admin/workspaces/options',
+    BY_ID: (id: string) => `/admin/workspaces/${id}`,
+    MEMBERS: (id: string) => `/admin/workspaces/${id}/members`,
+    ADD_MEMBER: (id: string) => `/admin/workspaces/${id}/members`,
+    UPDATE_MEMBER: (workspaceId: string, userId: string) => `/admin/workspaces/${workspaceId}/members/${userId}`,
+    REMOVE_MEMBER: (workspaceId: string, userId: string) => `/admin/workspaces/${workspaceId}/members/${userId}`,
+    RESTORE: (id: string) => `/admin/workspaces/${id}/restore`,
+    ARCHIVE: (id: string) => `/admin/workspaces/${id}/archive`,
   },
   DOCUMENTS: {
-    BASE: '/documents',
-    BY_ID: (id: string) => `/documents/${id}`,
-    CONTENT: (id: string) => `/documents/${id}/content`,
-    WORKSPACE: (workspaceId: string) => `/documents/workspace/${workspaceId}`,
-    UPLOAD: '/documents/upload',
-    CREATE_ONLINE: '/documents/create-online',
-    DOWNLOAD: (id: string) => `/documents/${id}/download`,
-    EXPORT_DOCX: (id: string) => `/documents/${id}/export/docx`,
+    BASE: '/admin/documents',
+    BY_ID: (id: string) => `/admin/documents/${id}`,
   },
-  PERMISSIONS: {
-    BASE: '/permissionsapi',
-    USER: (userId: string) => `/permissionsapi/user/${userId}`,
-    INITIALIZE: '/permissionsapi/initialize',
+  DASHBOARD: {
+    ADMIN_STATS: '/admin/dashboard/stats',
   },
   AUDIT: {
-    LOGS: '/audit/logs',
-    STATS: '/audit/stats',
-    LOG_BY_ID: (id: string) => `/audit/logs/${id}`,
+    LOGS: '/admin/audit/logs',
+    STATS: '/admin/audit/stats',
+    LOG_BY_ID: (id: string) => `/admin/audit/logs/${id}`,
   },
   CHAT: {
-    CHANNELS: '/chat/channels',
-    ADMIN_CHANNELS: '/chat/admin/channels',
-    CHANNEL_BY_ID: (id: string) => `/chat/${id}`,
-    CHANNEL_MEMBERS: (id: string) => `/chat/channels/${id}/members`,
-    CHANNEL_MESSAGES: (id: string) => `/chat/channels/${id}/messages`,
-    THREAD_REPLIES: (channelId: string, messageId: string) => `/chat/channels/${channelId}/messages/${messageId}/replies`,
-    DELETE_CHANNEL: (id: string) => `/chat/channels/${id}`,
-    UPDATE_CHANNEL: (id: string) => `/chat/channels/${id}`,
-    KICK_MEMBER: (channelId: string, userId: string) => `/chat/channels/${channelId}/members/${userId}`,
-    UPDATE_MEMBER_ROLE: (channelId: string, userId: string) => `/chat/channels/${channelId}/members/${userId}`,
-    SEARCH_MESSAGES: (id: string) => `/chat/channels/${id}/messages/search`,
+    ADMIN_CHANNELS: '/admin/chat/channels',
+    ADMIN_CHANNEL_BY_ID: (id: string) => `/admin/chat/channels/${id}`,
+    CHANNEL_MEMBERS: (id: string) => `/admin/chat/channels/${id}/members`,
+    ADMIN_CHANNEL_MESSAGES: (id: string) => `/admin/chat/channels/${id}/messages`,
+    ADMIN_SEARCH_MESSAGES: (id: string) => `/admin/chat/channels/${id}/messages/search`,
+    ADMIN_THREAD_REPLIES: (channelId: string, messageId: string) => `/admin/chat/channels/${channelId}/messages/${messageId}/replies`,
+    ADMIN_ACTIVE_THREADS: (channelId: string) => `/admin/chat/channels/${channelId}/threads`,
   },
   ATTACHMENTS: {
     BASE: '/attachments',
@@ -65,13 +50,13 @@ export const API_ROUTES = {
   IMAGES: {
     BASE: '/imagesapi',
     UPLOAD: '/imagesapi/upload',
-  }
+  },
 };
 
 const getApiBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl && envUrl.trim() !== '') return envUrl;
-  
+
   if (typeof window !== 'undefined' && window.location.hostname.includes('automationland.vn')) {
     return 'https://api-sdlc-platform.automationland.vn';
   }

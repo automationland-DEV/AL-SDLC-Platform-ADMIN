@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Edit, Trash2, Eye, Archive, RotateCcw, Users, Briefcase, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { useTranslation } from '../../../i18n/useTranslation';
 import { Button, Badge, Table, TableRow, TableCell, ConfirmModal } from '../../../components/ui';
 import type { Workspace } from '../../../types';
 import toast from 'react-hot-toast';
+import { useDebounce } from '../../../hooks/useDebounce';
 import {
   useWorkspacesQuery,
   useDeleteWorkspaceMutation,
@@ -14,14 +15,13 @@ import {
 
 export default function WorkspacesPage() {
   const navigate = useNavigate();
-  const { data: workspacesRaw = [], isLoading } = useWorkspacesQuery();
-
-  const deleteWorkspaceMutation = useDeleteWorkspaceMutation();
-  const archiveWorkspaceMutation = useArchiveWorkspaceMutation();
-  const restoreWorkspaceMutation = useRestoreWorkspaceMutation();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 400);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'createdAt', direction: 'desc' });
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -33,67 +33,28 @@ export default function WorkspacesPage() {
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
     type: 'danger'
   });
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const { data: workspacesData, isLoading, isFetching } = useWorkspacesQuery({
+    page: currentPage,
+    limit: itemsPerPage,
+    search: debouncedSearch || undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    sortField: sortConfig?.key,
+    sortOrder: sortConfig?.direction,
+  });
 
-  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'createdAt', direction: 'desc' });
+  const deleteWorkspaceMutation = useDeleteWorkspaceMutation();
+  const archiveWorkspaceMutation = useArchiveWorkspaceMutation();
+  const restoreWorkspaceMutation = useRestoreWorkspaceMutation();
 
-  const workspaces = useMemo(() => {
-    if (Array.isArray(workspacesRaw)) return workspacesRaw as Workspace[];
-    if (workspacesRaw && typeof workspacesRaw === 'object') {
-      const obj = workspacesRaw as Record<string, unknown>;
-      if (Array.isArray(obj.data)) return obj.data as Workspace[];
-      if (Array.isArray(obj.workspaces)) return obj.workspaces as Workspace[];
-    }
-    return [];
-  }, [workspacesRaw]);
-  const absoluteTotal = workspaces.length;
+  const workspaces = workspacesData?.data ?? [];
+  const absoluteTotal = workspacesData?.total ?? 0;
+  const totalPagesServer = workspacesData?.totalPages ?? 1;
 
-  const processedWorkspaces = useMemo(() => {
-    let result = [...workspaces];
 
-    if (statusFilter === 'deleted') {
-      result = result.filter(ws => ws.deletedAt != null);
-    } else if (statusFilter === 'archived') {
-      result = result.filter(ws => ws.status === 'archived' && ws.deletedAt == null);
-    } else if (statusFilter !== 'all') {
-      result = result.filter(ws => ws.status === statusFilter && ws.deletedAt == null);
-    } else {
-      result = result.filter(ws => ws.deletedAt == null);
-    }
-
-    if (searchTerm.trim()) {
-      const query = searchTerm.toLowerCase();
-      result = result.filter(ws =>
-        ws.name.toLowerCase().includes(query) ||
-        (ws.description && ws.description.toLowerCase().includes(query)) ||
-        (ws.key && ws.key.toLowerCase().includes(query))
-      );
-    }
-
-    if (sortConfig) {
-      result.sort((a, b) => {
-        if (sortConfig.key === 'createdAt') {
-          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
-        }
-        return 0;
-      });
-    }
-
-    return result;
-  }, [workspaces, statusFilter, searchTerm, sortConfig]);
-
-  const totalPagesClient = Math.ceil(processedWorkspaces.length / itemsPerPage) || 1;
-  const paginatedWorkspaces = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return processedWorkspaces.slice(start, start + itemsPerPage);
-  }, [processedWorkspaces, currentPage]);
 
   const handleFilterChange = (status: string) => {
     setStatusFilter(status);
@@ -176,7 +137,12 @@ export default function WorkspacesPage() {
       <div className="shrink-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-[var(--text-primary)] uppercase tracking-tight">{t('workspaces.title')}</h2>
-          <p className="text-xs text-[var(--text-muted)] font-mono-code mt-0.5">{t('workspaces.subtitle', { count: absoluteTotal })}</p>
+          <p className="text-xs text-[var(--text-muted)] font-mono-code mt-0.5">
+            {t('workspaces.subtitle', { count: absoluteTotal })}
+            {isFetching && !isLoading && (
+              <span className="ml-2 text-sky-500">{language === 'vi' ? '· Đang cập nhật...' : '· Updating...'}</span>
+            )}
+          </p>
         </div>
         <Button size="sm" onClick={handleAddClick}>
           <Plus className="w-4 h-4" />
@@ -211,11 +177,10 @@ export default function WorkspacesPage() {
               <button
                 key={tab.id}
                 onClick={() => handleFilterChange(tab.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all duration-180 cursor-pointer ${
-                  statusFilter === tab.id
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all duration-180 cursor-pointer ${statusFilter === tab.id
                     ? 'bg-sky-600 text-white shadow-xs'
                     : 'text-[var(--text-secondary)] bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)]'
-                }`}
+                  }`}
               >
                 {t(tab.labelKey)}
               </button>
@@ -227,14 +192,14 @@ export default function WorkspacesPage() {
       {/* Workspace List Container */}
       <div className="flex-1 flex flex-col min-h-0 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)] overflow-hidden shadow-xs">
         {isLoading ? (
-          <div className="flex items-center justify-center py-16">
+          <div className="flex-1 flex items-center justify-center py-16">
             <div className="animate-spin rounded-full h-7 w-7 border-2 border-sky-500 border-t-transparent"></div>
           </div>
         ) : (
           <>
             {/* Desktop Table View */}
             <div className="hidden md:flex flex-col flex-1 min-h-0 overflow-y-auto">
-              <Table 
+              <Table
                 fixedLayout
                 headers={[
                   { label: 'KEY_ID', className: 'w-[8%]' },
@@ -243,9 +208,9 @@ export default function WorkspacesPage() {
                   { label: t('table.owner'), className: 'w-[16%]' },
                   { label: t('table.members'), align: 'center', className: 'w-[8%]' },
                   { label: t('table.status'), align: 'center', className: 'w-[10%]' },
-                  { 
+                  {
                     label: (
-                      <div 
+                      <div
                         className="flex items-center justify-center gap-1 cursor-pointer hover:text-sky-500 transition-colors"
                         onClick={() => {
                           setSortConfig(prev => {
@@ -262,13 +227,13 @@ export default function WorkspacesPage() {
                         ) : <ArrowUpDown size={14} className="opacity-50" />}
                       </div>
                     ),
-                    align: 'center', 
-                    className: 'w-[14%]' 
+                    align: 'center',
+                    className: 'w-[14%]'
                   },
                   { label: t('table.actions'), align: 'center', className: 'w-[8%]' }
                 ]}
               >
-                {paginatedWorkspaces.map((ws) => (
+                {workspaces.map((ws) => (
                   <TableRow key={ws._id}>
                     <TableCell className="font-mono-code text-xs text-sky-600 dark:text-sky-400 font-bold">
                       {ws.key || `#${ws._id?.slice(-4)}`}
@@ -374,7 +339,7 @@ export default function WorkspacesPage() {
 
             {/* Mobile Responsive Cards Grid (<768px) */}
             <div className="block md:hidden flex-1 min-h-0 overflow-y-auto divide-y divide-[var(--border-color)]">
-              {paginatedWorkspaces.map((ws) => (
+              {workspaces.map((ws) => (
                 <div key={ws._id} className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
@@ -417,7 +382,7 @@ export default function WorkspacesPage() {
             </div>
 
             {/* Empty State */}
-            {processedWorkspaces.length === 0 && !isLoading && (
+            {workspaces.length === 0 && !isLoading && (
               <div className="text-center py-16 text-[var(--text-muted)] space-y-2">
                 <Briefcase className="w-10 h-10 mx-auto stroke-1" />
                 <p className="text-xs font-medium">
@@ -427,16 +392,16 @@ export default function WorkspacesPage() {
             )}
 
             {/* Pagination */}
-            {totalPagesClient > 1 && (
+            {totalPagesServer > 1 && (
               <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3 border-t border-[var(--border-color)] gap-3 bg-[var(--bg-tertiary)]/30">
                 <p className="text-xs font-mono-code text-[var(--text-muted)]">
-                  {language === 'vi' ? 'Trang' : 'Page'} {currentPage} / {totalPagesClient} ({language === 'vi' ? 'Tổng' : 'Total'} {processedWorkspaces.length} {language === 'vi' ? 'kết quả' : 'results'})
+                  {language === 'vi' ? 'Trang' : 'Page'} {currentPage} / {totalPagesServer} ({language === 'vi' ? 'Tổng' : 'Total'} {absoluteTotal} {language === 'vi' ? 'kết quả' : 'results'})
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="secondary"
                     size="sm"
-                    disabled={currentPage <= 1}
+                    disabled={currentPage <= 1 || isFetching}
                     onClick={() => handlePageChange(currentPage - 1)}
                   >
                     {language === 'vi' ? 'Trang trước' : 'Previous'}
@@ -444,7 +409,7 @@ export default function WorkspacesPage() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    disabled={currentPage >= totalPagesClient}
+                    disabled={currentPage >= totalPagesServer || isFetching}
                     onClick={() => handlePageChange(currentPage + 1)}
                   >
                     {language === 'vi' ? 'Trang sau' : 'Next'}

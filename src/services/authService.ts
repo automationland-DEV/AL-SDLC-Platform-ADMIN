@@ -1,8 +1,7 @@
 import api from './api';
-import { API_ROUTES, API_BASE_URL } from './apiRoutes';
+import { API_ROUTES } from './apiRoutes';
 import type { AuthUser, LoginRequest, LoginResponse, User, PaginatedResponse } from '../types';
 
-// Auth Service
 export const authService = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     const response = await api.post<LoginResponse>(API_ROUTES.AUTH.LOGIN, data, {
@@ -26,7 +25,7 @@ export const authService = {
     try {
       await api.post(API_ROUTES.AUTH.LOGOUT, {}, { withCredentials: true });
     } catch {
-      // Ignore logout errors
+      // Logout errors are intentionally ignored
     } finally {
       localStorage.removeItem('accessToken');
     }
@@ -48,47 +47,29 @@ export const authService = {
     const r = user.role.toLowerCase();
     return r === 'super_admin' || r === 'admin';
   },
-
-  initiateGoogleLogin: (): void => {
-    const callbackUrl = `${window.location.origin}/login`;
-    const fullUrl = API_ROUTES.AUTH.GOOGLE.startsWith('http')
-      ? API_ROUTES.AUTH.GOOGLE
-      : `${API_BASE_URL}${API_ROUTES.AUTH.GOOGLE}`;
-    window.location.href = `${fullUrl}?callback_url=${encodeURIComponent(callbackUrl)}`;
-  },
-
-  handleSsoCallback: async (): Promise<AuthUser | null> => {
-    try {
-      const response = await api.post<{ user: AuthUser }>(
-        API_ROUTES.AUTH.SSO_CALLBACK,
-        {},
-        { withCredentials: true }
-      );
-      const resData = response.data as unknown as Record<string, unknown>;
-      const token =
-        (resData?.accessToken as string) ||
-        (resData?.access_token as string) ||
-        ((resData?.data as Record<string, unknown>)?.accessToken as string);
-
-      if (token) {
-        localStorage.setItem('accessToken', token);
-      }
-
-      return (
-        response.data?.user ||
-        ((response.data as unknown as Record<string, unknown>)?.data as AuthUser) ||
-        (response.data as unknown as AuthUser)
-      );
-    } catch {
-      return null;
-    }
-  },
 };
 
 export const userService = {
   getAllUsers: async (params?: { page?: number; limit?: number; search?: string; role?: string; status?: string }): Promise<PaginatedResponse<User>> => {
-    const response = await api.get<PaginatedResponse<User>>(API_ROUTES.AUTH.USERS, { params });
-    return response.data;
+    const response = await api.get<unknown>(API_ROUTES.USERS.BASE, { params });
+    const raw = response.data;
+    
+    let items: User[] = [];
+    if (Array.isArray(raw)) items = raw;
+    else if (Array.isArray(raw?.data)) items = raw.data;
+    else if (Array.isArray(raw?.users)) items = raw.users;
+
+    let total = items.length;
+    let totalPages = 1;
+    if (raw && typeof raw.total === 'number') {
+      total = raw.total;
+      totalPages = raw.totalPages || 1;
+    } else if (raw?.pagination) {
+      total = raw.pagination.total || items.length;
+      totalPages = raw.pagination.totalPages || 1;
+    }
+
+    return { data: items, total, page: params?.page || 1, limit: params?.limit || 20, totalPages };
   },
 
   getUserById: async (id: string): Promise<User> => {
@@ -96,14 +77,20 @@ export const userService = {
     return response.data;
   },
 
-  updateProfile: async (data: Partial<User> & { currentPassword?: string; password?: string }): Promise<User> => {
-    const response = await api.put<User>(API_ROUTES.USERS.PROFILE, data);
+  updateProfile: async (data: {
+    fullName?: string;
+    phone?: string;
+    address?: string;
+    birthday?: string;
+    gender?: string;
+    avatar?: string;
+  }): Promise<User> => {
+    const response = await api.put<User>(API_ROUTES.USERS.ME, data);
     return response.data;
   },
 
-  createUser: async (data: Partial<User>): Promise<User> => {
-    const response = await api.post<User>(API_ROUTES.USERS.BASE, data);
-    return response.data;
+  updatePassword: async (data: { currentPassword: string; password: string }): Promise<void> => {
+    await api.put(API_ROUTES.USERS.ME_PASSWORD, data);
   },
 
   updateUser: async (id: string, data: Partial<User>): Promise<User> => {
@@ -122,22 +109,6 @@ export const userService = {
 
   updateUserStatus: async (id: string, status: string): Promise<User> => {
     const response = await api.put<User>(API_ROUTES.AUTH.USER_STATUS(id), { status });
-    return response.data;
-  },
-
-  importUsersCsv: async (file: File): Promise<{
-    success: boolean;
-    insertedCount: number;
-    skippedCount: number;
-    errors: string[];
-  }> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await api.post('/users/import-csv', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
     return response.data;
   },
 };

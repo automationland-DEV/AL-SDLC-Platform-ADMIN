@@ -103,7 +103,7 @@ export default function UserNewPage() {
       />
 
       <form onSubmit={handleSubmit}>
-        <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] shadow-sm overflow-hidden">
+        <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] shadow-sm">
           {/* Card Header */}
           <div className="p-5 border-b border-[var(--border-color)] flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-500">
@@ -218,7 +218,7 @@ export default function UserNewPage() {
           </div>
 
           {/* Footer Actions */}
-          <div className="px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)]/30 flex justify-end gap-3">
+          <div className="px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)]/30 flex justify-end gap-3 rounded-b-2xl">
             <Button
               type="button"
               variant="secondary"

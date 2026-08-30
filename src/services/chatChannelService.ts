@@ -3,24 +3,33 @@ import { API_ROUTES } from './apiRoutes';
 import type { ChatChannel, User, ChatMessage } from '../types';
 
 export const chatChannelService = {
-  getAllChannels: async (params?: { workspaceId?: string }): Promise<ChatChannel[]> => {
+  getAllChannels: async (params?: {
+    workspaceId?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+    type?: string;
+  }): Promise<{ channels: ChatChannel[]; total: number; page: number; limit: number }> => {
     const response = await api.get<unknown>(API_ROUTES.CHAT.ADMIN_CHANNELS, { params });
     const data = response.data;
-    if (Array.isArray(data)) return data as ChatChannel[];
     if (data && typeof data === 'object') {
       const obj = data as Record<string, unknown>;
-      if (Array.isArray(obj.data)) return obj.data as ChatChannel[];
-      if (Array.isArray(obj.channels)) return obj.channels as ChatChannel[];
-      if (obj.data && typeof obj.data === 'object' && Array.isArray((obj.data as Record<string, unknown>).channels)) {
-        return (obj.data as Record<string, unknown>).channels as ChatChannel[];
+      if (Array.isArray(obj.channels)) {
+        return {
+          channels: obj.channels as ChatChannel[],
+          total: (obj.total as number) || obj.channels.length,
+          page: (obj.page as number) || 1,
+          limit: (obj.limit as number) || 20,
+        };
       }
     }
-    return [];
+    return { channels: [], total: 0, page: 1, limit: 20 };
   },
 
   getById: async (id: string): Promise<ChatChannel> => {
-    const response = await api.get<ChatChannel>(API_ROUTES.CHAT.CHANNEL_BY_ID(id));
-    return response.data;
+    const response = await api.get<unknown>(API_ROUTES.CHAT.ADMIN_CHANNEL_BY_ID(id));
+    const data = response.data as Record<string, unknown>;
+    return (data?.data ?? data) as ChatChannel;
   },
 
   getMembers: async (channelId: string): Promise<User[]> => {
@@ -51,23 +60,25 @@ export const chatChannelService = {
   getMessages: async (channelId: string, cursor?: string, limit: number = 50): Promise<{ messages: ChatMessage[]; nextCursor: string | null }> => {
     const params: Record<string, unknown> = { limit };
     if (cursor) params.cursor = cursor;
-    const response = await api.get<{ messages: ChatMessage[]; nextCursor: string | null }>(
-      API_ROUTES.CHAT.CHANNEL_MESSAGES(channelId),
+    const response = await api.get<unknown>(
+      API_ROUTES.CHAT.ADMIN_CHANNEL_MESSAGES(channelId),
       { params }
     );
-    return response.data;
+    const body = response.data?.data ?? response.data;
+    const messagesData = Array.isArray(body?.messages) ? body.messages : (Array.isArray(body) ? body : []);
+    const nextCursor = body?.nextCursor || null;
+    return { messages: messagesData, nextCursor };
   },
 
   getThreadReplies: async (channelId: string, messageId: string): Promise<ChatMessage[]> => {
-    const response = await api.get<ChatMessage[]>(API_ROUTES.CHAT.THREAD_REPLIES(channelId, messageId));
-    const data = response.data;
-    if (Array.isArray(data)) return data;
-    if (data && typeof data === 'object' && 'data' in data) return (data as { data: ChatMessage[] }).data || [];
-    return [];
+    const response = await api.get<unknown>(
+      API_ROUTES.CHAT.ADMIN_THREAD_REPLIES(channelId, messageId)
+    );
+    return response.data?.data ?? response.data;
   },
 
   getActiveThreads: async (channelId: string): Promise<ChatMessage[]> => {
-    const response = await api.get(`/chat/channels/${channelId}/threads`);
+    const response = await api.get(API_ROUTES.CHAT.ADMIN_ACTIVE_THREADS(channelId));
     const data = response.data?.data ?? response.data;
     const threadsData = Array.isArray(data?.threads) ? data.threads : (Array.isArray(data) ? data : []);
     return threadsData;
@@ -77,10 +88,10 @@ export const chatChannelService = {
     const params: Record<string, string> = { q: query };
     if (senderId) params.senderId = senderId;
     const response = await api.get<{ messages?: ChatMessage[] } | ChatMessage[]>(
-      API_ROUTES.CHAT.SEARCH_MESSAGES(channelId),
+      API_ROUTES.CHAT.ADMIN_SEARCH_MESSAGES(channelId),
       { params }
     );
-    const data = response.data;
+    const data = response.data?.data ?? response.data;
     if (Array.isArray(data)) return data;
     return data?.messages || [];
   },

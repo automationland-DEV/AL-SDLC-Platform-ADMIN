@@ -97,7 +97,7 @@ export function WorkspaceTasksTable({ workspaceId }: WorkspaceTasksTableProps) {
       {/* Table */}
       <div className="flex-1 min-h-0 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)] overflow-hidden shadow-xs">
         {isLoading ? (
-          <div className="flex items-center justify-center py-16">
+          <div className="flex-1 flex items-center justify-center py-16">
             <div className="animate-spin rounded-full h-7 w-7 border-2 border-sky-500 border-t-transparent"></div>
           </div>
         ) : tasks.length === 0 ? (

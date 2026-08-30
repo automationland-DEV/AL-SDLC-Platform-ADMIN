@@ -3,25 +3,36 @@ import { API_ROUTES } from './apiRoutes';
 import type { Workspace, PaginatedResponse } from '../types';
 
 export const workspaceService = {
-  // Admin: Lấy tất cả workspaces (bao gồm cả đã xóa)
-  getAllAdmin: async (): Promise<Workspace[]> => {
-    const response = await api.get<Workspace[]>(API_ROUTES.WORKSPACES.ADMIN_ALL);
-    return response.data;
+  getAllAdmin: async (params?: { page?: number; limit?: number; status?: string; search?: string; sortField?: string; sortOrder?: string }): Promise<PaginatedResponse<Workspace>> => {
+    const response = await api.get<unknown>(API_ROUTES.WORKSPACES.BASE, { params });
+    const raw = response.data;
+    
+    let items: Workspace[] = [];
+    if (Array.isArray(raw)) items = raw;
+    else if (Array.isArray(raw?.data)) items = raw.data;
+    else if (Array.isArray(raw?.workspaces)) items = raw.workspaces;
+
+    let total = items.length;
+    let totalPages = 1;
+    if (raw && typeof raw.total === 'number') {
+      total = raw.total;
+      totalPages = raw.totalPages || 1;
+    } else if (raw?.pagination) {
+      total = raw.pagination.total || items.length;
+      totalPages = raw.pagination.totalPages || 1;
+    }
+
+    return { data: items, total, page: params?.page || 1, limit: params?.limit || 20, totalPages };
   },
 
-  // User thường: Lấy workspaces của mình
-  getAll: async (params?: { page?: number; limit?: number; status?: string }): Promise<PaginatedResponse<Workspace>> => {
-    const response = await api.get<PaginatedResponse<Workspace>>(API_ROUTES.WORKSPACES.BASE, { params });
-    return response.data;
+  getOptionsAdmin: async (): Promise<Workspace[]> => {
+    const response = await api.get<Workspace[]>(API_ROUTES.WORKSPACES.OPTIONS);
+    const data = response.data as { data?: Workspace[] } | Workspace[];
+    return data?.data ?? data ?? response;
   },
 
   getById: async (id: string): Promise<Workspace> => {
     const response = await api.get<Workspace>(API_ROUTES.WORKSPACES.BY_ID(id));
-    return response.data;
-  },
-
-  create: async (data: Partial<Workspace>): Promise<Workspace> => {
-    const response = await api.post<Workspace>(API_ROUTES.WORKSPACES.BASE, data);
     return response.data;
   },
 

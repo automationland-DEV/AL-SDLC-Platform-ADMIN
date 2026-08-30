@@ -82,10 +82,10 @@ export function ActivityList({ selectedUserId }: ActivityListProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
 
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-12 space-y-4">
+        <div className="flex-1 flex flex-col items-center justify-center py-12 space-y-4">
           <RefreshCw className="w-6 h-6 animate-spin text-primary-600" />
           <span className="text-sm text-[var(--text-secondary)]">
             {language === 'vi' ? 'Đang tải dữ liệu...' : 'Loading data...'}

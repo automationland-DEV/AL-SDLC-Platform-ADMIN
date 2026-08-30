@@ -15,50 +15,20 @@ import {
 } from 'lucide-react';
 
 import { useAuthStore } from '../../stores/authStore';
-import { useUsersQuery, useWorkspacesQuery, useDocumentsQuery } from '../../hooks/queries';
+import { useDashboardStatsQuery } from '../../hooks/queries';
 import { useTranslation } from '../../i18n/useTranslation';
-import type { Workspace } from '../../types';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
 
-  const { data: usersData, isLoading: usersLoading } = useUsersQuery({ page: 1 });
-  const { data: workspacesRaw, isLoading: workspacesLoading } = useWorkspacesQuery();
-  const { data: documentsData, isLoading: documentsLoading } = useDocumentsQuery({ page: 1 });
+  const { data: statsData, isLoading } = useDashboardStatsQuery();
 
-  const extractList = <T,>(raw: unknown, key?: string): T[] => {
-    if (Array.isArray(raw)) return raw as T[];
-    if (raw && typeof raw === 'object') {
-      const obj = raw as Record<string, unknown>;
-      if (Array.isArray(obj.data)) return obj.data as T[];
-      if (key && Array.isArray(obj[key])) return obj[key] as T[];
-    }
-    return [];
-  };
-
-  const extractTotal = (raw: unknown): number => {
-    if (Array.isArray(raw)) return raw.length;
-    if (raw && typeof raw === 'object') {
-      const obj = raw as Record<string, unknown>;
-      if (typeof obj.total === 'number') return obj.total;
-      if (obj.pagination && typeof obj.pagination === 'object') {
-        const pag = obj.pagination as Record<string, unknown>;
-        if (typeof pag.total === 'number') return pag.total;
-      }
-      if (Array.isArray(obj.data)) return obj.data.length;
-    }
-    return 0;
-  };
-
-  const users = extractList<{ id: string; fullName?: string; email: string; avatar?: string; role: string }>(usersData, 'users');
-  const totalUsers = extractTotal(usersData);
-
-  const workspaces = extractList<Workspace>(workspacesRaw, 'workspaces');
-  const totalWorkspaces = extractTotal(workspacesRaw);
-
-  const totalDocuments = extractTotal(documentsData);
-
-  const isLoading = usersLoading || workspacesLoading || documentsLoading;
+  const totalUsers = statsData?.totalUsers || 0;
+  const totalWorkspaces = statsData?.totalWorkspaces || 0;
+  const totalDocuments = statsData?.totalDocuments || 0;
+  
+  const recentUsers = statsData?.recentUsers || [];
+  const recentWorkspaces = statsData?.recentWorkspaces || [];
 
   const { t, language } = useTranslation();
 
@@ -94,9 +64,6 @@ export default function DashboardPage() {
       dateRange: language === 'vi' ? 'vs tháng trước' : 'vs last month'
     },
   ];
-
-  const recentUsers = users.slice(0, 5);
-  const recentWorkspaces = workspaces.filter(ws => (ws.status === 'active' || !ws.status) && !ws.deletedAt).slice(0, 5);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
