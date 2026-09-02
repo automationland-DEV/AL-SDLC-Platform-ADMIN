@@ -73,7 +73,7 @@ export const documentService = {
     const response = await api.get<Blob>(url, { responseType: 'blob' });
     const disposition = (response.headers['content-disposition'] as string) || '';
     const match = disposition.match(/filename[^;=\n]*=((['"]).+?\2|[^;\n]*)/);
-    const filename = match ? match[1].replace(/["\']/g, '') : 'document';
+    const filename = match ? match[1].replace(/["']/g, '') : 'document';
     return { data: response.data, filename };
   },
 };
