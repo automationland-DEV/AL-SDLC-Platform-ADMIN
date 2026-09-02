@@ -145,7 +145,7 @@ export const preprocessInlineMarkdown = (text: string) => {
   const links: React.ReactNode[] = [];
   let linkCount = 0;
   const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-  let substituted = text.replace(linkRegex, (match, label, url) => {
+  let substituted = text.replace(linkRegex, (_match, label, url) => {
     const token = `@@@LINKTOKEN${linkCount}@@@`;
     links.push(
       <a
@@ -186,7 +186,7 @@ export const preprocessInlineMarkdown = (text: string) => {
 
   const inlineCodes: React.ReactNode[] = [];
   let codeCount = 0;
-  substituted = substituted.replace(/`([^`]+)`/g, (match, codeText) => {
+  substituted = substituted.replace(/`([^`]+)`/g, (_match, codeText) => {
     const token = `@@@INLINECODETOKEN${codeCount}@@@`;
     inlineCodes.push(
       <code 
@@ -223,7 +223,7 @@ export const renderMessageContent = (
   const mentions: React.ReactNode[] = [];
   const mentionRegex = /(?:\[@|@\[)([^\]]+)\]\(([^)]+)\)/g;
   let mentionCount = 0;
-  const substituted = content.replace(mentionRegex, (match, displayName, userId) => {
+  const substituted = content.replace(mentionRegex, (_match, displayName, userId) => {
     const isMe = String(userId) === String(currentUserId) || userId === 'All' || userId === 'all';
     const isAll = userId === 'All' || userId === 'all';
     const token = `@@@MENTIONTOKEN${mentionCount}@@@`;

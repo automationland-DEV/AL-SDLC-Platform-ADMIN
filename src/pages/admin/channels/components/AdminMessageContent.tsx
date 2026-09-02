@@ -1,8 +1,8 @@
-import React from 'react';
 import { renderMessageContent } from '../utils/messageContentRenderer';
+import type { ChatMessage } from '../../../../types';
 
 interface AdminMessageContentProps {
-  message: unknown; // Using unknown for simplicity in Admin
+  message: ChatMessage;
   isDeleted?: boolean;
 }
 

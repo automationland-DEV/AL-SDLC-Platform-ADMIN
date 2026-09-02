@@ -146,7 +146,7 @@ export default function ChatViewerPage() {
     if (!channel) return;
     setLoadingThread(true);
     try {
-      const res = await chatChannelService.getThreadRepliesAdmin(channel._id, messageId);
+      const res = await chatChannelService.getThreadReplies(channel._id, messageId);
       setThreadReplies(res || []);
     } catch (error) {
       console.error('Failed to load thread replies', error);

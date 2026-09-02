@@ -43,6 +43,10 @@ export const API_ROUTES = {
     ADMIN_SEARCH_MESSAGES: (id: string) => `/admin/chat/channels/${id}/messages/search`,
     ADMIN_THREAD_REPLIES: (channelId: string, messageId: string) => `/admin/chat/channels/${channelId}/messages/${messageId}/replies`,
     ADMIN_ACTIVE_THREADS: (channelId: string) => `/admin/chat/channels/${channelId}/threads`,
+    DELETE_CHANNEL: (id: string) => `/admin/chat/channels/${id}`,
+    UPDATE_CHANNEL: (id: string) => `/admin/chat/channels/${id}`,
+    KICK_MEMBER: (channelId: string, userId: string) => `/admin/chat/channels/${channelId}/members/${userId}`,
+    UPDATE_MEMBER_ROLE: (channelId: string, userId: string) => `/admin/chat/channels/${channelId}/members/${userId}`,
   },
   ATTACHMENTS: {
     BASE: '/attachments',

@@ -1,4 +1,3 @@
-import React from 'react';
 import { renderMessageContent } from '../utils/messageContentRenderer';
 import { UserPlus, UserMinus } from 'lucide-react';
 

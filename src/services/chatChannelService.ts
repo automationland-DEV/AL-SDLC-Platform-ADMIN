@@ -64,17 +64,19 @@ export const chatChannelService = {
       API_ROUTES.CHAT.ADMIN_CHANNEL_MESSAGES(channelId),
       { params }
     );
-    const body = response.data?.data ?? response.data;
-    const messagesData = Array.isArray(body?.messages) ? body.messages : (Array.isArray(body) ? body : []);
-    const nextCursor = body?.nextCursor || null;
-    return { messages: messagesData, nextCursor };
+    const body = (response.data as Record<string, unknown>)?.data ?? response.data;
+    const bodyObj = body as Record<string, unknown> | ChatMessage[] | null;
+    const messagesData = Array.isArray(bodyObj) ? bodyObj as ChatMessage[] : (Array.isArray((bodyObj as Record<string, unknown>)?.messages) ? (bodyObj as Record<string, unknown>).messages as ChatMessage[] : []);
+    const nextCursor = !Array.isArray(bodyObj) && bodyObj ? (bodyObj as Record<string, unknown>).nextCursor as string | null : null;
+    return { messages: messagesData, nextCursor: nextCursor || null };
   },
 
   getThreadReplies: async (channelId: string, messageId: string): Promise<ChatMessage[]> => {
     const response = await api.get<unknown>(
       API_ROUTES.CHAT.ADMIN_THREAD_REPLIES(channelId, messageId)
     );
-    return response.data?.data ?? response.data;
+    const rawData = response.data as Record<string, unknown> | ChatMessage[];
+    return ((rawData as Record<string, unknown>)?.data ?? rawData) as ChatMessage[];
   },
 
   getActiveThreads: async (channelId: string): Promise<ChatMessage[]> => {
@@ -91,9 +93,9 @@ export const chatChannelService = {
       API_ROUTES.CHAT.ADMIN_SEARCH_MESSAGES(channelId),
       { params }
     );
-    const data = response.data?.data ?? response.data;
-    if (Array.isArray(data)) return data;
-    return data?.messages || [];
+    const data = (response.data as Record<string, unknown>)?.data ?? response.data;
+    if (Array.isArray(data)) return data as ChatMessage[];
+    return (data as { messages?: ChatMessage[] })?.messages || [];
   },
 
   getAttachments: async (channelId: string): Promise<unknown[]> => {

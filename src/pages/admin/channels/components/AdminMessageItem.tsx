@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import { useRef } from 'react';
 import { useAdminChatStore } from '../../../../stores/adminChatStore';
-import type { ChatMessage } from '../ChatViewerPage';
+import type { ChatAttachment, ChatMessage } from '../../../../types';
 
 import SystemMessage from './SystemMessage';
 import AdminMessageContent from './AdminMessageContent';
@@ -8,6 +8,7 @@ import AdminMessageAttachments from './AdminMessageAttachments';
 import MediaLightbox from './MediaLightbox';
 
 import { getMessagePreviewText } from '../utils/messageContentRenderer';
+import { useAttachmentPreview } from '../hooks/useAttachmentPreview';
 
 const cn = (...classes: (string | boolean | undefined | null)[]) => classes.filter(Boolean).join(' ');
 
@@ -25,7 +26,7 @@ export default function AdminMessageItem({
   const sender = (message.senderId && typeof message.senderId === 'object')
     ? message.senderId
     : { _id: String(message.senderId || ''), fullName: 'Deleted User', email: '' };
-    
+
   const displayName = sender.fullName || sender.email || 'Deleted User';
   const initialLetter = displayName.charAt(0).toUpperCase();
   const isDeleted = Boolean(message.isDeleted);
@@ -33,18 +34,17 @@ export default function AdminMessageItem({
   const setActiveThreadParentId = useAdminChatStore(state => state.setActiveThreadParentId);
   const setScrollTargetId = useAdminChatStore(state => state.setScrollTargetId);
 
-  const [lightboxFile, setLightboxFile] = useState<unknown | null>(null);
-
   const messageRef = useRef<HTMLDivElement>(null);
 
-  // Attachment dummy states since Admin won't download or show preview progress
-  const isDownloading = null;
-  const expandedPreviews: Record<string, boolean> = {};
-  const loadingPreviews: Record<string, boolean> = {};
-  const handleDownloadFile = () => {};
-  const togglePreview = () => {};
+  const {
+    isDownloading,
+    expandedPreviews,
+    previewUrls,
+    loadingPreviews,
+    togglePreview,
+    handleDownloadFile,
+  } = useAttachmentPreview(messageRef, message.attachments as ChatAttachment[], isDeleted);
 
-  // Reply calculation
   const replyParent = message.replyToId && typeof message.replyToId === 'object'
     ? message.replyToId
     : null;
@@ -60,7 +60,6 @@ export default function AdminMessageItem({
     ? 'mt-3 pt-1.5 pb-1.5'
     : 'mt-1 pt-0.5 pb-1';
 
-  // Branch 1: System Message
   if (message.type === 'system') {
     return (
       <SystemMessage
@@ -72,7 +71,6 @@ export default function AdminMessageItem({
     );
   }
 
-  // Branch 2: Standard User Message
   return (
     <div
       ref={messageRef}
@@ -87,7 +85,7 @@ export default function AdminMessageItem({
       <div className="w-10 flex-shrink-0 flex justify-center mt-0.5">
         {!isSameUserAsPrevious ? (
           <div>
-            <img 
+            <img
               src={sender.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`}
               alt="avatar"
               className="w-10 h-10 rounded-full flex-shrink-0 object-cover shadow-sm"
@@ -107,8 +105,7 @@ export default function AdminMessageItem({
             className="flex items-center gap-1.5 mb-1 cursor-pointer group/reply"
             onClick={(e) => {
               e.stopPropagation();
-              const targetId = replyParent._id;
-              setScrollTargetId(targetId);
+              setScrollTargetId(replyParent._id);
             }}
           >
             <div className="w-4 flex items-center justify-end h-full">
@@ -118,7 +115,7 @@ export default function AdminMessageItem({
               @{replyDisplayName}
             </span>
             <span className="truncate opacity-80 flex-1 text-left text-[11px] text-[#787774]">
-              {getMessagePreviewText(replyParent)}
+              {getMessagePreviewText(replyParent as Parameters<typeof getMessagePreviewText>[0])}
             </span>
           </div>
         )}
@@ -128,7 +125,8 @@ export default function AdminMessageItem({
               {displayName}
             </span>
             <span className="text-[0.6875rem] text-[#787774] dark:text-[#9B9A97]">
-              {new Date(message.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date(message.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+              {new Date(message.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}{' '}
+              {new Date(message.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
         )}
@@ -138,16 +136,18 @@ export default function AdminMessageItem({
           isDeleted={isDeleted}
         />
 
-        {/* Attachments List */}
         <AdminMessageAttachments
           attachments={message.attachments}
           isDeleted={isDeleted}
           isDownloading={isDownloading}
           expandedPreviews={expandedPreviews}
+          previewUrls={previewUrls}
           loadingPreviews={loadingPreviews}
           onDownloadFile={handleDownloadFile}
           onTogglePreview={togglePreview}
-          onOpenLightbox={(file) => setLightboxFile(file)}
+          onOpenLightbox={(file) => {
+            void handleDownloadFile(file, false);
+          }}
         />
 
         {/* Reaction badges */}
@@ -174,21 +174,19 @@ export default function AdminMessageItem({
             className="mt-2 flex items-center gap-2 hover:bg-[#F0F0EE] dark:hover:bg-white/5 px-2.5 py-1 rounded-[6px] transition-colors border border-[#EAEAEA] dark:border-white/[0.06] text-xs font-semibold text-[#2563EB] dark:text-[#60A5FA] cursor-pointer"
           >
             <div className="flex -space-x-1.5 overflow-hidden">
-              {message.lastReplyParticipants?.filter(Boolean).map((p: unknown, idx: number) => {
-                const participant = p as { fullName?: string; avatar?: string };
-                return (
+              {message.lastReplyParticipants?.filter(Boolean).map((p, idx) => (
                 <div
                   key={idx}
                   className="inline-block h-5 w-5 rounded-full ring-2 ring-white dark:ring-[#202020] bg-[#2563EB] flex-shrink-0 relative"
                   title={p.fullName}
                 >
-                  <img 
-                    src={participant.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(participant.fullName || 'U')}&background=random`} 
-                    alt="avatar" 
+                  <img
+                    src={p.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.fullName || 'U')}&background=random`}
+                    alt="avatar"
                     className="w-full h-full object-cover rounded-full"
                   />
                 </div>
-              )})}
+              ))}
             </div>
             <span>
               {message.replyCount} {message.replyCount === 1 ? 'reply' : 'replies'}
@@ -200,12 +198,12 @@ export default function AdminMessageItem({
         ) : null}
       </div>
 
-      {/* Lightbox Preview Modal */}
+      {/* Lightbox — open in new tab for admin (read-only) */}
       <MediaLightbox
-        file={lightboxFile}
+        file={null}
         isDownloading={false}
         onDownload={() => {}}
-        onClose={() => setLightboxFile(null)}
+        onClose={() => {}}
       />
     </div>
   );

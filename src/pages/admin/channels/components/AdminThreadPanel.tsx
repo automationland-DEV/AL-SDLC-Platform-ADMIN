@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Loader2, MessageSquare, ArrowDown } from 'lucide-react';
-import type { ChatMessage } from '../ChatViewerPage';
+import type { ChatMessage } from '../../../../types';
 import AdminMessageItem from './AdminMessageItem';
 
 interface AdminThreadPanelProps {

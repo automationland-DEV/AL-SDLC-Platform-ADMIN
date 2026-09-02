@@ -25,6 +25,7 @@ export const dashboardService = {
   getAdminStats: async (): Promise<DashboardStats> => {
     const response = await api.get<DashboardStats>(API_ROUTES.DASHBOARD.ADMIN_STATS);
     // NestJS defaults may wrap it in { data: ... } or just return it directly depending on interceptor
-    return response?.data?.data ?? response?.data ?? response;
+    const raw = response?.data as unknown as Record<string, unknown>;
+    return (raw?.data ?? response?.data ?? response) as DashboardStats;
   },
 };

@@ -134,12 +134,17 @@ export interface ChatMessage {
   _id: string;
   senderId?: { _id?: string; fullName?: string; email?: string; avatar?: string };
   content: string;
+  type?: string;
   attachments?: ChatAttachment[];
   reactions?: Record<string, unknown>;
   isDeleted?: boolean;
   replyCount?: number;
   replyUsers?: { _id?: string; fullName?: string; avatar?: string }[];
   stickerId?: { url: string };
+  editedAt?: string;
+  replyToId?: { _id: string; senderId?: { _id?: string; fullName?: string; email?: string; avatar?: string }; content?: string; type?: string; stickerId?: { url: string } } | null;
+  threadParentId?: string | null;
+  lastReplyParticipants?: { userId?: string; _id?: string; fullName?: string; avatar?: string }[];
   createdAt: string;
   lastReplyAt?: string;
 }

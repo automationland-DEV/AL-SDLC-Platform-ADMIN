@@ -52,21 +52,23 @@ export const authService = {
 export const userService = {
   getAllUsers: async (params?: { page?: number; limit?: number; search?: string; role?: string; status?: string }): Promise<PaginatedResponse<User>> => {
     const response = await api.get<unknown>(API_ROUTES.USERS.BASE, { params });
-    const raw = response.data;
+    const raw = response.data as Record<string, unknown> | User[] | null;
     
     let items: User[] = [];
-    if (Array.isArray(raw)) items = raw;
-    else if (Array.isArray(raw?.data)) items = raw.data;
-    else if (Array.isArray(raw?.users)) items = raw.users;
+    if (Array.isArray(raw)) items = raw as User[];
+    else if (raw && Array.isArray((raw as Record<string, unknown>).data)) items = (raw as Record<string, unknown>).data as User[];
+    else if (raw && Array.isArray((raw as Record<string, unknown>).users)) items = (raw as Record<string, unknown>).users as User[];
 
     let total = items.length;
     let totalPages = 1;
-    if (raw && typeof raw.total === 'number') {
-      total = raw.total;
-      totalPages = raw.totalPages || 1;
-    } else if (raw?.pagination) {
-      total = raw.pagination.total || items.length;
-      totalPages = raw.pagination.totalPages || 1;
+    const rawObj = raw && !Array.isArray(raw) ? raw as Record<string, unknown> : null;
+    if (rawObj && typeof rawObj.total === 'number') {
+      total = rawObj.total;
+      totalPages = (rawObj.totalPages as number) || 1;
+    } else if (rawObj && rawObj.pagination && typeof rawObj.pagination === 'object') {
+      const pagination = rawObj.pagination as Record<string, unknown>;
+      total = (pagination.total as number) || items.length;
+      totalPages = (pagination.totalPages as number) || 1;
     }
 
     return { data: items, total, page: params?.page || 1, limit: params?.limit || 20, totalPages };
@@ -110,5 +112,27 @@ export const userService = {
   updateUserStatus: async (id: string, status: string): Promise<User> => {
     const response = await api.put<User>(API_ROUTES.AUTH.USER_STATUS(id), { status });
     return response.data;
+  },
+
+  createUser: async (data: Partial<User>): Promise<User> => {
+    const response = await api.post<unknown>(API_ROUTES.USERS.BASE, data);
+    const raw = response.data as Record<string, unknown>;
+    return (raw?.data ?? raw) as User;
+  },
+
+  importUsersCsv: async (file: File): Promise<{ success: boolean; insertedCount: number; skippedCount: number; errors: string[] }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<unknown>(`${API_ROUTES.USERS.BASE}/import/csv`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    const raw = response.data as Record<string, unknown>;
+    const result = (raw?.data ?? raw) as Record<string, unknown>;
+    return {
+      success: (result.success as boolean) ?? true,
+      insertedCount: (result.insertedCount as number) ?? 0,
+      skippedCount: (result.skippedCount as number) ?? 0,
+      errors: (result.errors as string[]) ?? [],
+    };
   },
 };
