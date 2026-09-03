@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Color from '@tiptap/extension-color';
@@ -72,6 +73,14 @@ export default function RichTextEditor({
       },
     },
   });
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const currentHtml = editor.getHTML();
+    if (value !== undefined && value !== currentHtml && !(value === '' && editor.isEmpty)) {
+      editor.commands.setContent(value, { emitUpdate: false });
+    }
+  }, [value, editor]);
 
   return (
     <div className="flex flex-col h-full bg-[#F8F9FA] dark:bg-[#202020] relative border border-[var(--border-color)] rounded-lg overflow-hidden">

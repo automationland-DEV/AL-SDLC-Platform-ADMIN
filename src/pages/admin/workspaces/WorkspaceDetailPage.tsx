@@ -1,5 +1,5 @@
-import { useNavigate, useParams, Link } from 'react-router-dom';
-import { Edit, Briefcase, Users, Key, Clock, ListTodo, Info, Trash2, UserPlus, X, Loader2 } from 'lucide-react';
+import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
+import { Edit, Briefcase, Users, Key, Clock, ListTodo, Info, Trash2, UserPlus, X, Loader2, ArrowLeft } from 'lucide-react';
 import { Button, Badge, PageHeader, ConfirmModal, Select, MultiSearchableSelect } from '../../../components/ui';
 import { useWorkspaceDetailQuery, useAddWorkspaceMemberMutation, useRemoveWorkspaceMemberMutation, useUpdateWorkspaceMemberRoleMutation } from '../../../hooks/queries';
 import { useTranslation } from '../../../i18n/useTranslation';
@@ -13,8 +13,11 @@ import toast from 'react-hot-toast';
 export default function WorkspaceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { language } = useTranslation();
   const { data: workspaceRaw, isLoading } = useWorkspaceDetailQuery(id!);
+
+  const returnPath = (location.state as { from?: string } | undefined)?.from || '/workspaces';
   
   const [activeTab, setActiveTab] = useState<'overview' | 'tasks'>('overview');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -142,12 +145,18 @@ export default function WorkspaceDetailPage() {
         title={workspace.name}
         subtitle={workspace.description || (language === 'vi' ? 'Chưa có mô tả' : 'No description')}
         actions={
-          <Link to={`/workspaces/${id}/edit`}>
-            <Button size="sm">
-              <Edit className="w-4 h-4" />
-              {language === 'vi' ? 'Chỉnh sửa' : 'Edit'}
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => navigate(returnPath)}>
+              <ArrowLeft className="w-4 h-4" />
+              {language === 'vi' ? 'Quay lại' : 'Back'}
             </Button>
-          </Link>
+            <Link to={`/workspaces/${id}/edit`} state={{ from: `/workspaces/${id}` }}>
+              <Button size="sm">
+                <Edit className="w-4 h-4" />
+                {language === 'vi' ? 'Chỉnh sửa' : 'Edit'}
+              </Button>
+            </Link>
+          </div>
         }
       />
 

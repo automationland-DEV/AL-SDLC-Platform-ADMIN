@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Hash, Megaphone, Users, MessageSquare, Search, ChevronLeft } from 'lucide-react';
 import { useAdminChatStore } from '../../../stores/adminChatStore';
 import AdminMessageItem from './components/AdminMessageItem';
@@ -14,7 +14,10 @@ import ChatThreadIndexPanel from '../components/channels/ChatThreadIndexPanel';
 export default function ChatViewerPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { language } = useTranslation();
+
+  const returnPath = (location.state as { from?: string } | undefined)?.from || (id ? `/channels/${id}` : '/channels');
 
   const [channel, setChannel] = useState<ChatChannel | null>(null);
   const [isChannelsLoading, setIsChannelsLoading] = useState(true);
@@ -209,10 +212,10 @@ export default function ChatViewerPage() {
           {language === 'vi' ? 'Không tìm thấy channel.' : 'Channel not found.'}
         </p>
         <button
-          onClick={() => navigate('/channels')}
+          onClick={() => navigate(returnPath)}
           className="mt-4 px-4 py-2 bg-sky-500 text-white rounded-xl hover:bg-sky-600 font-medium"
         >
-          {language === 'vi' ? 'Quay lại danh sách' : 'Back to list'}
+          {language === 'vi' ? 'Quay lại' : 'Back'}
         </button>
       </div>
     );
@@ -234,7 +237,7 @@ export default function ChatViewerPage() {
       <div className="flex-shrink-0 bg-[var(--bg-secondary)] border-b border-[var(--border-color)] px-4 py-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
           <button
-            onClick={() => navigate('/channels')}
+            onClick={() => navigate(returnPath)}
             className="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] transition-colors flex-shrink-0"
             title={language === 'vi' ? 'Quay lại' : 'Back'}
           >

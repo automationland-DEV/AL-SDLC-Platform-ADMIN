@@ -28,12 +28,12 @@ export function useUsersQuery(params: {
   });
 }
 
-/** Single user detail — used by the view modal. */
 export function useUserDetailQuery(id: string | null) {
   return useQuery({
     queryKey: userKeys.detail(id!),
     queryFn: () => userService.getUserById(id!),
     enabled: Boolean(id),
+    staleTime: 1000 * 60,
   });
 }
 
@@ -54,8 +54,9 @@ export function useUpdateUserRoleMutation() {
   return useMutation({
     mutationFn: ({ id, role }: { id: string; role: string }) =>
       userService.updateUserRole(id, role),
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: userKeys.lists() });
+      qc.invalidateQueries({ queryKey: userKeys.detail(id) });
     },
   });
 }
@@ -65,8 +66,9 @@ export function useUpdateUserStatusMutation() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       userService.updateUserStatus(id, status),
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: userKeys.lists() });
+      qc.invalidateQueries({ queryKey: userKeys.detail(id) });
     },
   });
 }

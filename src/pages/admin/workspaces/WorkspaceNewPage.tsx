@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { FolderPlus, Columns, Repeat, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, SearchableSelect, PageHeader } from '../../../components/ui';
@@ -27,8 +27,11 @@ const SAMPLE_AVATARS = [
 
 export default function WorkspaceNewPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { language, t } = useTranslation();
   const createWorkspaceMutation = useCreateWorkspaceMutation();
+
+  const returnPath = (location.state as { from?: string } | undefined)?.from || '/workspaces';
 
   const { data: allUsersRaw } = useQuery({
     queryKey: ['users', 'all-for-form'],
@@ -73,7 +76,7 @@ export default function WorkspaceNewPage() {
         avatar,
       } as Partial<Workspace>);
       toast.success(language === 'vi' ? 'Tạo workspace thành công' : 'Workspace created successfully');
-      navigate('/workspaces');
+      navigate(returnPath);
     } catch (error) {
       const err = error as { response?: { data?: { message?: string } }; message?: string };
       toast.error(err.response?.data?.message || err.message || (language === 'vi' ? 'Tạo workspace thất bại' : 'Failed to create workspace'));
@@ -93,7 +96,7 @@ export default function WorkspaceNewPage() {
         subtitle={language === 'vi' ? 'Điền thông tin bên dưới để tạo workspace.' : 'Fill in information below to create a workspace.'}
       
         actions={
-          <Button variant="secondary" onClick={() => navigate(-1)} className="px-4">
+          <Button variant="secondary" onClick={() => navigate(returnPath)} className="px-4">
             {language === 'vi' ? 'Quay lại' : 'Go Back'}
           </Button>
         }
@@ -240,7 +243,7 @@ export default function WorkspaceNewPage() {
           </div>
 
           <div className="px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)]/30 flex justify-end gap-3">
-            <Button type="button" variant="secondary" onClick={() => navigate('/workspaces')} className="px-6">
+            <Button type="button" variant="secondary" onClick={() => navigate(returnPath)} className="px-6">
               {language === 'vi' ? 'Hủy' : 'Cancel'}
             </Button>
             <Button type="submit" disabled={isSaving} className="px-6">

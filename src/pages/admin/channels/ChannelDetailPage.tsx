@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Hash, Megaphone, Lock, Users, Clock, MessageSquare, Trash2 } from 'lucide-react';
+import { Hash, Megaphone, Lock, Users, Clock, MessageSquare, Trash2, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, ConfirmModal, PageHeader } from '../../../components/ui';
 import { chatChannelService } from '../../../services';
@@ -22,7 +22,10 @@ interface ChannelMember {
 export default function ChannelDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { language } = useTranslation();
+
+  const returnPath = (location.state as { from?: string } | undefined)?.from || '/channels';
 
   const { data: channel, isLoading: isChannelsLoading } = useQuery<ChatChannel>({
     queryKey: ['channel', id],
@@ -117,7 +120,11 @@ export default function ChannelDetailPage() {
         title={channel.name}
         actions={
           <div className="flex items-center gap-2">
-            <Link to={`/channels/${id}/chat`}>
+            <Button variant="secondary" size="sm" onClick={() => navigate(returnPath)}>
+              <ArrowLeft className="w-4 h-4" />
+              {language === 'vi' ? 'Quay lại' : 'Back'}
+            </Button>
+            <Link to={`/channels/${id}/chat`} state={{ from: `/channels/${id}` }}>
               <Button size="sm">
                 <MessageSquare className="w-4 h-4" />
                 {language === 'vi' ? 'Xem tin nhắn' : 'View chat'}

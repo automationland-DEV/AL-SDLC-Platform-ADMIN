@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Upload, FileText, CheckCircle, AlertCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, PageHeader } from '../../../components/ui';
@@ -16,8 +16,11 @@ interface ImportResult {
 
 export default function UserImportPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { language } = useTranslation();
   const importCsvMutation = useImportUsersCsvMutation();
+
+  const returnPath = (location.state as { from?: string } | undefined)?.from || '/users';
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -92,7 +95,7 @@ export default function UserImportPage() {
         }
       
         actions={
-          <Button variant="secondary" onClick={() => navigate(-1)} className="px-4">
+          <Button variant="secondary" onClick={() => navigate(returnPath)} className="px-4">
             {language === 'vi' ? 'Quay lại' : 'Go Back'}
           </Button>
         }
@@ -223,7 +226,7 @@ export default function UserImportPage() {
           <div className="px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)]/30 flex justify-end gap-3">
             <Button
               variant="secondary"
-              onClick={() => navigate('/users')}
+              onClick={() => navigate(returnPath)}
               disabled={isImporting}
               className="px-6"
             >

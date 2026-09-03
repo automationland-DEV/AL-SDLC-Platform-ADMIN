@@ -65,9 +65,9 @@ export default function WorkspacesPage() {
     setCurrentPage(newPage);
   };
 
-  const handleAddClick = () => navigate('/workspaces/new');
-  const handleEditClick = (ws: Workspace) => navigate(`/workspaces/${ws._id}/edit`);
-  const handleViewClick = (ws: Workspace) => navigate(`/workspaces/${ws._id}`);
+  const handleAddClick = () => navigate('/workspaces/new', { state: { from: '/workspaces' } });
+  const handleEditClick = (ws: Workspace) => navigate(`/workspaces/${ws._id}/edit`, { state: { from: '/workspaces' } });
+  const handleViewClick = (ws: Workspace) => navigate(`/workspaces/${ws._id}`, { state: { from: '/workspaces' } });
 
   const handleDelete = (id: string) => {
     setConfirmModal({

@@ -14,18 +14,16 @@ export interface WorkspaceQueryParams {
 // ─── Query Keys ────────────────────────────────────────────────────────────────
 export const workspaceKeys = {
   all: ['workspaces'] as const,
-  list: (params?: WorkspaceQueryParams) => [...workspaceKeys.all, 'all', params] as const,
+  lists: () => [...workspaceKeys.all, 'list'] as const,
+  list: (params: WorkspaceQueryParams = {}) => [...workspaceKeys.lists(), params] as const,
   detail: (id: string) => [...workspaceKeys.all, 'detail', id] as const,
 };
 
-// ─── Queries ───────────────────────────────────────────────────────────────────
-
-/** Full workspace list (admin endpoint returns all including soft-deleted). */
 export function useWorkspacesQuery(params: WorkspaceQueryParams = {}) {
   return useQuery({
     queryKey: workspaceKeys.list(params),
     queryFn: () => workspaceService.getAllAdmin(params),
-    staleTime: 1000 * 30, // 30 seconds
+    staleTime: 1000 * 30,
     placeholderData: (prev) => prev,
   });
 }
@@ -39,14 +37,12 @@ export function useWorkspaceDetailQuery(id: string) {
   });
 }
 
-// ─── Mutations ─────────────────────────────────────────────────────────────────
-
 export function useCreateWorkspaceMutation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: Partial<Workspace>) => workspaceService.create(data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+      qc.invalidateQueries({ queryKey: workspaceKeys.lists() });
     },
   });
 }
@@ -57,7 +53,7 @@ export function useUpdateWorkspaceMutation() {
     mutationFn: ({ id, data }: { id: string; data: Partial<Workspace> }) =>
       workspaceService.update(id, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+      qc.invalidateQueries({ queryKey: workspaceKeys.lists() });
     },
   });
 }
@@ -67,7 +63,7 @@ export function useDeleteWorkspaceMutation() {
   return useMutation({
     mutationFn: (id: string) => workspaceService.delete(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+      qc.invalidateQueries({ queryKey: workspaceKeys.lists() });
     },
   });
 }
@@ -77,7 +73,7 @@ export function useArchiveWorkspaceMutation() {
   return useMutation({
     mutationFn: (id: string) => workspaceService.archive(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+      qc.invalidateQueries({ queryKey: workspaceKeys.lists() });
     },
   });
 }
@@ -87,7 +83,7 @@ export function useRestoreWorkspaceMutation() {
   return useMutation({
     mutationFn: (id: string) => workspaceService.restore(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+      qc.invalidateQueries({ queryKey: workspaceKeys.lists() });
     },
   });
 }
@@ -99,7 +95,7 @@ export function useAddWorkspaceMemberMutation() {
       workspaceService.addMember(workspaceId, email, role),
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: workspaceKeys.detail(variables.workspaceId) });
-      qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+      qc.invalidateQueries({ queryKey: workspaceKeys.lists() });
     },
   });
 }
@@ -111,7 +107,7 @@ export function useRemoveWorkspaceMemberMutation() {
       workspaceService.removeMember(workspaceId, userId),
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: workspaceKeys.detail(variables.workspaceId) });
-      qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+      qc.invalidateQueries({ queryKey: workspaceKeys.lists() });
     },
   });
 }
@@ -123,7 +119,7 @@ export function useUpdateWorkspaceMemberRoleMutation() {
       workspaceService.updateMember(workspaceId, userId, role),
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: workspaceKeys.detail(variables.workspaceId) });
-      qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+      qc.invalidateQueries({ queryKey: workspaceKeys.lists() });
     },
   });
 }

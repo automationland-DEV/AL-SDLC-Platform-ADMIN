@@ -1,5 +1,5 @@
 import { useState, Suspense, lazy } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FileText, Type, FolderOpen } from 'lucide-react';
 import { Button, SearchableSelect, PageHeader } from '../../../components/ui';
@@ -12,7 +12,10 @@ const RichTextEditor = lazy(() => import('../../../components/editor/RichTextEdi
 
 export default function DocNewPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, language } = useTranslation();
+
+  const returnPath = (location.state as { from?: string } | undefined)?.from || '/documents';
   
   const createOnlineMutation = useCreateOnlineDocumentMutation();
   const { data: workspacesRaw } = useWorkspacesQuery();
@@ -45,7 +48,7 @@ export default function DocNewPage() {
         workspaceIds: selectedWorkspaceId ? [selectedWorkspaceId] : [],
       });
       toast.success(language === 'vi' ? 'Tạo tài liệu online thành công' : 'Online document created successfully');
-      navigate('/documents');
+      navigate(returnPath);
     } catch (error) {
       console.error(error);
       toast.error(language === 'vi' ? 'Lỗi khi tạo tài liệu' : 'Error creating document');
@@ -65,7 +68,7 @@ export default function DocNewPage() {
         subtitle={language === 'vi' ? 'Soạn thảo trực tiếp trên nền tảng với đầy đủ công cụ' : 'Write and edit online directly with rich tools'}
       
         actions={
-          <Button variant="secondary" onClick={() => navigate(-1)} className="px-4">
+          <Button variant="secondary" onClick={() => navigate(returnPath)} className="px-4">
             {language === 'vi' ? 'Quay lại' : 'Go Back'}
           </Button>
         }
@@ -132,7 +135,7 @@ export default function DocNewPage() {
           </div>
 
           <div className="px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)]/30 flex justify-end gap-3">
-            <Button type="button" variant="secondary" onClick={() => navigate('/documents')} className="px-6">
+            <Button type="button" variant="secondary" onClick={() => navigate(returnPath)} className="px-6">
               {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={isSaving} className="px-8 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600">
