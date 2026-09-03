@@ -23,7 +23,8 @@ export function useUsersQuery(params: {
   return useQuery({
     queryKey: userKeys.list(params),
     queryFn: () => userService.getAllUsers({ limit: 20, ...params }),
-    placeholderData: (prev) => prev, // Keep previous data while loading next page
+    placeholderData: (prev) => prev,
+    staleTime: 1000 * 30,
   });
 }
 

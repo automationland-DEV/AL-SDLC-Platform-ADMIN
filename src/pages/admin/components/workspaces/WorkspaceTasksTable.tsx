@@ -3,6 +3,7 @@ import { Search, Eye, Trash2, CheckCircle2, CircleDashed, ArrowRightCircle } fro
 import { Button, Badge, Table, TableRow, TableCell, ConfirmModal } from '../../../../components/ui';
 import { useTranslation } from '../../../../i18n/useTranslation';
 import { useWorkspaceTasksQuery, useDeleteTaskMutation } from '../../../../hooks/queries';
+import { TaskDetailModal } from './TaskDetailModal';
 import toast from 'react-hot-toast';
 import type { Task } from '../../../../types';
 
@@ -10,29 +11,62 @@ interface WorkspaceTasksTableProps {
   workspaceId: string;
 }
 
-const getStatusBadge = (status: string) => {
-  const s = status.toLowerCase();
+const getStatusBadge = (status: string, lang: 'vi' | 'en') => {
+  const s = (status || '').toLowerCase();
+  const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(status || '');
+
   if (s.includes('done') || s.includes('completed')) {
-    return <Badge variant="success" className="gap-1"><CheckCircle2 className="w-3 h-3" /> Done</Badge>;
+    return (
+      <Badge variant="success" className="gap-1">
+        <CheckCircle2 className="w-3 h-3" />
+        {lang === 'vi' ? 'Hoàn thành' : 'Done'}
+      </Badge>
+    );
   }
-  if (s.includes('progress') || s.includes('doing')) {
-    return <Badge variant="info" className="gap-1"><ArrowRightCircle className="w-3 h-3" /> In Progress</Badge>;
+  if (s.includes('progress') || s.includes('doing') || isUuid) {
+    return (
+      <Badge variant="info" className="gap-1">
+        <ArrowRightCircle className="w-3 h-3" />
+        {lang === 'vi' ? 'Đang thực hiện' : 'In Progress'}
+      </Badge>
+    );
   }
-  return <Badge variant="default" className="gap-1"><CircleDashed className="w-3 h-3" /> {status || 'To Do'}</Badge>;
+  return (
+    <Badge variant="default" className="gap-1">
+      <CircleDashed className="w-3 h-3" />
+      {lang === 'vi' ? 'Cần làm' : 'To Do'}
+    </Badge>
+  );
 };
 
-const getPriorityBadge = (priority: string) => {
-  const p = priority.toLowerCase();
-  if (p === 'highest' || p === 'critical') return <Badge variant="danger" mono>{priority}</Badge>;
-  if (p === 'high') return <Badge variant="warning" mono>{priority}</Badge>;
-  if (p === 'low' || p === 'lowest') return <Badge variant="default" mono>{priority}</Badge>;
-  return <Badge variant="info" mono>{priority}</Badge>;
+const getPriorityBadge = (priority: string, lang: 'vi' | 'en') => {
+  const p = (priority || '').toLowerCase();
+  if (p === 'highest' || p === 'critical') {
+    return <Badge variant="danger">{lang === 'vi' ? 'Rất cao' : 'Highest'}</Badge>;
+  }
+  if (p === 'high') {
+    return <Badge variant="warning">{lang === 'vi' ? 'Cao' : 'High'}</Badge>;
+  }
+  if (p === 'low' || p === 'lowest') {
+    return <Badge variant="default">{lang === 'vi' ? 'Thấp' : 'Low'}</Badge>;
+  }
+  return <Badge variant="info">{lang === 'vi' ? 'Trung bình' : 'Medium'}</Badge>;
+};
+
+const formatTaskType = (type: string, lang: 'vi' | 'en') => {
+  const t = (type || '').toLowerCase();
+  if (t === 'bug') return lang === 'vi' ? 'Lỗi' : 'Bug';
+  if (t === 'story') return lang === 'vi' ? 'User Story' : 'Story';
+  if (t === 'epic') return 'Epic';
+  if (t === 'subtask') return lang === 'vi' ? 'Công việc con' : 'Subtask';
+  return lang === 'vi' ? 'Công việc' : 'Task';
 };
 
 export function WorkspaceTasksTable({ workspaceId }: WorkspaceTasksTableProps) {
   const { language } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
   const { data, isLoading } = useWorkspaceTasksQuery(workspaceId, { 
     page, 
@@ -124,28 +158,63 @@ export function WorkspaceTasksTable({ workspaceId }: WorkspaceTasksTableProps) {
               {tasks.map(task => (
                 <TableRow key={task.id}>
                   <TableCell className="font-mono-code text-xs font-bold text-sky-600 dark:text-sky-400">
-                    {task.key}
+                    <button
+                      onClick={() => setSelectedTaskId(task.id)}
+                      className="hover:underline cursor-pointer text-left"
+                    >
+                      {task.key}
+                    </button>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="text-sm font-bold text-[var(--text-primary)] truncate" title={task.title}>
+                      <button
+                        onClick={() => setSelectedTaskId(task.id)}
+                        className="text-sm font-bold text-[var(--text-primary)] hover:text-sky-500 transition-colors truncate text-left cursor-pointer"
+                        title={task.title}
+                      >
                         {task.title}
-                      </span>
+                      </button>
                       <span className="text-xs text-[var(--text-muted)] font-mono-code mt-0.5">
-                        {task.type}
+                        {formatTaskType(task.type, language)}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
-                    {getStatusBadge(task.status)}
+                    {getStatusBadge(task.status, language)}
                   </TableCell>
                   <TableCell className="text-center">
-                    {getPriorityBadge(task.priority)}
+                    {getPriorityBadge(task.priority, language)}
                   </TableCell>
                   <TableCell>
-                    {task.assigneeId ? (
-                      <span className="text-xs font-medium text-[var(--text-primary)] font-mono-code truncate block">
-                        {task.assigneeId}
+                    {task.assignee?.fullName || task.assignee?.email ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        {task.assignee.avatar ? (
+                          <img src={task.assignee.avatar} alt="" className="w-5 h-5 rounded-full object-cover shrink-0 border border-[var(--border-color)]" />
+                        ) : (
+                          <div className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-500 flex items-center justify-center font-bold text-[10px] shrink-0 border border-sky-500/30">
+                            {(task.assignee.fullName || task.assignee.email || 'U').charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-xs font-medium text-[var(--text-primary)] truncate" title={task.assignee.email || ''}>
+                          {task.assignee.fullName || task.assignee.email}
+                        </span>
+                      </div>
+                    ) : task.reporter?.fullName || task.reporter?.email ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        {task.reporter.avatar ? (
+                          <img src={task.reporter.avatar} alt="" className="w-5 h-5 rounded-full object-cover shrink-0 border border-[var(--border-color)]" />
+                        ) : (
+                          <div className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center font-bold text-[10px] shrink-0 border border-indigo-500/30">
+                            {(task.reporter.fullName || task.reporter.email || 'U').charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-xs font-medium text-[var(--text-primary)] truncate" title={task.reporter.email || ''}>
+                          {task.reporter.fullName || task.reporter.email}
+                        </span>
+                      </div>
+                    ) : task.assigneeId ? (
+                      <span className="text-xs font-medium text-[var(--text-secondary)] font-mono-code truncate block">
+                        {task.assigneeId.slice(0, 8)}...
                       </span>
                     ) : (
                       <span className="text-xs text-[var(--text-muted)] italic">Unassigned</span>
@@ -157,9 +226,9 @@ export function WorkspaceTasksTable({ workspaceId }: WorkspaceTasksTableProps) {
                   <TableCell>
                     <div className="flex items-center justify-center gap-1">
                       <button
-                        onClick={() => alert(`View detail task: ${task.key}\nTính năng xem chi tiết Task sẽ được cập nhật sau.`)}
+                        onClick={() => setSelectedTaskId(task.id)}
                         className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-sky-500 transition-colors cursor-pointer"
-                        title="Xem"
+                        title={language === 'vi' ? 'Xem chi tiết' : 'View Detail'}
                       >
                         <Eye size={15} />
                       </button>
@@ -177,6 +246,14 @@ export function WorkspaceTasksTable({ workspaceId }: WorkspaceTasksTableProps) {
             </Table>
           </div>
         )}
+
+        {/* Task Detail Modal */}
+        <TaskDetailModal
+          isOpen={!!selectedTaskId}
+          workspaceId={workspaceId}
+          taskId={selectedTaskId || ''}
+          onClose={() => setSelectedTaskId(null)}
+        />
 
         {/* Pagination */}
         {totalPages > 1 && (

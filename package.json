@@ -15,6 +15,7 @@
     "@ckeditor/ckeditor5-react": "^11.2.0",
     "@tanstack/react-query": "^5.101.4",
     "@tanstack/react-query-devtools": "^5.101.4",
+    "@tanstack/react-table": "^8.21.3",
     "@tiptap/extension-color": "^3.27.4",
     "@tiptap/extension-font-family": "^3.27.4",
     "@tiptap/extension-highlight": "^3.27.4",
@@ -41,6 +42,7 @@
     "react-easy-crop": "^6.2.2",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.16.0",
+    "recharts": "^3.10.1",
     "socket.io-client": "^4.8.3",
     "zustand": "^5.0.14"
   },

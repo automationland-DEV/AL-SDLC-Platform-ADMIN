@@ -188,3 +188,23 @@ button {
   outline: none;
   box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--color-accent-sky);
 }
+
+/* Recharts & SVG Chart Typography Unification with Website Admin */
+.recharts-wrapper,
+.recharts-wrapper *,
+.recharts-surface,
+.recharts-text,
+.recharts-legend-item-text,
+.recharts-tooltip-wrapper,
+.recharts-default-tooltip,
+.recharts-cartesian-axis-tick,
+.recharts-cartesian-axis-tick-value,
+.recharts-polar-angle-axis-tick,
+.recharts-polar-angle-axis-tick-value,
+.recharts-polar-radius-axis-tick,
+.recharts-polar-radius-axis-tick-value,
+.recharts-label,
+.recharts-legend-wrapper {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+

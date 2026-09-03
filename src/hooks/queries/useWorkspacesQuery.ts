@@ -30,6 +30,15 @@ export function useWorkspacesQuery(params: WorkspaceQueryParams = {}) {
   });
 }
 
+export function useWorkspaceDetailQuery(id: string) {
+  return useQuery({
+    queryKey: workspaceKeys.detail(id),
+    queryFn: () => workspaceService.getById(id),
+    enabled: !!id,
+    staleTime: 1000 * 30,
+  });
+}
+
 // ─── Mutations ─────────────────────────────────────────────────────────────────
 
 export function useCreateWorkspaceMutation() {
@@ -78,6 +87,42 @@ export function useRestoreWorkspaceMutation() {
   return useMutation({
     mutationFn: (id: string) => workspaceService.restore(id),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+    },
+  });
+}
+
+export function useAddWorkspaceMemberMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ workspaceId, email, role }: { workspaceId: string; email: string; role: string }) =>
+      workspaceService.addMember(workspaceId, email, role),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: workspaceKeys.detail(variables.workspaceId) });
+      qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+    },
+  });
+}
+
+export function useRemoveWorkspaceMemberMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ workspaceId, userId }: { workspaceId: string; userId: string }) =>
+      workspaceService.removeMember(workspaceId, userId),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: workspaceKeys.detail(variables.workspaceId) });
+      qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+    },
+  });
+}
+
+export function useUpdateWorkspaceMemberRoleMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ workspaceId, userId, role }: { workspaceId: string; userId: string; role: string }) =>
+      workspaceService.updateMember(workspaceId, userId, role),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: workspaceKeys.detail(variables.workspaceId) });
       qc.invalidateQueries({ queryKey: workspaceKeys.list() });
     },
   });

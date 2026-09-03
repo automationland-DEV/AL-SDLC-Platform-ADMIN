@@ -29,6 +29,7 @@ export const API_ROUTES = {
   },
   DASHBOARD: {
     ADMIN_STATS: '/admin/dashboard/stats',
+    SDLC_STATS: '/admin/dashboard/sdlc',
   },
   AUDIT: {
     LOGS: '/admin/audit/logs',

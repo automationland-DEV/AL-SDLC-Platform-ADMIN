@@ -192,8 +192,10 @@ export interface Task {
   rank?: string;
   version: number;
   assigneeId?: string;
+  assignee?: TaskUserSummary;
   labels?: TaskLabelSummary[];
   reporterId: string;
+  reporter?: TaskUserSummary;
   storyPoints?: number;
   startDate?: string;
   dueDate?: string;

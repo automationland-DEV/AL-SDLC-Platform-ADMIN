@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import api from '../../services/api';
 import type { TaskListResponse } from '../../types';
 
@@ -6,6 +6,7 @@ export const taskKeys = {
   all: ['tasks'] as const,
   lists: () => [...taskKeys.all, 'list'] as const,
   list: (workspaceId: string, filters: string) => [...taskKeys.lists(), workspaceId, { filters }] as const,
+  detail: (workspaceId: string, taskId: string) => [...taskKeys.all, 'detail', workspaceId, taskId] as const,
 };
 
 export const useWorkspaceTasksQuery = (workspaceId: string, filters: Record<string, string | number> = {}) => {
@@ -41,6 +42,22 @@ export const useWorkspaceTasksQuery = (workspaceId: string, filters: Record<stri
       }
     },
     enabled: !!workspaceId,
+    placeholderData: keepPreviousData,
+  });
+};
+
+export const useTaskDetailQuery = (workspaceId: string, taskId: string) => {
+  return useQuery({
+    queryKey: taskKeys.detail(workspaceId, taskId),
+    queryFn: async () => {
+      const response = await api.get(`/workspaces/${workspaceId}/board/${taskId}`);
+      let resData = response.data;
+      if (resData && typeof resData === 'object' && 'data' in resData) {
+        resData = resData.data;
+      }
+      return resData;
+    },
+    enabled: !!workspaceId && !!taskId,
   });
 };
 
@@ -49,8 +66,6 @@ export const useDeleteTaskMutation = () => {
   
   return useMutation({
     mutationFn: async ({ workspaceId, taskId }: { workspaceId: string; taskId: string }) => {
-      // Assuming this is the delete endpoint based on standard REST.
-      // If it's different in backend, it might need adjustment later.
       const { data } = await api.delete(`/workspaces/${workspaceId}/board/tasks/${taskId}`);
       return data;
     },

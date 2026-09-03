@@ -4,6 +4,7 @@ import { Plus, Search, Edit, Trash2, Eye, Upload, ArrowUpDown, ChevronUp, Chevro
 import { useTranslation } from '../../../i18n/useTranslation';
 import toast from 'react-hot-toast';
 import { Button, Badge, Table, TableRow, TableCell, ConfirmModal, Select } from '../../../components/ui';
+import { useDebounce } from '../../../hooks/useDebounce';
 import type { User, UserRole, UserStatus } from '../../../types';
 import {
   useUsersQuery,
@@ -34,7 +35,7 @@ export default function UsersPage() {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 500);
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'createdAt', direction: 'asc' | 'desc' } | null>(null);
@@ -69,8 +70,6 @@ export default function UsersPage() {
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     setPage(1);
-    const id = setTimeout(() => setDebouncedSearch(value), 500);
-    return () => clearTimeout(id);
   };
 
   const handleViewClick = (user: User) => {
