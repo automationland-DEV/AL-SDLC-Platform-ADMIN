@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Trash2, Eye, MessageSquare } from 'lucide-react';
 import { useTranslation } from '../../../i18n/useTranslation';
@@ -9,15 +9,19 @@ import {
   useDeleteChannelMutation,
   useWorkspacesQuery,
 } from '../../../hooks/queries';
-import type { ChatChannel, Workspace } from '../../../types';
+import type { Workspace } from '../../../types';
+import { useDebounce } from '../../../hooks/useDebounce';
+
+const ITEMS_PER_PAGE = 20;
 
 export default function ChatChannelsPage() {
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [workspaceFilter, setWorkspaceFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+
+  const debouncedSearch = useDebounce(searchInput, 400);
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -33,78 +37,51 @@ export default function ChatChannelsPage() {
     type: 'danger',
   });
 
-  const { data: channelsRaw = [], isLoading } = useChannelsQuery(
-    workspaceFilter !== 'all' ? workspaceFilter : undefined
-  );
+  const { data: channelsResponse, isLoading, isFetching } = useChannelsQuery({
+    workspaceId: workspaceFilter !== 'all' ? workspaceFilter : undefined,
+    page: currentPage,
+    limit: ITEMS_PER_PAGE,
+    search: debouncedSearch || undefined,
+    type: typeFilter !== 'all' ? typeFilter : undefined,
+  });
+
   const { data: workspacesRaw = [] } = useWorkspacesQuery();
   const deleteChannelMutation = useDeleteChannelMutation();
 
-  const channels = useMemo(() => {
-    if (Array.isArray(channelsRaw)) return channelsRaw as ChatChannel[];
-    if (channelsRaw && typeof channelsRaw === 'object') {
-      const obj = channelsRaw as Record<string, unknown>;
-      if (Array.isArray(obj.data)) return obj.data as ChatChannel[];
-      if (Array.isArray(obj.channels)) return obj.channels as ChatChannel[];
-    }
-    return [];
-  }, [channelsRaw]);
+  const channels = useMemo(() => channelsResponse?.channels ?? [], [channelsResponse]);
+  const total = channelsResponse?.total ?? 0;
+  const totalPages = Math.ceil(total / ITEMS_PER_PAGE) || 1;
 
   const workspaces = useMemo(() => {
     if (Array.isArray(workspacesRaw)) return workspacesRaw as Workspace[];
     if (workspacesRaw && typeof workspacesRaw === 'object') {
-      const obj = workspacesRaw as Record<string, unknown>;
+      const obj = (workspacesRaw as unknown) as Record<string, unknown>;
       if (Array.isArray(obj.data)) return obj.data as Workspace[];
       if (Array.isArray(obj.workspaces)) return obj.workspaces as Workspace[];
     }
     return [];
   }, [workspacesRaw]);
 
-  const absoluteTotal = channels.length;
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchInput(value);
+    setCurrentPage(1);
+  }, []);
 
-  const filteredChannels = useMemo(() => {
-    let result = [...channels];
-    if (typeFilter !== 'all') {
-      result = result.filter(c => c.type === typeFilter);
-    }
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
-      result = result.filter(
-        c => c.name.toLowerCase().includes(q) || c.description?.toLowerCase().includes(q)
-      );
-    }
-    return result;
-  }, [channels, typeFilter, searchTerm]);
-
-  const displayChannels = filteredChannels;
-  const totalPages = Math.ceil(displayChannels.length / itemsPerPage) || 1;
-  const paginatedChannels = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return displayChannels.slice(start, start + itemsPerPage);
-  }, [displayChannels, currentPage]);
-
-  const handleTypeFilterChange = (type: string) => {
+  const handleTypeFilterChange = useCallback((type: string) => {
     setTypeFilter(type);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleWorkspaceFilterChange = (wsId: string) => {
+  const handleWorkspaceFilterChange = useCallback((wsId: string) => {
     setWorkspaceFilter(wsId);
     setCurrentPage(1);
-  };
+  }, []);
 
   const handleResetFilters = () => {
-    setSearchTerm('');
+    setSearchInput('');
     setTypeFilter('all');
     setWorkspaceFilter('all');
     setCurrentPage(1);
-  };
-
-  const openViewModal = (channel: ChatChannel) => {
-    navigate(`/channels/${channel._id}`);
-  };
-
-  const openChatModal = (channel: ChatChannel) => {
-    navigate(`/channels/${channel._id}/chat`);
   };
 
   const handleDelete = (id: string) => {
@@ -126,8 +103,6 @@ export default function ChatChannelsPage() {
       },
     });
   };
-
-
 
   const getTypeBadge = (type?: string) => {
     const variants: Record<string, 'info' | 'purple' | 'warning' | 'cyan' | 'default'> = {
@@ -162,13 +137,20 @@ export default function ChatChannelsPage() {
 
   const { t, language } = useTranslation();
 
+  const hasFilters = searchInput !== '' || typeFilter !== 'all' || workspaceFilter !== 'all';
+
   return (
     <div className="flex-1 flex flex-col min-h-0 space-y-3 font-sans">
       {/* Header */}
       <div className="shrink-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-[var(--text-primary)] uppercase tracking-tight">{t('channels.title')}</h2>
-          <p className="text-xs text-[var(--text-muted)] font-mono-code mt-0.5">{t('channels.subtitle', { count: absoluteTotal })}</p>
+          <p className="text-xs text-[var(--text-muted)] font-mono-code mt-0.5">
+            {language === 'vi' ? `Tổng cộng ${total} kênh` : `Total ${total} channels`}
+            {isFetching && !isLoading && (
+              <span className="ml-2 text-sky-500">{language === 'vi' ? '· Đang cập nhật...' : '· Updating...'}</span>
+            )}
+          </p>
         </div>
       </div>
 
@@ -180,11 +162,8 @@ export default function ChatChannelsPage() {
             <input
               type="text"
               placeholder={t('channels.searchPlaceholder')}
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
+              value={searchInput}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 font-mono-code transition-all"
             />
           </div>
@@ -217,7 +196,7 @@ export default function ChatChannelsPage() {
             />
           </div>
 
-          {(searchTerm !== '' || typeFilter !== 'all' || workspaceFilter !== 'all') && (
+          {hasFilters && (
             <button
               onClick={handleResetFilters}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors ml-auto cursor-pointer"
@@ -228,15 +207,15 @@ export default function ChatChannelsPage() {
         </div>
       </div>
 
-      {/* Main Table / Responsive Mobile Cards */}
+      {/* Main Table */}
       <div className="flex-1 flex flex-col min-h-0 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)] overflow-hidden shadow-xs">
         {isLoading ? (
-          <div className="flex items-center justify-center py-16">
+          <div className="flex-1 flex items-center justify-center py-16">
             <div className="animate-spin rounded-full h-7 w-7 border-2 border-sky-500 border-t-transparent"></div>
           </div>
         ) : (
           <>
-            {/* Desktop Table View */}
+            {/* Desktop Table */}
             <div className="hidden md:flex flex-col flex-1 min-h-0 overflow-y-auto">
               <Table
                 fixedLayout
@@ -251,7 +230,7 @@ export default function ChatChannelsPage() {
                   { label: t('table.actions'), align: 'center', className: 'w-[7%]' },
                 ]}
               >
-                {paginatedChannels.map((channel) => (
+                {channels.map((channel) => (
                   <TableRow key={channel._id}>
                     <TableCell className="font-mono-code text-xs text-[var(--text-muted)]">
                       #{channel._id?.slice(-6)}
@@ -282,8 +261,8 @@ export default function ChatChannelsPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-center font-mono-code text-xs text-[var(--text-secondary)]">
-                      {(channel.type === 'general' || channel.type === 'announcement') 
-                        ? 'ALL' 
+                      {(channel.type === 'general' || channel.type === 'announcement')
+                        ? 'ALL'
                         : (channel.channelMembers?.length || channel.members?.length || 0)}
                     </TableCell>
                     <TableCell className="font-mono-code text-xs text-[var(--text-muted)] text-center">
@@ -292,14 +271,14 @@ export default function ChatChannelsPage() {
                     <TableCell>
                       <div className="flex items-center justify-center gap-1">
                         <button
-                          onClick={() => openViewModal(channel)}
+                          onClick={() => navigate(`/channels/${channel._id}`)}
                           className="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-sky-500 transition-colors cursor-pointer"
                           title="Xem thông tin"
                         >
                           <Eye size={15} />
                         </button>
                         <button
-                          onClick={() => openChatModal(channel)}
+                          onClick={() => navigate(`/channels/${channel._id}/chat`)}
                           className="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-emerald-500 transition-colors cursor-pointer"
                           title="Lịch sử Chat"
                         >
@@ -319,9 +298,9 @@ export default function ChatChannelsPage() {
               </Table>
             </div>
 
-            {/* Mobile Responsive Cards Grid (<768px) */}
+            {/* Mobile Cards */}
             <div className="block md:hidden flex-1 min-h-0 overflow-y-auto divide-y divide-[var(--border-color)]">
-              {paginatedChannels.map((channel) => (
+              {channels.map((channel) => (
                 <div key={channel._id} className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
@@ -330,12 +309,11 @@ export default function ChatChannelsPage() {
                     </div>
                     {getTypeBadge(channel.type)}
                   </div>
-
                   <div className="flex items-center justify-between text-xs pt-1 border-t border-[var(--border-color)]">
                     <span className="font-mono-code text-[11px] text-[var(--text-muted)]">#{channel._id?.slice(-6)}</span>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openViewModal(channel)}><Eye size={14} /></Button>
-                      <Button variant="secondary" size="sm" onClick={() => openChatModal(channel)}><MessageSquare size={14} /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/channels/${channel._id}`)}><Eye size={14} /></Button>
+                      <Button variant="secondary" size="sm" onClick={() => navigate(`/channels/${channel._id}/chat`)}><MessageSquare size={14} /></Button>
                       <Button variant="danger" size="sm" onClick={() => handleDelete(channel._id)}><Trash2 size={14} /></Button>
                     </div>
                   </div>
@@ -344,11 +322,11 @@ export default function ChatChannelsPage() {
             </div>
 
             {/* Empty State */}
-            {displayChannels.length === 0 && (
+            {channels.length === 0 && (
               <div className="text-center py-16 text-[var(--text-muted)] space-y-2">
                 <MessageSquare className="w-10 h-10 mx-auto stroke-1" />
                 <p className="text-xs font-medium">
-                  {language === 'vi' ? 'Chưa có kênh trò chuyện nào.' : 'No chat channels found.'}
+                  {language === 'vi' ? 'Không tìm thấy kênh trò chuyện nào.' : 'No chat channels found.'}
                 </p>
               </div>
             )}
@@ -357,14 +335,14 @@ export default function ChatChannelsPage() {
             {totalPages > 1 && (
               <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3 border-t border-[var(--border-color)] gap-3 bg-[var(--bg-tertiary)]/30">
                 <p className="text-xs font-mono-code text-[var(--text-muted)]">
-                  {language === 'vi' ? 'Trang' : 'Page'} {currentPage} / {totalPages} ({language === 'vi' ? 'Tổng' : 'Total'} {displayChannels.length} {language === 'vi' ? 'bản ghi' : 'records'})
+                  {language === 'vi' ? 'Trang' : 'Page'} {currentPage} / {totalPages} ({language === 'vi' ? 'Tổng' : 'Total'} {total} {language === 'vi' ? 'bản ghi' : 'records'})
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="secondary"
                     size="sm"
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
+                    disabled={currentPage === 1 || isFetching}
                   >
                     {language === 'vi' ? 'Trang trước' : 'Previous'}
                   </Button>
@@ -372,7 +350,7 @@ export default function ChatChannelsPage() {
                     variant="secondary"
                     size="sm"
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
+                    disabled={currentPage === totalPages || isFetching}
                   >
                     {language === 'vi' ? 'Trang sau' : 'Next'}
                   </Button>

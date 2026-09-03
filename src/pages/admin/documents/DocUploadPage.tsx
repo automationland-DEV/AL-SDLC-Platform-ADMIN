@@ -18,7 +18,7 @@ export default function DocUploadPage() {
   const workspaces: Workspace[] = useMemo(() => {
     if (Array.isArray(workspacesRaw)) return workspacesRaw as Workspace[];
     if (workspacesRaw && typeof workspacesRaw === 'object') {
-      const obj = workspacesRaw as Record<string, unknown>;
+      const obj = (workspacesRaw as unknown) as Record<string, unknown>;
       if (Array.isArray(obj.data)) return obj.data as Workspace[];
     }
     return [];

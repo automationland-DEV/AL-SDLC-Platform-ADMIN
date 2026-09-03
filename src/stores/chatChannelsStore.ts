@@ -49,10 +49,10 @@ export const useChatChannelsStore = create<ChatChannelsStore>((set, get) => ({
     try {
       const params: { workspaceId?: string } = {};
       if (workspaceId && workspaceId !== 'all') params.workspaceId = workspaceId;
-      const channels = await chatChannelService.getAllChannels(
+      const result = await chatChannelService.getAllChannels(
         Object.keys(params).length ? params : undefined
       );
-      set({ channels, absoluteTotal: channels.length, isLoading: false });
+      set({ channels: result.channels, absoluteTotal: result.total, isLoading: false });
       get().applyFilters();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to fetch channels';

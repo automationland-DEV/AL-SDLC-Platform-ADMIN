@@ -4,6 +4,7 @@ import { Plus, Search, Edit, Trash2, Eye, Upload, ArrowUpDown, ChevronUp, Chevro
 import { useTranslation } from '../../../i18n/useTranslation';
 import toast from 'react-hot-toast';
 import { Button, Badge, Table, TableRow, TableCell, ConfirmModal, Select } from '../../../components/ui';
+import { useDebounce } from '../../../hooks/useDebounce';
 import type { User, UserRole, UserStatus } from '../../../types';
 import {
   useUsersQuery,
@@ -34,7 +35,7 @@ export default function UsersPage() {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 500);
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'createdAt', direction: 'asc' | 'desc' } | null>(null);
@@ -62,48 +63,13 @@ export default function UsersPage() {
 
   const deleteUserMutation = useDeleteUserMutation();
 
-  const parseUsersResponse = (raw: unknown) => {
-    let usersList: User[] = [];
-    let total = 0;
-    let totalPagesCount = 1;
-
-    if (Array.isArray(raw)) {
-      usersList = raw as User[];
-      total = usersList.length;
-      totalPagesCount = 1;
-    } else if (raw && typeof raw === 'object') {
-      const obj = raw as Record<string, unknown>;
-      if (Array.isArray(obj.data)) {
-        usersList = obj.data as User[];
-      } else if (Array.isArray(obj.users)) {
-        usersList = obj.users as User[];
-      }
-
-      if (typeof obj.total === 'number') {
-        total = obj.total;
-      } else if (obj.pagination && typeof obj.pagination === 'object') {
-        const pag = obj.pagination as Record<string, unknown>;
-        if (typeof pag.total === 'number') total = pag.total;
-        if (typeof pag.totalPages === 'number') totalPagesCount = pag.totalPages;
-      } else {
-        total = usersList.length;
-      }
-
-      if (typeof obj.totalPages === 'number') {
-        totalPagesCount = obj.totalPages;
-      }
-    }
-
-    return { users: usersList, absoluteTotal: total, totalPages: totalPagesCount };
-  };
-
-  const { users, absoluteTotal, totalPages } = parseUsersResponse(data);
+  const users = data?.data ?? [];
+  const absoluteTotal = data?.total ?? 0;
+  const totalPages = data?.totalPages ?? 1;
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     setPage(1);
-    const id = setTimeout(() => setDebouncedSearch(value), 500);
-    return () => clearTimeout(id);
   };
 
   const handleViewClick = (user: User) => {
@@ -166,6 +132,8 @@ export default function UsersPage() {
     );
   };
 
+  // Server side sorting isn't fully implemented in this component, so we still do client-side for now or just rely on default order
+  // Wait, I will keep client-side sorting as it was just to be safe, since backend GET /admin/users doesn't necessarily accept sort in the query
   const getProcessedUsers = () => {
     const processed = [...users];
 
@@ -276,7 +244,7 @@ export default function UsersPage() {
       {/* Main Users Table / Responsive Mobile Cards */}
       <div className="flex-1 flex flex-col min-h-0 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)] overflow-hidden shadow-xs">
         {isLoading ? (
-          <div className="flex items-center justify-center py-16">
+          <div className="flex-1 flex items-center justify-center py-16">
             <div className="animate-spin rounded-full h-7 w-7 border-2 border-sky-500 border-t-transparent"></div>
           </div>
         ) : (

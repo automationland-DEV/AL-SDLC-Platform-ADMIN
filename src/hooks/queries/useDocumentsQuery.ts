@@ -28,6 +28,7 @@ export function useDocumentsQuery(params: {
     queryKey: documentKeys.list(params),
     queryFn: () => documentService.getAllAdmin(apiParams),
     placeholderData: (prev) => prev,
+    staleTime: 1000 * 30,
   });
 }
 

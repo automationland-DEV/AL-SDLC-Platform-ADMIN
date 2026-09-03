@@ -50,8 +50,13 @@ export function ProfileSettings() {
       toast.error('Vui lòng nhập mật khẩu hiện tại');
       return;
     }
-    if (newPassword.length < 8) {
-      toast.error('Mật khẩu mới phải có ít nhất 8 ký tự');
+    if (newPassword === currentPassword) {
+      toast.error('Mật khẩu mới không được trùng với mật khẩu hiện tại');
+      return;
+    }
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      toast.error('Mật khẩu mới phải có ít nhất 8 ký tự, 1 chữ in hoa và 1 chữ số');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -61,9 +66,9 @@ export function ProfileSettings() {
 
     try {
       setIsSavingPassword(true);
-      await userService.updateProfile({ 
-        currentPassword, 
-        password: newPassword 
+      await userService.updatePassword({
+        currentPassword,
+        password: newPassword,
       });
       toast.success('Đổi mật khẩu thành công');
       setCurrentPassword('');
@@ -71,7 +76,12 @@ export function ProfileSettings() {
       toast.success('Cập nhật mật khẩu thành công');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Mật khẩu cũ không chính xác hoặc có lỗi xảy ra');
+      const errorMsg = error?.response?.data?.message;
+      let displayMsg = Array.isArray(errorMsg) ? errorMsg[0] : errorMsg;
+      if (displayMsg === 'Current password is incorrect.') {
+        displayMsg = 'Mật khẩu hiện tại không chính xác';
+      }
+      toast.error(displayMsg || 'Mật khẩu cũ không chính xác hoặc có lỗi xảy ra');
     } finally {
       setIsSavingPassword(false);
     }

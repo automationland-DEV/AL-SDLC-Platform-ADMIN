@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { FolderEdit, Columns, Repeat, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, SearchableSelect, PageHeader } from '../../../components/ui';
-import { useWorkspacesQuery, useUpdateWorkspaceMutation } from '../../../hooks/queries';
+import { useWorkspaceDetailQuery, useUpdateWorkspaceMutation } from '../../../hooks/queries';
 import { useQuery } from '@tanstack/react-query';
 import { userService } from '../../../services';
 import { useTranslation } from '../../../i18n/useTranslation';
@@ -28,16 +28,12 @@ export default function WorkspaceEditPage() {
   const { language, t } = useTranslation();
   const updateWorkspaceMutation = useUpdateWorkspaceMutation();
 
-  const { data: workspacesRaw, isLoading } = useWorkspacesQuery();
-  const workspaces: Workspace[] = useMemo(() => {
-    if (Array.isArray(workspacesRaw)) return workspacesRaw as Workspace[];
-    if (workspacesRaw && typeof workspacesRaw === 'object') {
-      const obj = workspacesRaw as Record<string, unknown>;
-      if (Array.isArray(obj.data)) return obj.data as Workspace[];
-    }
-    return [];
-  }, [workspacesRaw]);
-  const workspace = workspaces.find(w => w._id === id);
+  const { data: workspaceRaw, isLoading } = useWorkspaceDetailQuery(id!);
+  const workspace = useMemo(() => {
+    if (!workspaceRaw) return null;
+    const rawObj = workspaceRaw as unknown as Record<string, unknown>;
+    return (rawObj.data ?? workspaceRaw) as Workspace;
+  }, [workspaceRaw]);
 
   const { data: allUsersRaw } = useQuery({
     queryKey: ['users', 'all-for-form'],
@@ -93,7 +89,7 @@ export default function WorkspaceEditPage() {
         data: { name, key, description, ownerId, type: template, avatar } as Partial<Workspace>,
       });
       toast.success(language === 'vi' ? 'Cập nhật workspace thành công' : 'Workspace updated successfully');
-      navigate('/workspaces');
+      navigate(`/workspaces/${id}`);
     } catch (error) {
       const err = error as { response?: { data?: { message?: string } }; message?: string };
       toast.error(err.response?.data?.message || err.message || (language === 'vi' ? 'Lưu workspace thất bại' : 'Failed to save workspace'));
@@ -134,7 +130,7 @@ export default function WorkspaceEditPage() {
         title={language === 'vi' ? 'Chỉnh sửa Workspace' : 'Edit Workspace'}
       
         actions={
-          <Button variant="secondary" onClick={() => navigate(-1)} className="px-4">
+          <Button variant="secondary" onClick={() => navigate(`/workspaces/${id}`)} className="px-4">
             {language === 'vi' ? 'Quay lại' : 'Go Back'}
           </Button>
         }
@@ -253,7 +249,7 @@ export default function WorkspaceEditPage() {
           </div>
 
           <div className="px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)]/30 flex justify-end gap-3">
-            <Button type="button" variant="secondary" onClick={() => navigate('/workspaces')} className="px-6">
+            <Button type="button" variant="secondary" onClick={() => navigate(`/workspaces/${id}`)} className="px-6">
               {language === 'vi' ? 'Hủy' : 'Cancel'}
             </Button>
             <Button type="submit" disabled={isSaving} className="px-6">

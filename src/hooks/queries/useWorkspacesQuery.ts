@@ -2,21 +2,40 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { workspaceService } from '../../services';
 import type { Workspace } from '../../types';
 
+export interface WorkspaceQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+  sortField?: string;
+  sortOrder?: string;
+}
+
 // ─── Query Keys ────────────────────────────────────────────────────────────────
 export const workspaceKeys = {
   all: ['workspaces'] as const,
-  list: () => [...workspaceKeys.all, 'all'] as const,
+  list: (params?: WorkspaceQueryParams) => [...workspaceKeys.all, 'all', params] as const,
   detail: (id: string) => [...workspaceKeys.all, 'detail', id] as const,
 };
 
 // ─── Queries ───────────────────────────────────────────────────────────────────
 
 /** Full workspace list (admin endpoint returns all including soft-deleted). */
-export function useWorkspacesQuery() {
+export function useWorkspacesQuery(params: WorkspaceQueryParams = {}) {
   return useQuery({
-    queryKey: workspaceKeys.list(),
-    queryFn: () => workspaceService.getAllAdmin(),
+    queryKey: workspaceKeys.list(params),
+    queryFn: () => workspaceService.getAllAdmin(params),
     staleTime: 1000 * 30, // 30 seconds
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useWorkspaceDetailQuery(id: string) {
+  return useQuery({
+    queryKey: workspaceKeys.detail(id),
+    queryFn: () => workspaceService.getById(id),
+    enabled: !!id,
+    staleTime: 1000 * 30,
   });
 }
 
@@ -68,6 +87,42 @@ export function useRestoreWorkspaceMutation() {
   return useMutation({
     mutationFn: (id: string) => workspaceService.restore(id),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+    },
+  });
+}
+
+export function useAddWorkspaceMemberMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ workspaceId, email, role }: { workspaceId: string; email: string; role: string }) =>
+      workspaceService.addMember(workspaceId, email, role),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: workspaceKeys.detail(variables.workspaceId) });
+      qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+    },
+  });
+}
+
+export function useRemoveWorkspaceMemberMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ workspaceId, userId }: { workspaceId: string; userId: string }) =>
+      workspaceService.removeMember(workspaceId, userId),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: workspaceKeys.detail(variables.workspaceId) });
+      qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+    },
+  });
+}
+
+export function useUpdateWorkspaceMemberRoleMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ workspaceId, userId, role }: { workspaceId: string; userId: string; role: string }) =>
+      workspaceService.updateMember(workspaceId, userId, role),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: workspaceKeys.detail(variables.workspaceId) });
       qc.invalidateQueries({ queryKey: workspaceKeys.list() });
     },
   });
