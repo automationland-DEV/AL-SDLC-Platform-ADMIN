@@ -71,11 +71,16 @@ export default function DocumentsPage() {
   const handleDownload = async (doc: Document) => {
     try {
       toast.loading('Đang tải file...', { id: 'download' });
-      const { data: blobData, filename } = await documentService.download(doc._id, doc.documentType === 'online');
+      const targetFilename = doc.originalName || doc.name || 'document';
+      const { data: blobData, filename } = await documentService.download(
+        doc._id,
+        doc.documentType === 'online',
+        targetFilename,
+      );
       const url = window.URL.createObjectURL(blobData);
       const a = window.document.createElement('a');
       a.href = url;
-      a.download = filename || doc.originalName || doc.name || 'document';
+      a.download = filename || targetFilename;
       window.document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

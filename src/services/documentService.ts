@@ -28,8 +28,9 @@ export const documentService = {
   },
 
   getById: async (id: string): Promise<Document> => {
-    const response = await api.get<Document>(API_ROUTES.DOCUMENTS.BY_ID(id));
-    return response.data;
+    const response = await api.get<unknown>(API_ROUTES.DOCUMENTS.BY_ID(id));
+    const raw = response.data as Record<string, unknown>;
+    return (raw?.data ?? raw) as Document;
   },
 
   delete: async (id: string): Promise<void> => {
@@ -62,18 +63,45 @@ export const documentService = {
 
   getContent: async (id: string): Promise<string> => {
     const response = await api.get<unknown>(`${API_ROUTES.DOCUMENTS.BY_ID(id)}/content`);
-    const raw = response.data as Record<string, unknown>;
-    return ((raw?.data ?? raw?.content ?? raw) as string) || '';
+    const data = response.data as Record<string, unknown> | string;
+    if (typeof data === 'string') return data;
+    if (data && typeof data === 'object') {
+      if (typeof data.content === 'string') return data.content;
+      const nested = data.data as Record<string, unknown> | string | undefined;
+      if (typeof nested === 'string') return nested;
+      if (nested && typeof nested === 'object' && typeof nested.content === 'string') return nested.content;
+    }
+    return '';
   },
 
-  download: async (id: string, isOnline?: boolean): Promise<{ data: Blob; filename: string }> => {
+  download: async (id: string, isOnline?: boolean, defaultFilename?: string): Promise<{ data: Blob; filename: string }> => {
     const url = isOnline
       ? `${API_ROUTES.DOCUMENTS.BY_ID(id)}/export`
       : `${API_ROUTES.DOCUMENTS.BY_ID(id)}/download`;
     const response = await api.get<Blob>(url, { responseType: 'blob' });
     const disposition = (response.headers['content-disposition'] as string) || '';
-    const match = disposition.match(/filename[^;=\n]*=((['"]).+?\2|[^;\n]*)/);
-    const filename = match ? match[1].replace(/["']/g, '') : 'document';
-    return { data: response.data, filename };
+
+    let filename = '';
+    const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match && utf8Match[1]) {
+      try {
+        filename = decodeURIComponent(utf8Match[1]);
+      } catch {
+        filename = utf8Match[1];
+      }
+    } else {
+      const match = disposition.match(/filename[^;=\n]*=((['"]).+?\2|[^;\n]*)/);
+      if (match && match[1]) {
+        filename = match[1].replace(/["']/g, '').trim();
+        try {
+          filename = decodeURIComponent(filename);
+        } catch {
+          filename = match[1].replace(/["']/g, '').trim();
+        }
+      }
+    }
+
+    const resolvedFilename = filename || defaultFilename || 'document';
+    return { data: response.data, filename: resolvedFilename };
   },
 };

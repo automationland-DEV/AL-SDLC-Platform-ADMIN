@@ -4,7 +4,12 @@ import toast from 'react-hot-toast';
 import { FileText, Type, FolderOpen } from 'lucide-react';
 import { Button, SearchableSelect, PageHeader } from '../../../components/ui';
 import { useTranslation } from '../../../i18n/useTranslation';
-import { useDocumentsQuery, useUpdateDocumentMutation, useWorkspacesQuery } from '../../../hooks/queries';
+import {
+  useDocumentsQuery,
+  useDocumentDetailQuery,
+  useUpdateDocumentMutation,
+  useWorkspacesQuery,
+} from '../../../hooks/queries';
 import { documentService } from '../../../services';
 import type { Document, Workspace } from '../../../types';
 
@@ -20,6 +25,7 @@ export default function DocEditPage() {
   
   const updateDocumentMutation = useUpdateDocumentMutation();
   const { data: workspacesRaw } = useWorkspacesQuery();
+  const { data: docData, isLoading: isDocLoading } = useDocumentDetailQuery(id);
 
   const workspaces: Workspace[] = useMemo(() => {
     if (Array.isArray(workspacesRaw)) return workspacesRaw as Workspace[];
@@ -30,7 +36,6 @@ export default function DocEditPage() {
     return [];
   }, [workspacesRaw]);
 
-  // Documents are fetched in a list by default.
   const { data: documentsData, isLoading: isDocsLoading } = useDocumentsQuery();
   const documents: Document[] = useMemo(() => {
     if (!documentsData) return [];
@@ -43,11 +48,12 @@ export default function DocEditPage() {
     return [];
   }, [documentsData]);
 
-  const baseDoc = documents.find(d => d._id === id);
+  const baseDoc = docData || documents.find(d => d._id === id);
 
   const [docName, setDocName] = useState('');
   const [docContent, setDocContent] = useState('');
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState('');
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -56,16 +62,20 @@ export default function DocEditPage() {
       const wsId = baseDoc.workspaceIds && baseDoc.workspaceIds.length > 0 ? baseDoc.workspaceIds[0] : '';
       setSelectedWorkspaceId(wsId);
       if (baseDoc.documentType === 'online') {
-        if (baseDoc.content) {
-          setDocContent(baseDoc.content);
-        } else {
-          documentService.getContent(baseDoc._id)
-            .then(content => setDocContent(content))
-            .catch(err => {
-              console.error(err);
+        setIsLoadingContent(true);
+        documentService.getContent(baseDoc._id)
+          .then(content => {
+            setDocContent(content || baseDoc.content || '');
+          })
+          .catch(err => {
+            console.error(err);
+            if (baseDoc.content) {
+              setDocContent(baseDoc.content);
+            } else {
               toast.error(language === 'vi' ? 'Lỗi khi tải nội dung tài liệu' : 'Error loading document content');
-            });
-        }
+            }
+          })
+          .finally(() => setIsLoadingContent(false));
       }
     }
   }, [baseDoc, language]);
@@ -97,7 +107,7 @@ export default function DocEditPage() {
     }
   };
 
-  if (isDocsLoading) {
+  if (isDocLoading || (isDocsLoading && !baseDoc)) {
     return (
       <div className="flex items-center justify-center py-24">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-sky-500 border-t-transparent" />
@@ -181,20 +191,29 @@ export default function DocEditPage() {
             
             {baseDoc.documentType === 'online' && (
               <div className="flex-1 min-h-[500px] border border-[var(--border-color)] rounded-xl overflow-hidden flex flex-col bg-white dark:bg-gray-900 relative shadow-inner mt-2">
-                <Suspense fallback={
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--text-secondary)] bg-[var(--bg-tertiary)]">
-                    <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                {isLoadingContent ? (
+                  <div className="flex flex-col items-center justify-center py-24 text-[var(--text-secondary)]">
+                    <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4" />
                     <p className="font-medium animate-pulse text-sm">
-                      {language === 'vi' ? 'Đang tải công cụ soạn thảo...' : 'Loading editor tools...'}
+                      {language === 'vi' ? 'Đang tải nội dung tài liệu...' : 'Loading document content...'}
                     </p>
                   </div>
-                }>
-                  <RichTextEditor
-                    value={docContent}
-                    onChange={setDocContent}
-                    placeholder={language === 'vi' ? 'Bắt đầu soạn thảo nội dung tài liệu của bạn ở đây...' : 'Start drafting your document content here...'}
-                  />
-                </Suspense>
+                ) : (
+                  <Suspense fallback={
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--text-secondary)] bg-[var(--bg-tertiary)]">
+                      <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                      <p className="font-medium animate-pulse text-sm">
+                        {language === 'vi' ? 'Đang tải công cụ soạn thảo...' : 'Loading editor tools...'}
+                      </p>
+                    </div>
+                  }>
+                    <RichTextEditor
+                      value={docContent}
+                      onChange={setDocContent}
+                      placeholder={language === 'vi' ? 'Bắt đầu soạn thảo nội dung tài liệu của bạn ở đây...' : 'Start drafting your document content here...'}
+                    />
+                  </Suspense>
+                )}
               </div>
             )}
           </div>

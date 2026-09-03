@@ -84,11 +84,16 @@ export default function DocDetailPage() {
   const handleDownload = async () => {
     try {
       toast.loading(language === 'vi' ? 'Đang tải file...' : 'Downloading...', { id: 'download' });
-      const { data: blobData, filename } = await documentService.download(baseDoc._id, baseDoc.documentType === 'online');
+      const targetFilename = baseDoc.originalName || baseDoc.name || 'document';
+      const { data: blobData, filename } = await documentService.download(
+        baseDoc._id,
+        baseDoc.documentType === 'online',
+        targetFilename,
+      );
       const url = window.URL.createObjectURL(blobData);
       const a = window.document.createElement('a');
       a.href = url;
-      a.download = filename || baseDoc.originalName || baseDoc.name || 'document';
+      a.download = filename || targetFilename;
       window.document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

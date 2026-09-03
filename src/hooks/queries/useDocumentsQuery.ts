@@ -32,6 +32,15 @@ export function useDocumentsQuery(params: {
   });
 }
 
+export function useDocumentDetailQuery(id?: string) {
+  return useQuery({
+    queryKey: documentKeys.detail(id || ''),
+    queryFn: () => documentService.getById(id!),
+    enabled: !!id,
+    staleTime: 1000 * 30,
+  });
+}
+
 // ─── Mutations ─────────────────────────────────────────────────────────────────
 
 export function useUploadDocumentMutation() {

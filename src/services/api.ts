@@ -9,7 +9,6 @@ const api = axios.create({
   },
 });
 
-// Request interceptor
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('accessToken');
@@ -21,45 +20,84 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Paths that should not trigger token refresh (avoid loops)
 const AUTH_PATHS = ['/auth/me', '/auth/refresh', '/auth/login'];
 
-// Response interceptor for error handling
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: unknown) => void;
+  reject: (error?: unknown) => void;
+}> = [];
+
+const processQueue = (error: unknown | null) => {
+  failedQueue.forEach((promise) => {
+    if (error) {
+      promise.reject(error);
+    } else {
+      promise.resolve();
+    }
+  });
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-    const requestPath = originalRequest.url || '';
+    const requestPath = originalRequest?.url || '';
 
-    // Don't retry auth-related paths to avoid loops
-    if (AUTH_PATHS.some(path => requestPath.includes(path))) {
+    if (AUTH_PATHS.some((path) => requestPath.includes(path))) {
       return Promise.reject(error);
     }
 
-    // Handle rate limiting (429) - don't retry
     if (error.response?.status === 429) {
       localStorage.removeItem('accessToken');
       window.location.href = '/login';
       return Promise.reject(error);
     }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(() => {
+          const token = localStorage.getItem('accessToken');
+          if (token && originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+          }
+          return api(originalRequest);
+        });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
       try {
-        // Try to refresh token
-        await api.post('/auth/refresh');
-        // Retry original request
+        const response = await api.post('/auth/refresh', {}, { withCredentials: true });
+        const resData = response.data as Record<string, unknown>;
+        const rawTokens = (resData?.tokens as Record<string, unknown>) || resData;
+        const newToken =
+          (rawTokens?.accessToken as string) ||
+          (rawTokens?.access_token as string) ||
+          (resData?.accessToken as string);
+
+        if (newToken) {
+          localStorage.setItem('accessToken', newToken);
+        }
+
+        processQueue(null);
+
         const token = localStorage.getItem('accessToken');
         if (token && originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${token}`;
         }
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, clear auth
+        processQueue(refreshError);
         localStorage.removeItem('accessToken');
         window.location.href = '/login';
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 
