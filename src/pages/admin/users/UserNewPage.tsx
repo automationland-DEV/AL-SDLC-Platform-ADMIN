@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, Select, PageHeader } from '../../../components/ui';
@@ -26,8 +26,11 @@ const getErrorMessage = (error: unknown, defaultMsg: string) => {
 
 export default function UserNewPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { language } = useTranslation();
   const createUserMutation = useCreateUserMutation();
+
+  const returnPath = (location.state as { from?: string } | undefined)?.from || '/users';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -77,7 +80,7 @@ export default function UserNewPage() {
         status: status as UserStatus,
       } as Parameters<typeof createUserMutation.mutateAsync>[0]);
       toast.success(language === 'vi' ? 'Tạo người dùng thành công' : 'User created successfully');
-      navigate('/users');
+      navigate(returnPath);
     } catch (error) {
       toast.error(getErrorMessage(error, language === 'vi' ? 'Tạo người dùng thất bại' : 'Failed to create user'));
     } finally {
@@ -96,7 +99,7 @@ export default function UserNewPage() {
         subtitle={language === 'vi' ? 'Điền thông tin bên dưới để tạo tài khoản mới.' : 'Fill in information below to create a new account.'}
       
         actions={
-          <Button variant="secondary" onClick={() => navigate(-1)} className="px-4">
+          <Button variant="secondary" onClick={() => navigate(returnPath)} className="px-4">
             {language === 'vi' ? 'Quay lại' : 'Go Back'}
           </Button>
         }
@@ -222,7 +225,7 @@ export default function UserNewPage() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => navigate('/users')}
+              onClick={() => navigate(returnPath)}
               className="px-6"
             >
               {language === 'vi' ? 'Hủy' : 'Cancel'}

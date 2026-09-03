@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { FolderEdit, Columns, Repeat, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, SearchableSelect, PageHeader } from '../../../components/ui';
@@ -25,8 +25,11 @@ const SAMPLE_AVATARS = [
 export default function WorkspaceEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { language, t } = useTranslation();
   const updateWorkspaceMutation = useUpdateWorkspaceMutation();
+
+  const returnPath = (location.state as { from?: string } | undefined)?.from || (id ? `/workspaces/${id}` : '/workspaces');
 
   const { data: workspaceRaw, isLoading } = useWorkspaceDetailQuery(id!);
   const workspace = useMemo(() => {
@@ -89,7 +92,7 @@ export default function WorkspaceEditPage() {
         data: { name, key, description, ownerId, type: template, avatar } as Partial<Workspace>,
       });
       toast.success(language === 'vi' ? 'Cập nhật workspace thành công' : 'Workspace updated successfully');
-      navigate(`/workspaces/${id}`);
+      navigate(returnPath);
     } catch (error) {
       const err = error as { response?: { data?: { message?: string } }; message?: string };
       toast.error(err.response?.data?.message || err.message || (language === 'vi' ? 'Lưu workspace thất bại' : 'Failed to save workspace'));
@@ -124,13 +127,15 @@ export default function WorkspaceEditPage() {
       <PageHeader
         breadcrumbs={[
           { label: language === 'vi' ? 'Quản lý Workspace' : 'Workspaces', href: '/workspaces' },
-          { label: workspace.name, href: `/workspaces/${id}` },
+          ...(returnPath.includes('/workspaces/')
+            ? [{ label: workspace.name, href: `/workspaces/${id}` }]
+            : []),
           { label: language === 'vi' ? 'Chỉnh sửa' : 'Edit' },
         ]}
         title={language === 'vi' ? 'Chỉnh sửa Workspace' : 'Edit Workspace'}
       
         actions={
-          <Button variant="secondary" onClick={() => navigate(`/workspaces/${id}`)} className="px-4">
+          <Button variant="secondary" onClick={() => navigate(returnPath)} className="px-4">
             {language === 'vi' ? 'Quay lại' : 'Go Back'}
           </Button>
         }
@@ -249,7 +254,7 @@ export default function WorkspaceEditPage() {
           </div>
 
           <div className="px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)]/30 flex justify-end gap-3">
-            <Button type="button" variant="secondary" onClick={() => navigate(`/workspaces/${id}`)} className="px-6">
+            <Button type="button" variant="secondary" onClick={() => navigate(returnPath)} className="px-6">
               {language === 'vi' ? 'Hủy' : 'Cancel'}
             </Button>
             <Button type="submit" disabled={isSaving} className="px-6">

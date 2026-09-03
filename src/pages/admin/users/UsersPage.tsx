@@ -73,7 +73,7 @@ export default function UsersPage() {
   };
 
   const handleViewClick = (user: User) => {
-    navigate(`/users/${user.id}`);
+    navigate(`/users/${user.id}`, { state: { from: '/users' } });
   };
 
   const handlePageChange = (newPage: number) => {
@@ -81,7 +81,7 @@ export default function UsersPage() {
   };
 
   const handleEditClick = (user: User) => {
-    navigate(`/users/${user.id}/edit`);
+    navigate(`/users/${user.id}/edit`, { state: { from: '/users' } });
   };
 
   const handleDelete = (id: string) => {
@@ -184,11 +184,11 @@ export default function UsersPage() {
           <p className="text-xs text-[var(--text-muted)] font-mono-code mt-0.5">{t('users.subtitle', { count: absoluteTotal })}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <Button variant="secondary" size="sm" onClick={() => navigate('/users/import')}>
+          <Button variant="secondary" size="sm" onClick={() => navigate('/users/import', { state: { from: '/users' } })}>
             <Upload className="w-4 h-4" />
             {t('users.importCsv')}
           </Button>
-          <Button size="sm" onClick={() => navigate('/users/new')}>
+          <Button size="sm" onClick={() => navigate('/users/new', { state: { from: '/users' } })}>
             <Plus className="w-4 h-4" />
             {t('users.addUser')}
           </Button>

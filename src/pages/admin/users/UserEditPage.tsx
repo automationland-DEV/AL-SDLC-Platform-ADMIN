@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { UserCog } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, Select, Badge, PageHeader } from '../../../components/ui';
@@ -27,10 +27,13 @@ const getErrorMessage = (error: unknown, defaultMsg: string) => {
 export default function UserEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { language } = useTranslation();
 
+  const returnPath = (location.state as { from?: string } | undefined)?.from || (id ? `/users/${id}` : '/users');
+
   const { data: userRaw, isLoading } = useUserDetailQuery(id ?? null);
-  const user = userRaw as import('../../../types').User | undefined;
+  const user = (userRaw as { data?: import('../../../types').User } | undefined)?.data ?? (userRaw as import('../../../types').User | undefined);
 
   const updateRoleMutation = useUpdateUserRoleMutation();
   const updateStatusMutation = useUpdateUserStatusMutation();
@@ -58,7 +61,7 @@ export default function UserEditPage() {
         await updateStatusMutation.mutateAsync({ id, status: editStatus });
       }
       toast.success(language === 'vi' ? 'Cập nhật người dùng thành công' : 'User updated successfully');
-      navigate('/users');
+      navigate(returnPath);
     } catch (error) {
       toast.error(getErrorMessage(error, language === 'vi' ? 'Cập nhật người dùng thất bại' : 'Failed to update user'));
     } finally {
@@ -92,14 +95,16 @@ export default function UserEditPage() {
       <PageHeader
         breadcrumbs={[
           { label: language === 'vi' ? 'Quản lý User' : 'User Management', href: '/users' },
-          { label: user.fullName || user.email, href: `/users/${id}` },
+          ...(returnPath.includes('/users/')
+            ? [{ label: user.fullName || user.email, href: `/users/${id}` }]
+            : []),
           { label: language === 'vi' ? 'Chỉnh sửa' : 'Edit' },
         ]}
         title={language === 'vi' ? 'Chỉnh sửa User' : 'Edit User'}
         subtitle={language === 'vi' ? 'Cập nhật vai trò và trạng thái của người dùng.' : 'Update user role and status.'}
       
         actions={
-          <Button variant="secondary" onClick={() => navigate(-1)} className="px-4">
+          <Button variant="secondary" onClick={() => navigate(returnPath)} className="px-4">
             {language === 'vi' ? 'Quay lại' : 'Go Back'}
           </Button>
         }
@@ -129,7 +134,7 @@ export default function UserEditPage() {
                 <img src={user.avatar} alt="" className="w-12 h-12 rounded-xl object-cover border border-[var(--border-color)] shrink-0" />
               ) : (
                 <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-500 font-bold text-lg shrink-0">
-                  {(user.fullName || user.email).charAt(0).toUpperCase()}
+                  {(user.fullName || user.email || 'U').charAt(0).toUpperCase()}
                 </div>
               )}
               <div className="min-w-0">
@@ -197,7 +202,7 @@ export default function UserEditPage() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => navigate('/users')}
+              onClick={() => navigate(returnPath)}
               className="px-6"
             >
               {language === 'vi' ? 'Hủy' : 'Cancel'}

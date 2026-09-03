@@ -9,11 +9,12 @@ interface ActivityStatsProps {
 export function ActivityStats({ selectedUserId }: ActivityStatsProps) {
   const { data: stats } = useActivityStatsQuery();
   const { language } = useTranslation();
-  // For user-specific view: get total from logs query
+  const isUserFiltered = selectedUserId !== 'all';
   const { data: logsData } = useActivityLogsQuery(
-    selectedUserId !== 'all' ? { userId: selectedUserId, page: 1, limit: 1 } : { page: 1, limit: 1 }
+    isUserFiltered ? { userId: selectedUserId, page: 1, limit: 1 } : {},
+    { enabled: isUserFiltered }
   );
-  const total = stats?.total ?? logsData?.pagination.total ?? 0;
+  const total = isUserFiltered ? (logsData?.pagination.total ?? 0) : (stats?.total ?? 0);
   const lastActivityDate = logsData?.data?.[0]?.createdAt ?? null;
 
 

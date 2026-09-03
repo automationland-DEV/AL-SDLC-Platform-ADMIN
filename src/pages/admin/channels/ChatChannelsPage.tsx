@@ -271,14 +271,14 @@ export default function ChatChannelsPage() {
                     <TableCell>
                       <div className="flex items-center justify-center gap-1">
                         <button
-                          onClick={() => navigate(`/channels/${channel._id}`)}
+                          onClick={() => navigate(`/channels/${channel._id}`, { state: { from: '/channels' } })}
                           className="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-sky-500 transition-colors cursor-pointer"
                           title="Xem thông tin"
                         >
                           <Eye size={15} />
                         </button>
                         <button
-                          onClick={() => navigate(`/channels/${channel._id}/chat`)}
+                          onClick={() => navigate(`/channels/${channel._id}/chat`, { state: { from: '/channels' } })}
                           className="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-emerald-500 transition-colors cursor-pointer"
                           title="Lịch sử Chat"
                         >
@@ -312,8 +312,8 @@ export default function ChatChannelsPage() {
                   <div className="flex items-center justify-between text-xs pt-1 border-t border-[var(--border-color)]">
                     <span className="font-mono-code text-[11px] text-[var(--text-muted)]">#{channel._id?.slice(-6)}</span>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/channels/${channel._id}`)}><Eye size={14} /></Button>
-                      <Button variant="secondary" size="sm" onClick={() => navigate(`/channels/${channel._id}/chat`)}><MessageSquare size={14} /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/channels/${channel._id}`, { state: { from: '/channels' } })}><Eye size={14} /></Button>
+                      <Button variant="secondary" size="sm" onClick={() => navigate(`/channels/${channel._id}/chat`, { state: { from: '/channels' } })}><MessageSquare size={14} /></Button>
                       <Button variant="danger" size="sm" onClick={() => handleDelete(channel._id)}><Trash2 size={14} /></Button>
                     </div>
                   </div>

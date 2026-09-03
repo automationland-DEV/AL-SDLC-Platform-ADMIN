@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Upload, File, X, UploadCloud } from 'lucide-react';
 import { Button, SearchableSelect, PageHeader } from '../../../components/ui';
@@ -10,7 +10,10 @@ import { useMemo } from 'react';
 
 export default function DocUploadPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, language } = useTranslation();
+
+  const returnPath = (location.state as { from?: string } | undefined)?.from || '/documents';
   
   const uploadMutation = useUploadDocumentMutation();
   const { data: workspacesRaw } = useWorkspacesQuery();
@@ -44,7 +47,7 @@ export default function DocUploadPage() {
         workspaceIds: selectedWorkspaceId ? [selectedWorkspaceId] : [],
       });
       toast.success(language === 'vi' ? 'Upload file thành công' : 'File uploaded successfully');
-      navigate('/documents');
+      navigate(returnPath);
     } catch (error) {
       console.error(error);
       toast.error(language === 'vi' ? 'Lỗi khi upload file' : 'Error uploading file');
@@ -77,7 +80,7 @@ export default function DocUploadPage() {
         subtitle={language === 'vi' ? 'Thêm tài liệu mới vào hệ thống' : 'Add new documents to system'}
       
         actions={
-          <Button variant="secondary" onClick={() => navigate(-1)} className="px-4">
+          <Button variant="secondary" onClick={() => navigate(returnPath)} className="px-4">
             {language === 'vi' ? 'Quay lại' : 'Go Back'}
           </Button>
         }
@@ -194,7 +197,7 @@ export default function DocUploadPage() {
         </div>
 
         <div className="px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)]/30 flex justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={() => navigate('/documents')} className="px-6">
+          <Button type="button" variant="secondary" onClick={() => navigate(returnPath)} className="px-6">
             {t('common.cancel')}
           </Button>
           <Button type="button" onClick={handleUpload} disabled={isSaving || !selectedFile} className="px-8 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600">

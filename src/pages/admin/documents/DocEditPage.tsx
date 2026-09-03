@@ -1,5 +1,5 @@
 import { useState, useEffect, Suspense, lazy, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FileText, Type, FolderOpen } from 'lucide-react';
 import { Button, SearchableSelect, PageHeader } from '../../../components/ui';
@@ -13,7 +13,10 @@ const RichTextEditor = lazy(() => import('../../../components/editor/RichTextEdi
 export default function DocEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, language } = useTranslation();
+
+  const returnPath = (location.state as { from?: string } | undefined)?.from || (id ? `/documents/${id}` : '/documents');
   
   const updateDocumentMutation = useUpdateDocumentMutation();
   const { data: workspacesRaw } = useWorkspacesQuery();
@@ -85,7 +88,7 @@ export default function DocEditPage() {
         },
       });
       toast.success(language === 'vi' ? 'Cập nhật tài liệu thành công' : 'Document updated successfully');
-      navigate('/documents');
+      navigate(returnPath);
     } catch (error) {
       console.error(error);
       toast.error(language === 'vi' ? 'Lỗi khi cập nhật tài liệu' : 'Error updating document');
@@ -120,13 +123,15 @@ export default function DocEditPage() {
       <PageHeader
         breadcrumbs={[
           { label: language === 'vi' ? 'Tài liệu' : 'Documents', href: '/documents' },
-          { label: baseDoc.name, href: `/documents/${id}` },
+          ...(returnPath.includes('/documents/')
+            ? [{ label: baseDoc.name, href: `/documents/${id}` }]
+            : []),
           { label: language === 'vi' ? 'Chỉnh sửa' : 'Edit' },
         ]}
         title={language === 'vi' ? 'Cập nhật Tài liệu' : 'Update Document'}
       
         actions={
-          <Button variant="secondary" onClick={() => navigate(-1)} className="px-4">
+          <Button variant="secondary" onClick={() => navigate(returnPath)} className="px-4">
             {language === 'vi' ? 'Quay lại' : 'Go Back'}
           </Button>
         }
@@ -195,7 +200,7 @@ export default function DocEditPage() {
           </div>
 
           <div className="px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)]/30 flex justify-end gap-3">
-            <Button type="button" variant="secondary" onClick={() => navigate('/documents')} className="px-6">
+            <Button type="button" variant="secondary" onClick={() => navigate(returnPath)} className="px-6">
               {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={isSaving} className="px-8 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600">

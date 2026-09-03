@@ -75,8 +75,9 @@ export const userService = {
   },
 
   getUserById: async (id: string): Promise<User> => {
-    const response = await api.get<User>(API_ROUTES.USERS.BY_ID(id));
-    return response.data;
+    const response = await api.get<unknown>(API_ROUTES.USERS.BY_ID(id));
+    const raw = response.data as Record<string, unknown>;
+    return (raw?.data ?? raw) as User;
   },
 
   updateProfile: async (data: {
@@ -87,8 +88,9 @@ export const userService = {
     gender?: string;
     avatar?: string;
   }): Promise<User> => {
-    const response = await api.put<User>(API_ROUTES.USERS.ME, data);
-    return response.data;
+    const response = await api.put<unknown>(API_ROUTES.USERS.ME, data);
+    const raw = response.data as Record<string, unknown>;
+    return (raw?.data ?? raw) as User;
   },
 
   updatePassword: async (data: { currentPassword: string; password: string }): Promise<void> => {
@@ -96,8 +98,9 @@ export const userService = {
   },
 
   updateUser: async (id: string, data: Partial<User>): Promise<User> => {
-    const response = await api.put<User>(API_ROUTES.USERS.BY_ID(id), data);
-    return response.data;
+    const response = await api.put<unknown>(API_ROUTES.USERS.BY_ID(id), data);
+    const raw = response.data as Record<string, unknown>;
+    return (raw?.data ?? raw) as User;
   },
 
   deleteUser: async (id: string): Promise<void> => {
@@ -105,13 +108,15 @@ export const userService = {
   },
 
   updateUserRole: async (id: string, role: string): Promise<User> => {
-    const response = await api.put<User>(API_ROUTES.AUTH.USER_ROLE(id), { role });
-    return response.data;
+    const response = await api.put<unknown>(API_ROUTES.AUTH.USER_ROLE(id), { role });
+    const raw = response.data as Record<string, unknown>;
+    return (raw?.data ?? raw) as User;
   },
 
   updateUserStatus: async (id: string, status: string): Promise<User> => {
-    const response = await api.put<User>(API_ROUTES.AUTH.USER_STATUS(id), { status });
-    return response.data;
+    const response = await api.put<unknown>(API_ROUTES.AUTH.USER_STATUS(id), { status });
+    const raw = response.data as Record<string, unknown>;
+    return (raw?.data ?? raw) as User;
   },
 
   createUser: async (data: Partial<User>): Promise<User> => {

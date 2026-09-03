@@ -104,10 +104,10 @@ export default function DocumentsPage() {
     setPage(1);
   };
 
-  const openViewModal = (doc: Document) => navigate(`/documents/${doc._id}`);
-  const openOnlineModal = () => navigate('/documents/new');
-  const openUploadModal = () => navigate('/documents/upload');
-  const openEditModal = (doc: Document) => navigate(`/documents/${doc._id}/edit`);
+  const openViewModal = (doc: Document) => navigate(`/documents/${doc._id}`, { state: { from: '/documents' } });
+  const openOnlineModal = () => navigate('/documents/new', { state: { from: '/documents' } });
+  const openUploadModal = () => navigate('/documents/upload', { state: { from: '/documents' } });
+  const openEditModal = (doc: Document) => navigate(`/documents/${doc._id}/edit`, { state: { from: '/documents' } });
 
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return '-';

@@ -8,23 +8,23 @@ export const activityKeys = {
   stats: () => [...activityKeys.all, 'stats'] as const,
 };
 
-// ─── Queries ───────────────────────────────────────────────────────────────────
-
-/** Paginated audit logs — staleTime 30s since logs change frequently. */
-export function useActivityLogsQuery(params: AuditLogQueryParams = {}) {
+export function useActivityLogsQuery(
+  params: AuditLogQueryParams = {},
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: activityKeys.logs(params),
     queryFn: () => auditService.getLogs(params),
-    staleTime: 1000 * 30, // 30 seconds for audit logs
+    staleTime: 1000 * 30,
     placeholderData: (prev) => prev,
+    enabled: options?.enabled,
   });
 }
 
-/** Activity stats — cached for 5 minutes as they rarely change. */
 export function useActivityStatsQuery() {
   return useQuery({
     queryKey: activityKeys.stats(),
     queryFn: () => auditService.getStats(),
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import DOMPurify from 'dompurify';
-import { Download, Edit, FileText } from 'lucide-react';
+import { Download, Edit, FileText, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, Badge, PageHeader } from '../../../components/ui';
 import { useTranslation } from '../../../i18n/useTranslation';
@@ -12,7 +12,10 @@ import type { Document, Workspace } from '../../../types';
 export default function DocDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { language } = useTranslation();
+
+  const returnPath = (location.state as { from?: string } | undefined)?.from || '/documents';
 
   const { data: workspacesRaw } = useWorkspacesQuery();
   const workspaces: Workspace[] = useMemo(() => {
@@ -125,12 +128,16 @@ export default function DocDetailPage() {
         title={baseDoc.name}
         actions={
           <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => navigate(returnPath)}>
+              <ArrowLeft className="w-4 h-4" />
+              {language === 'vi' ? 'Quay lại' : 'Back'}
+            </Button>
             <Button variant="secondary" size="sm" onClick={handleDownload}>
               <Download className="w-4 h-4" />
               {language === 'vi' ? 'Tải xuống' : 'Download'}
             </Button>
             {baseDoc.documentType === 'online' && (
-              <Link to={`/documents/${id}/edit`}>
+              <Link to={`/documents/${id}/edit`} state={{ from: `/documents/${id}` }}>
                 <Button size="sm">
                   <Edit className="w-4 h-4" />
                   {language === 'vi' ? 'Chỉnh sửa' : 'Edit'}
