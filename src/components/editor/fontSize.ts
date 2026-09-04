@@ -1,5 +1,3 @@
-// Defines FontSize extension for the document editor, letting users change font sizes.
-/* eslint-disable no-useless-escape */
 import { Extension } from "@tiptap/core";
 
 declare module "@tiptap/core" {
@@ -13,15 +11,19 @@ declare module "@tiptap/core" {
 
 export const FontSize = Extension.create({
   name: "fontSize",
-
+  addOptions() {
+    return {
+      types: ["textStyle"],
+    };
+  },
   addGlobalAttributes() {
     return [
       {
-        types: ["textStyle"],
+        types: this.options.types,
         attributes: {
           fontSize: {
             default: null,
-            parseHTML: (element) => element.style.fontSize?.replace(/['\"]/g, "") || null,
+            parseHTML: (element) => element.style.fontSize?.replace(/['"]/g, "") || null,
             renderHTML: (attributes) => {
               if (!attributes.fontSize) {
                 return {};
@@ -36,13 +38,14 @@ export const FontSize = Extension.create({
       },
     ];
   },
-
   addCommands() {
     return {
       setFontSize:
-        (fontSize) =>
+        (fontSize: string) =>
         ({ chain }) => {
-          return chain().setMark("textStyle", { fontSize }).run();
+          const hasUnit = /[a-zA-Z%]/.test(fontSize);
+          const normalized = hasUnit ? fontSize : `${fontSize}px`;
+          return chain().setMark("textStyle", { fontSize: normalized }).run();
         },
       unsetFontSize:
         () =>
@@ -52,4 +55,3 @@ export const FontSize = Extension.create({
     };
   },
 });
-

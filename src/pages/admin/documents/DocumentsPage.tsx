@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { Button, Badge, Table, TableRow, TableCell, SearchableSelect, ConfirmModal } from '../../../components/ui';
 import { documentService } from '../../../services';
 import type { Document } from '../../../types';
+import { downloadContent } from '../../../utils/fileDownloader';
 
 import {
   useDocumentsQuery,
@@ -15,6 +16,7 @@ import {
 
 export default function DocumentsPage() {
   const navigate = useNavigate();
+  const { t, language } = useTranslation();
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -51,16 +53,16 @@ export default function DocumentsPage() {
   const handleDelete = (id: string) => {
     setConfirmModal({
       isOpen: true,
-      title: 'Xóa Document',
-      message: 'Bạn có chắc chắn muốn xóa tài liệu này khỏi kho lưu trữ?',
+      title: t('documents.deleteTitle'),
+      message: t('documents.deleteMessage'),
       type: 'danger',
       onConfirm: async () => {
         try {
           await deleteDocumentMutation.mutateAsync(id);
-          toast.success('Xóa tài liệu thành công');
+          toast.success(t('documents.deleteSuccess'));
         } catch (error) {
           console.error(error);
-          toast.error('Lỗi khi xóa tài liệu');
+          toast.error(t('documents.deleteError'));
         } finally {
           setConfirmModal(prev => ({ ...prev, isOpen: false }));
         }
@@ -70,25 +72,18 @@ export default function DocumentsPage() {
 
   const handleDownload = async (doc: Document) => {
     try {
-      toast.loading('Đang tải file...', { id: 'download' });
+      toast.loading(t('documents.downloadLoading'), { id: 'download' });
       const targetFilename = doc.originalName || doc.name || 'document';
       const { data: blobData, filename } = await documentService.download(
         doc._id,
         doc.documentType === 'online',
         targetFilename,
       );
-      const url = window.URL.createObjectURL(blobData);
-      const a = window.document.createElement('a');
-      a.href = url;
-      a.download = filename || targetFilename;
-      window.document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      window.document.body.removeChild(a);
-      toast.success('Tải file thành công', { id: 'download' });
+      await downloadContent(blobData, filename || targetFilename);
+      toast.success(t('documents.downloadSuccess'), { id: 'download' });
     } catch (error) {
       console.error(error);
-      toast.error('Lỗi khi tải file', { id: 'download' });
+      toast.error(t('documents.downloadError'), { id: 'download' });
     }
   };
 
@@ -134,8 +129,6 @@ export default function DocumentsPage() {
     const ws = workspaces.find((w) => w._id === wsId);
     return ws ? ws.name : 'WS';
   };
-
-  const { t, language } = useTranslation();
 
   return (
     <div className="flex-1 flex flex-col min-h-0 space-y-3 font-sans">
@@ -275,14 +268,14 @@ export default function DocumentsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="font-mono-code text-xs text-[var(--text-muted)] text-center">
-                      {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString('vi-VN') : '-'}
+                      {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US') : '-'}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => openViewModal(doc)}
                           className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-sky-500 transition-colors cursor-pointer"
-                          title="Xem"
+                          title={t('documents.view')}
                         >
                           <Eye size={15} />
                         </button>
@@ -290,7 +283,7 @@ export default function DocumentsPage() {
                           <button
                             onClick={() => openEditModal(doc)}
                             className="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-amber-500 transition-colors cursor-pointer"
-                            title="Sửa"
+                            title={t('documents.edit')}
                           >
                             <Edit size={15} />
                           </button>
@@ -299,7 +292,7 @@ export default function DocumentsPage() {
                           <button
                             onClick={() => handleDownload(doc)}
                             className="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-emerald-500 transition-colors cursor-pointer"
-                            title="Tải về"
+                            title={t('documents.download')}
                           >
                             <Download size={15} />
                           </button>
@@ -307,7 +300,7 @@ export default function DocumentsPage() {
                         <button
                           onClick={() => handleDelete(doc._id)}
                           className="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-rose-500 transition-colors cursor-pointer"
-                          title="Xóa"
+                          title={t('documents.delete')}
                         >
                           <Trash2 size={15} />
                         </button>
@@ -342,11 +335,14 @@ export default function DocumentsPage() {
                   <div className="flex items-center justify-between text-xs pt-1 border-t border-[var(--border-color)]">
                     <span className="font-mono-code text-[11px] text-[var(--text-muted)]">#{doc._id?.slice(-6)}</span>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openViewModal(doc)}><Eye size={14} /></Button>
-                      {doc.documentType === 'upload' && (
-                        <Button variant="secondary" size="sm" onClick={() => handleDownload(doc)}><Download size={14} /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => openViewModal(doc)} title={t('documents.view')}><Eye size={14} /></Button>
+                      {doc.documentType === 'online' && (
+                        <Button variant="ghost" size="sm" onClick={() => openEditModal(doc)} title={t('documents.edit')}><Edit size={14} /></Button>
                       )}
-                      <Button variant="danger" size="sm" onClick={() => handleDelete(doc._id)}><Trash2 size={14} /></Button>
+                      {doc.documentType === 'upload' && (
+                        <Button variant="secondary" size="sm" onClick={() => handleDownload(doc)} title={t('documents.download')}><Download size={14} /></Button>
+                      )}
+                      <Button variant="danger" size="sm" onClick={() => handleDelete(doc._id)} title={t('documents.delete')}><Trash2 size={14} /></Button>
                     </div>
                   </div>
                 </div>
@@ -358,7 +354,7 @@ export default function DocumentsPage() {
               <div className="text-center py-16 text-[var(--text-muted)] space-y-2">
                 <FileText className="w-10 h-10 mx-auto stroke-1" />
                 <p className="text-xs font-medium">
-                  {language === 'vi' ? 'Không tìm thấy tài liệu nào trong kho.' : 'No documents found in store.'}
+                  {t('documents.empty')}
                 </p>
               </div>
             )}
@@ -367,7 +363,7 @@ export default function DocumentsPage() {
             {totalPages > 1 && (
               <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3 border-t border-[var(--border-color)] gap-3 bg-[var(--bg-tertiary)]/30">
                 <p className="text-xs font-mono-code text-[var(--text-muted)]">
-                  {language === 'vi' ? 'Trang' : 'Page'} {page} / {totalPages} ({language === 'vi' ? 'Tổng' : 'Total'} {absoluteTotal} {language === 'vi' ? 'bản ghi' : 'records'})
+                  {t('documents.page')} {page} / {totalPages} ({t('documents.total')} {absoluteTotal} {t('documents.records')})
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
@@ -376,7 +372,7 @@ export default function DocumentsPage() {
                     disabled={page <= 1}
                     onClick={() => setPage(page - 1)}
                   >
-                    {language === 'vi' ? 'Trang trước' : 'Previous'}
+                    {t('documents.prevPage')}
                   </Button>
                   <Button
                     variant="secondary"
@@ -384,7 +380,7 @@ export default function DocumentsPage() {
                     disabled={page >= totalPages}
                     onClick={() => setPage(page + 1)}
                   >
-                    {language === 'vi' ? 'Trang sau' : 'Next'}
+                    {t('documents.nextPage')}
                   </Button>
                 </div>
               </div>

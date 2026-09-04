@@ -1,8 +1,7 @@
 import { useState, Suspense, lazy } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FileText, Type, FolderOpen } from 'lucide-react';
-import { Button, SearchableSelect, PageHeader } from '../../../components/ui';
+import { Button, SearchableSelect, DocumentNameModal } from '../../../components/ui';
 import { useTranslation } from '../../../i18n/useTranslation';
 import { useCreateOnlineDocumentMutation, useWorkspacesQuery } from '../../../hooks/queries';
 import type { Workspace } from '../../../types';
@@ -13,10 +12,10 @@ const RichTextEditor = lazy(() => import('../../../components/editor/RichTextEdi
 export default function DocNewPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
 
   const returnPath = (location.state as { from?: string } | undefined)?.from || '/documents';
-  
+
   const createOnlineMutation = useCreateOnlineDocumentMutation();
   const { data: workspacesRaw } = useWorkspacesQuery();
 
@@ -33,117 +32,90 @@ export default function DocNewPage() {
   const [docContent, setDocContent] = useState('');
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isNameModalOpen, setIsNameModalOpen] = useState(false);
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!docName.trim()) {
-      toast.error(language === 'vi' ? 'Vui lòng nhập tên tài liệu' : 'Please enter document name');
-      return;
-    }
+  const executeSave = async (titleToSave: string) => {
     setIsSaving(true);
     try {
       await createOnlineMutation.mutateAsync({
-        name: docName,
+        name: titleToSave,
         content: docContent,
         workspaceIds: selectedWorkspaceId ? [selectedWorkspaceId] : [],
       });
-      toast.success(language === 'vi' ? 'Tạo tài liệu online thành công' : 'Online document created successfully');
+      setDocName(titleToSave);
+      toast.success(t('doc.createSuccess'));
       navigate(returnPath);
     } catch (error) {
       console.error(error);
-      toast.error(language === 'vi' ? 'Lỗi khi tạo tài liệu' : 'Error creating document');
+      toast.error(t('doc.createError'));
     } finally {
       setIsSaving(false);
     }
   };
 
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = docName.trim();
+    if (!trimmed || trimmed.toLowerCase() === 'tài liệu không có tiêu đề' || trimmed.toLowerCase() === 'untitled document') {
+      setIsNameModalOpen(true);
+      return;
+    }
+    await executeSave(trimmed);
+  };
+
   return (
-    <div className="w-full">
-      <PageHeader
-        breadcrumbs={[
-          { label: language === 'vi' ? 'Tài liệu' : 'Documents', href: '/documents' },
-          { label: language === 'vi' ? 'Tạo Online' : 'Create Online' },
-        ]}
-        title={language === 'vi' ? 'Tạo Tài liệu Online' : 'Create Online Document'}
-        subtitle={language === 'vi' ? 'Soạn thảo trực tiếp trên nền tảng với đầy đủ công cụ' : 'Write and edit online directly with rich tools'}
-      
-        actions={
-          <Button variant="secondary" onClick={() => navigate(returnPath)} className="px-4">
-            {language === 'vi' ? 'Quay lại' : 'Go Back'}
-          </Button>
-        }
-      />
-
-      <form onSubmit={handleSave}>
-        <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] shadow-sm flex flex-col">
-          <div className="p-5 border-b border-[var(--border-color)] flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center text-purple-600 dark:text-purple-400">
-              <FileText className="w-5 h-5" />
-            </div>
-            <h3 className="text-sm font-bold text-[var(--text-primary)]">
-              {language === 'vi' ? 'Thông tin tài liệu' : 'Document Information'}
-            </h3>
-          </div>
-
-          <div className="p-6 flex flex-col space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-                  <Type className="w-4 h-4 text-primary-500" /> {language === 'vi' ? 'Tên tài liệu' : 'Document Name'} <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder={language === 'vi' ? 'Nhập tên tài liệu...' : 'Enter document name...'}
-                  value={docName}
-                  onChange={(e) => setDocName(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-[var(--border-color)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 bg-[var(--bg-tertiary)] text-[var(--text-primary)] transition-all shadow-sm text-sm"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-                  <FolderOpen className="w-4 h-4 text-primary-500" /> {language === 'vi' ? 'Workspace liên kết' : 'Linked Workspace'} <span className="text-[var(--text-muted)] font-normal">({language === 'vi' ? 'Tùy chọn' : 'Optional'})</span>
-                </label>
-                <div className="relative">
-                  <SearchableSelect
-                    options={workspaces.map(ws => ({ value: ws._id, label: ws.name }))}
-                    value={selectedWorkspaceId}
-                    onChange={setSelectedWorkspaceId}
-                    placeholder={language === 'vi' ? 'Chọn Workspace...' : 'Select Workspace...'}
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex-1 min-h-[500px] border border-[var(--border-color)] rounded-xl overflow-hidden flex flex-col bg-white dark:bg-gray-900 relative shadow-inner mt-2">
-              <Suspense fallback={
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--text-secondary)] bg-[var(--bg-tertiary)]">
-                  <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                  <p className="font-medium animate-pulse text-sm">
-                    {language === 'vi' ? 'Đang tải công cụ soạn thảo...' : 'Loading editor tools...'}
-                  </p>
-                </div>
-              }>
-                <RichTextEditor
-                  value={docContent}
-                  onChange={setDocContent}
-                  placeholder={language === 'vi' ? 'Bắt đầu soạn thảo nội dung tài liệu của bạn ở đây...' : 'Start drafting your document content here...'}
-                />
-              </Suspense>
-            </div>
-          </div>
-
-          <div className="px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)]/30 flex justify-end gap-3">
-            <Button type="button" variant="secondary" onClick={() => navigate(returnPath)} className="px-6">
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit" disabled={isSaving} className="px-8 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600">
-              {isSaving ? (language === 'vi' ? 'Đang tạo...' : 'Creating...') : (language === 'vi' ? 'Tạo tài liệu' : 'Create Document')}
-            </Button>
-          </div>
+    <div className="flex flex-col h-[calc(100vh-60px)] -m-4 sm:-m-6 bg-[#F9FBFD] dark:bg-[#1E1E1E] overflow-hidden select-none">
+      <Suspense fallback={
+        <div className="flex-1 h-full w-full flex flex-col items-center justify-center bg-[#F9FBFD] dark:bg-[#1E1E1E]">
+          <div className="w-9 h-9 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3" />
+          <p className="font-medium text-xs text-gray-500 animate-pulse">
+            {t('docDetail.loadingEditor')}
+          </p>
         </div>
-      </form>
+      }>
+        <RichTextEditor
+          title={docName}
+          onTitleChange={setDocName}
+          value={docContent}
+          onChange={setDocContent}
+          isSaving={isSaving}
+          backHref={returnPath}
+          placeholder={t('doc.placeholder')}
+          className="flex flex-col h-full bg-[#F9FBFD] dark:bg-[#1E1E1E] relative overflow-hidden"
+          rightActions={
+            <div className="flex items-center gap-2.5">
+              <div className="w-52 sm:w-60">
+                <SearchableSelect
+                  options={workspaces.map(ws => ({ value: ws._id, label: ws.name }))}
+                  value={selectedWorkspaceId}
+                  onChange={setSelectedWorkspaceId}
+                  placeholder={t('doc.linkWorkspace')}
+                />
+              </div>
+              <Button
+                onClick={() => handleSave()}
+                disabled={isSaving}
+                className="px-4 py-1.5 h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-xs shrink-0 cursor-pointer"
+              >
+                {isSaving ? t('doc.saving') : t('doc.saveDoc')}
+              </Button>
+            </div>
+          }
+        />
+      </Suspense>
+
+      <DocumentNameModal
+        isOpen={isNameModalOpen}
+        initialValue={docName}
+        isSaving={isSaving}
+        onClose={() => setIsNameModalOpen(false)}
+        onConfirm={async (enteredName) => {
+          await executeSave(enteredName);
+          setIsNameModalOpen(false);
+        }}
+        title={t('doc.modalNameRequiredTitle')}
+        description={t('doc.modalNameRequiredDesc')}
+      />
     </div>
   );
 }
