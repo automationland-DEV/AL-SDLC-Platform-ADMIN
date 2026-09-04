@@ -1,8 +1,7 @@
 import { useState, useEffect, Suspense, lazy, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FileText, Type, FolderOpen } from 'lucide-react';
-import { Button, SearchableSelect, PageHeader } from '../../../components/ui';
+import { Button, SearchableSelect, DocumentNameModal } from '../../../components/ui';
 import { useTranslation } from '../../../i18n/useTranslation';
 import {
   useDocumentsQuery,
@@ -19,7 +18,7 @@ export default function DocEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
 
   const returnPath = (location.state as { from?: string } | undefined)?.from || (id ? `/documents/${id}` : '/documents');
   
@@ -55,6 +54,7 @@ export default function DocEditPage() {
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState('');
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isNameModalOpen, setIsNameModalOpen] = useState(false);
 
   useEffect(() => {
     if (baseDoc) {
@@ -72,45 +72,54 @@ export default function DocEditPage() {
             if (baseDoc.content) {
               setDocContent(baseDoc.content);
             } else {
-              toast.error(language === 'vi' ? 'Lỗi khi tải nội dung tài liệu' : 'Error loading document content');
+              toast.error(t('doc.loadError'));
             }
           })
           .finally(() => setIsLoadingContent(false));
       }
     }
-  }, [baseDoc, language]);
+  }, [baseDoc, t]);
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!docName.trim()) {
-      toast.error(language === 'vi' ? 'Vui lòng nhập tên tài liệu' : 'Please enter document name');
-      return;
-    }
+  const executeSave = async (titleToSave: string) => {
     if (!id) return;
     setIsSaving(true);
     try {
       await updateDocumentMutation.mutateAsync({
         id,
         data: {
-          name: docName,
+          name: titleToSave,
           content: docContent,
           workspaceIds: selectedWorkspaceId ? [selectedWorkspaceId] : [],
         },
       });
-      toast.success(language === 'vi' ? 'Cập nhật tài liệu thành công' : 'Document updated successfully');
+      setDocName(titleToSave);
+      toast.success(t('doc.updateSuccess'));
       navigate(returnPath);
     } catch (error) {
       console.error(error);
-      toast.error(language === 'vi' ? 'Lỗi khi cập nhật tài liệu' : 'Error updating document');
+      toast.error(t('doc.updateError'));
     } finally {
       setIsSaving(false);
     }
   };
 
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = docName.trim();
+    if (!trimmed || trimmed.toLowerCase() === 'tài liệu không có tiêu đề' || trimmed.toLowerCase() === 'untitled document') {
+      setIsNameModalOpen(true);
+      return;
+    }
+    await executeSave(trimmed);
+  };
+
   if (isDocLoading || (isDocsLoading && !baseDoc)) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-sky-500 border-t-transparent" />
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-60px)] -m-4 sm:-m-6 bg-[#F9FBFD] dark:bg-[#1E1E1E] select-none">
+        <div className="w-9 h-9 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="font-medium text-xs text-gray-500 animate-pulse">
+          {t('docDetail.loadingDoc')}
+        </p>
       </div>
     );
   }
@@ -119,115 +128,90 @@ export default function DocEditPage() {
     return (
       <div className="max-w-4xl mx-auto text-center py-24">
         <p className="text-sm text-[var(--text-muted)]">
-          {language === 'vi' ? 'Không tìm thấy tài liệu.' : 'Document not found.'}
+          {t('docDetail.notFound')}
         </p>
-        <Button variant="secondary" className="mt-4" onClick={() => navigate('/documents')}>
-          {language === 'vi' ? 'Quay lại danh sách' : 'Back to list'}
+        <Button variant="secondary" className="mt-4 cursor-pointer" onClick={() => navigate('/documents')}>
+          {t('docDetail.backToList')}
+        </Button>
+      </div>
+    );
+  }
+
+  if (baseDoc.documentType === 'upload') {
+    return (
+      <div className="max-w-4xl mx-auto text-center py-24">
+        <p className="text-sm text-[var(--text-muted)]">
+          {t('docDetail.uploadNotEditable')}
+        </p>
+        <Button variant="secondary" className="mt-4 cursor-pointer" onClick={() => navigate(`/documents/${id}`)}>
+          {t('docDetail.viewDetail')}
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="w-full">
-      <PageHeader
-        breadcrumbs={[
-          { label: language === 'vi' ? 'Tài liệu' : 'Documents', href: '/documents' },
-          ...(returnPath.includes('/documents/')
-            ? [{ label: baseDoc.name, href: `/documents/${id}` }]
-            : []),
-          { label: language === 'vi' ? 'Chỉnh sửa' : 'Edit' },
-        ]}
-        title={language === 'vi' ? 'Cập nhật Tài liệu' : 'Update Document'}
-      
-        actions={
-          <Button variant="secondary" onClick={() => navigate(returnPath)} className="px-4">
-            {language === 'vi' ? 'Quay lại' : 'Go Back'}
-          </Button>
-        }
-      />
-
-      <form onSubmit={handleSave}>
-        <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] shadow-sm flex flex-col">
-          <div className="p-5 border-b border-[var(--border-color)] flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center text-purple-600 dark:text-purple-400">
-              <FileText className="w-5 h-5" />
-            </div>
-            <h3 className="text-sm font-bold text-[var(--text-primary)]">
-              {language === 'vi' ? 'Thông tin chỉnh sửa' : 'Edit Information'}
-            </h3>
+    <div className="flex flex-col h-[calc(100vh-60px)] -m-4 sm:-m-6 bg-[#F9FBFD] dark:bg-[#1E1E1E] overflow-hidden select-none">
+      {isLoadingContent ? (
+        <div className="flex-1 h-full w-full flex flex-col items-center justify-center bg-[#F9FBFD] dark:bg-[#1E1E1E]">
+          <div className="w-9 h-9 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3" />
+          <p className="font-medium text-xs text-gray-500 animate-pulse">
+            {t('docDetail.loadingContent')}
+          </p>
+        </div>
+      ) : (
+        <Suspense fallback={
+          <div className="flex-1 h-full w-full flex flex-col items-center justify-center bg-[#F9FBFD] dark:bg-[#1E1E1E]">
+            <div className="w-9 h-9 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3" />
+            <p className="font-medium text-xs text-gray-500 animate-pulse">
+              {t('docDetail.loadingEditor')}
+            </p>
           </div>
-
-          <div className="p-6 flex flex-col space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-                  <Type className="w-4 h-4 text-primary-500" /> {language === 'vi' ? 'Tên tài liệu' : 'Document Name'} <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder={language === 'vi' ? 'Nhập tên tài liệu...' : 'Enter document name...'}
-                  value={docName}
-                  onChange={(e) => setDocName(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-[var(--border-color)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 bg-[var(--bg-tertiary)] text-[var(--text-primary)] transition-all shadow-sm text-sm"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-                  <FolderOpen className="w-4 h-4 text-primary-500" /> {language === 'vi' ? 'Workspace liên kết' : 'Linked Workspace'} <span className="text-[var(--text-muted)] font-normal">({language === 'vi' ? 'Tùy chọn' : 'Optional'})</span>
-                </label>
-                <div className="relative">
+        }>
+          <RichTextEditor
+            title={docName}
+            onTitleChange={setDocName}
+            value={docContent}
+            onChange={setDocContent}
+            isSaving={isSaving}
+            backHref={returnPath}
+            placeholder={t('doc.placeholder')}
+            className="flex flex-col h-full bg-[#F9FBFD] dark:bg-[#1E1E1E] relative overflow-hidden"
+            rightActions={
+              <div className="flex items-center gap-2.5">
+                <div className="w-52 sm:w-60">
                   <SearchableSelect
                     options={workspaces.map(ws => ({ value: ws._id, label: ws.name }))}
                     value={selectedWorkspaceId}
                     onChange={setSelectedWorkspaceId}
-                    placeholder={language === 'vi' ? 'Chọn Workspace...' : 'Select Workspace...'}
+                    placeholder={t('doc.linkWorkspace')}
                   />
                 </div>
+                <Button
+                  onClick={() => handleSave()}
+                  disabled={isSaving}
+                  className="px-4 py-1.5 h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-xs shrink-0 cursor-pointer"
+                >
+                  {isSaving ? t('doc.saving') : t('doc.saveChanges')}
+                </Button>
               </div>
-            </div>
-            
-            {baseDoc.documentType === 'online' && (
-              <div className="flex-1 min-h-[500px] border border-[var(--border-color)] rounded-xl overflow-hidden flex flex-col bg-white dark:bg-gray-900 relative shadow-inner mt-2">
-                {isLoadingContent ? (
-                  <div className="flex flex-col items-center justify-center py-24 text-[var(--text-secondary)]">
-                    <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4" />
-                    <p className="font-medium animate-pulse text-sm">
-                      {language === 'vi' ? 'Đang tải nội dung tài liệu...' : 'Loading document content...'}
-                    </p>
-                  </div>
-                ) : (
-                  <Suspense fallback={
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--text-secondary)] bg-[var(--bg-tertiary)]">
-                      <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                      <p className="font-medium animate-pulse text-sm">
-                        {language === 'vi' ? 'Đang tải công cụ soạn thảo...' : 'Loading editor tools...'}
-                      </p>
-                    </div>
-                  }>
-                    <RichTextEditor
-                      value={docContent}
-                      onChange={setDocContent}
-                      placeholder={language === 'vi' ? 'Bắt đầu soạn thảo nội dung tài liệu của bạn ở đây...' : 'Start drafting your document content here...'}
-                    />
-                  </Suspense>
-                )}
-              </div>
-            )}
-          </div>
+            }
+          />
+        </Suspense>
+      )}
 
-          <div className="px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)]/30 flex justify-end gap-3">
-            <Button type="button" variant="secondary" onClick={() => navigate(returnPath)} className="px-6">
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit" disabled={isSaving} className="px-8 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600">
-              {isSaving ? (language === 'vi' ? 'Đang lưu...' : 'Saving...') : (language === 'vi' ? 'Lưu thay đổi' : 'Save Changes')}
-            </Button>
-          </div>
-        </div>
-      </form>
+      <DocumentNameModal
+        isOpen={isNameModalOpen}
+        initialValue={docName}
+        isSaving={isSaving}
+        onClose={() => setIsNameModalOpen(false)}
+        onConfirm={async (enteredName) => {
+          await executeSave(enteredName);
+          setIsNameModalOpen(false);
+        }}
+        title={t('doc.modalNameRequiredTitle')}
+        description={t('doc.modalNameRequiredDesc')}
+      />
     </div>
   );
 }

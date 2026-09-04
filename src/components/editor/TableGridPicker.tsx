@@ -1,10 +1,9 @@
  
-// Table grid picker component to select rows and columns when inserting a table,
-// allowing users to choose table size visually by hovering over grid or entering custom dimensions.
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type TableGridPickerProps = {
   anchorEl: HTMLElement | null;
@@ -19,6 +18,7 @@ const PICKER_WIDTH = 250;
 const VIEWPORT_MARGIN = 12;
 
 export default function TableGridPicker({ anchorEl, onClose, onSelect }: TableGridPickerProps) {
+  const { t } = useTranslation();
   const pickerRef = useRef<HTMLDivElement | null>(null);
   const [hovered, setHovered] = useState({ rows: 3, cols: 3 });
   const [customRows, setCustomRows] = useState(3);
@@ -77,7 +77,7 @@ export default function TableGridPicker({ anchorEl, onClose, onSelect }: TableGr
       style={{ left: position.left, top: position.top, boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)" }}
     >
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-[0.6875rem] font-semibold text-[#111111] dark:text-[#E8E8E7]">Insert Table</span>
+        <span className="text-[0.6875rem] font-semibold text-[#111111] dark:text-[#E8E8E7]">{t('tablePicker.insertTable')}</span>
         <span className="text-[0.6875rem] text-[#2563EB] dark:text-[#3B82F6]">
           {hovered.rows} x {hovered.cols}
         </span>
@@ -106,23 +106,23 @@ export default function TableGridPicker({ anchorEl, onClose, onSelect }: TableGr
       </div>
 
       <div className="mt-3 border-t border-[#EAEAEA] dark:border-white/[0.06] pt-3">
-        <div className="mb-2 text-[0.6875rem] font-semibold text-[#111111] dark:text-[#E8E8E7]">Customize</div>
+        <div className="mb-2 text-[0.6875rem] font-semibold text-[#111111] dark:text-[#E8E8E7]">{t('tablePicker.customize')}</div>
         <div className="grid grid-cols-2 gap-2">
           <label className="text-[0.6875rem] text-[#787774] dark:text-[#9B9A97]">
-            Rows
+            {t('tablePicker.rows')}
             <input type="number" min={1} max={MAX_CUSTOM_SIZE} value={customRows} onChange={(e) => setCustomRows(Number(e.target.value))} className={inputCls} />
           </label>
           <label className="text-[0.6875rem] text-[#787774] dark:text-[#9B9A97]">
-            Columns
+            {t('tablePicker.cols')}
             <input type="number" min={1} max={MAX_CUSTOM_SIZE} value={customCols} onChange={(e) => setCustomCols(Number(e.target.value))} className={inputCls} />
           </label>
         </div>
         <button
           type="button"
           onClick={insertCustomTable}
-          className="mt-3 h-8 w-full rounded-[6px] bg-[#2563EB] dark:bg-[#3B82F6] px-3 text-[0.6875rem] font-semibold text-white hover:bg-[#1D4ED8] dark:hover:bg-[#2563EB] transition-colors"
+          className="mt-3 h-8 w-full rounded-[6px] bg-[#2563EB] dark:bg-[#3B82F6] px-3 text-[0.6875rem] font-semibold text-white hover:bg-[#1D4ED8] dark:hover:bg-[#2563EB] transition-colors cursor-pointer"
         >
-          Insert table
+          {t('tablePicker.btnInsert')}
         </button>
       </div>
     </div>,

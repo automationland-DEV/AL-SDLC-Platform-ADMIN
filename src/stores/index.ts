@@ -4,3 +4,4 @@ export { useWorkspacesStore } from './workspacesStore';
 export { useDocumentsStore } from './documentsStore';
 export { useActivityStore } from './activityStore';
 export { useChatChannelsStore } from './chatChannelsStore';
+export { useEditorStore } from './useEditorStore';

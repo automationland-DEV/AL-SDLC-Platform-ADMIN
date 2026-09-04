@@ -20,7 +20,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-const AUTH_PATHS = ['/auth/me', '/auth/refresh', '/auth/login'];
+const AUTH_PATHS = ['/auth/refresh', '/auth/login'];
 
 let isRefreshing = false;
 let failedQueue: Array<{

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Montserrat:wght@400;500;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Oswald:wght@400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;500;600;700&family=PT+Serif:ital,wght@0,400;0,700;1,400&family=Roboto+Mono:wght@300;400;500;600;700&family=Roboto+Slab:wght@400;600;700&family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap');
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -28,19 +28,19 @@
   --bg-input: #ffffff;
   --bg-hover: #f1f5f9;
   --bg-active: #e0f2fe;
-  
+
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #64748b;
-  
+
   --border-color: #e2e8f0;
   --border-hover: #cbd5e1;
   --border-subtle: #f1f5f9;
-  
+
   --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.05);
   --shadow-lg: 0 10px 15px -3px rgb(15 23 42 / 0.1), 0 4px 6px -4px rgb(15 23 42 / 0.05);
-  
+
   --color-accent-sky: #0284c7;
   --color-accent-emerald: #10b981;
   --color-accent-amber: #f59e0b;
@@ -59,19 +59,19 @@
   --bg-input: #0f172a;
   --bg-hover: #1e293b;
   --bg-active: rgba(2, 132, 199, 0.18);
-  
+
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
-  
+
   --border-color: #1e293b;
   --border-hover: #334155;
   --border-subtle: #0f172a;
-  
+
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.5);
   --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.6);
   --shadow-lg: 0 10px 25px -5px rgb(0 0 0 / 0.7);
-  
+
   --color-accent-sky: #38bdf8;
   --color-accent-emerald: #34d399;
   --color-accent-amber: #fbbf24;
@@ -86,24 +86,71 @@ html {
 }
 
 /* Global Text Scaling */
-html.font-small { --text-scale: 0.875; }
-html.font-medium { --text-scale: 1; }
-html.font-large { --text-scale: 1.125; }
-html.font-xlarge { --text-scale: 1.25; }
+html.font-small {
+  --text-scale: 0.875;
+}
+
+html.font-medium {
+  --text-scale: 1;
+}
+
+html.font-large {
+  --text-scale: 1.125;
+}
+
+html.font-xlarge {
+  --text-scale: 1.25;
+}
 
 @layer utilities {
   .font-mono-code {
     font-family: 'Roboto Mono', monospace !important;
   }
-  .text-xs { font-size: calc(0.75rem * var(--text-scale, 1)) !important; line-height: calc(1rem * var(--text-scale, 1)) !important; }
-  .text-sm { font-size: calc(0.875rem * var(--text-scale, 1)) !important; line-height: calc(1.25rem * var(--text-scale, 1)) !important; }
-  .text-base { font-size: calc(1rem * var(--text-scale, 1)) !important; line-height: calc(1.5rem * var(--text-scale, 1)) !important; }
-  .text-lg { font-size: calc(1.125rem * var(--text-scale, 1)) !important; line-height: calc(1.75rem * var(--text-scale, 1)) !important; }
-  .text-xl { font-size: calc(1.25rem * var(--text-scale, 1)) !important; line-height: calc(1.75rem * var(--text-scale, 1)) !important; }
-  .text-2xl { font-size: calc(1.5rem * var(--text-scale, 1)) !important; line-height: calc(2rem * var(--text-scale, 1)) !important; }
-  .text-3xl { font-size: calc(1.875rem * var(--text-scale, 1)) !important; line-height: calc(2.25rem * var(--text-scale, 1)) !important; }
-  .text-4xl { font-size: calc(2.25rem * var(--text-scale, 1)) !important; line-height: calc(2.5rem * var(--text-scale, 1)) !important; }
-  .text-5xl { font-size: calc(3rem * var(--text-scale, 1)) !important; line-height: 1 !important; }
+
+  .text-xs {
+    font-size: calc(0.75rem * var(--text-scale, 1)) !important;
+    line-height: calc(1rem * var(--text-scale, 1)) !important;
+  }
+
+  .text-sm {
+    font-size: calc(0.875rem * var(--text-scale, 1)) !important;
+    line-height: calc(1.25rem * var(--text-scale, 1)) !important;
+  }
+
+  .text-base {
+    font-size: calc(1rem * var(--text-scale, 1)) !important;
+    line-height: calc(1.5rem * var(--text-scale, 1)) !important;
+  }
+
+  .text-lg {
+    font-size: calc(1.125rem * var(--text-scale, 1)) !important;
+    line-height: calc(1.75rem * var(--text-scale, 1)) !important;
+  }
+
+  .text-xl {
+    font-size: calc(1.25rem * var(--text-scale, 1)) !important;
+    line-height: calc(1.75rem * var(--text-scale, 1)) !important;
+  }
+
+  .text-2xl {
+    font-size: calc(1.5rem * var(--text-scale, 1)) !important;
+    line-height: calc(2rem * var(--text-scale, 1)) !important;
+  }
+
+  .text-3xl {
+    font-size: calc(1.875rem * var(--text-scale, 1)) !important;
+    line-height: calc(2.25rem * var(--text-scale, 1)) !important;
+  }
+
+  .text-4xl {
+    font-size: calc(2.25rem * var(--text-scale, 1)) !important;
+    line-height: calc(2.5rem * var(--text-scale, 1)) !important;
+  }
+
+  .text-5xl {
+    font-size: calc(3rem * var(--text-scale, 1)) !important;
+    line-height: 1 !important;
+  }
 }
 
 body {
@@ -143,13 +190,13 @@ body {
 }
 
 /* Strict Cursor Pointer Rules for Clickable Controls */
-button, 
-select, 
+button,
+select,
 a,
 [role="button"],
-input[type="submit"], 
-input[type="button"], 
-input[type="checkbox"], 
+input[type="submit"],
+input[type="button"],
+input[type="checkbox"],
 input[type="radio"],
 .cursor-pointer {
   cursor: pointer !important;
@@ -184,6 +231,7 @@ button {
 .focus-ring {
   outline: none;
 }
+
 .focus-ring:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--color-accent-sky);
@@ -208,3 +256,622 @@ button {
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
 }
 
+/* Page Canvas Background (Google Docs / Word style scroll area) */
+.page-canvas-bg {
+  background-color: #F1F3F4;
+  padding: 32px 16px 48px 16px;
+}
+
+.dark .page-canvas-bg {
+  background-color: #1C1C1E;
+}
+
+/* TipTap Editor Styles (Google Docs Paper & Multi-Page Pagination) */
+.tiptap {
+  font-family: Arial, Helvetica, sans-serif !important;
+  background-color: transparent !important;
+  color: #111827;
+  width: 794px !important;
+  box-sizing: border-box !important;
+  margin: 0 auto !important;
+  box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
+
+  /* Headings (Tiêu chuẩn tài liệu / văn bản) */
+  h1 {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    text-align: center;
+    line-height: 1.35 !important;
+    margin-top: 1.5rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+
+  h2 {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
+    text-align: left;
+    line-height: 1.35 !important;
+    margin-top: 1.25rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  h3 {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
+    text-align: left;
+    line-height: 1.35 !important;
+    margin-top: 1rem !important;
+    margin-bottom: 0.4rem !important;
+  }
+
+  h4,
+  h5,
+  h6 {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    text-transform: none !important;
+    text-align: left;
+    line-height: 1.35 !important;
+    margin-top: 0.75rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  /* Văn bản thường (body text: 13pt, justified) */
+  p {
+    font-size: 13px !important;
+    text-align: justify;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+    line-height: 1.5;
+  }
+
+  /* Tên bảng, biểu, sơ đồ (13pt, in đậm, căn giữa) */
+  caption,
+  figcaption,
+  .caption,
+  .table-title,
+  .figure-title {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    text-align: center;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Nguồn, đơn vị tính (11pt, in nghiêng) */
+  .source,
+  .unit,
+  .source-unit,
+  small,
+  .caption-sub {
+    font-size: 11px !important;
+    font-style: italic;
+    color: var(--text-secondary);
+  }
+
+  /* Link styles */
+  a {
+    color: #2563eb;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  /* Bullet List & Ordered List styling */
+  ul:not([data-type="taskList"]) {
+    list-style-type: disc !important;
+    padding-left: 2rem !important;
+    margin: 0.75rem 0 !important;
+  }
+
+  ul:not([data-type="taskList"]) li {
+    list-style-type: disc !important;
+    display: list-item !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  ul:not([data-type="taskList"]) li::marker {
+    font-size: 1em !important;
+    font-family: inherit !important;
+    color: inherit !important;
+  }
+
+  ul:not([data-type="taskList"]) ul {
+    list-style-type: circle !important;
+    padding-left: 1.5rem !important;
+    margin: 0.25rem 0 !important;
+  }
+
+  ul:not([data-type="taskList"]) ul li {
+    list-style-type: circle !important;
+  }
+
+  ol {
+    list-style-type: decimal !important;
+    padding-left: 2rem !important;
+    margin: 0.75rem 0 !important;
+  }
+
+  ol li {
+    list-style-type: decimal !important;
+    display: list-item !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  ol li::marker {
+    font-size: 1em !important;
+    font-family: inherit !important;
+    color: inherit !important;
+  }
+
+  ol ol {
+    list-style-type: lower-alpha !important;
+    padding-left: 1.5rem !important;
+    margin: 0.25rem 0 !important;
+  }
+
+  /* Image styling */
+  img {
+    display: block;
+    height: auto;
+    margin: 1.5rem 0;
+    max-width: 100%;
+    border-radius: 0.5rem;
+  }
+
+  /* Table styling */
+  .tableWrapper {
+    overflow-x: visible;
+    max-width: 100%;
+    margin: 1rem 0;
+  }
+
+  table {
+    border-collapse: collapse;
+    margin: 0;
+    table-layout: fixed;
+    box-sizing: border-box;
+    width: 100%;
+
+    td,
+    th {
+      border: 1px solid #d1d5db;
+      box-sizing: border-box;
+      min-width: 25px;
+      padding: 6px 8px;
+      position: relative;
+      vertical-align: top;
+
+      >* {
+        margin-bottom: 0;
+      }
+    }
+
+    th {
+      background-color: #f3f4f6;
+      font-weight: bold;
+      text-align: left;
+    }
+
+    .column-resize-handle {
+      position: absolute;
+      right: -2px;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+      background-color: #2563eb;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .selectedCell:after {
+      z-index: 2;
+      position: absolute;
+      content: "";
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      background: rgba(37, 99, 235, 0.12);
+      pointer-events: none;
+    }
+  }
+
+  .column-resize-dragging {
+    background-color: rgba(37, 99, 235, 0.05);
+  }
+
+  /* Task list (Checklist) styling */
+  ul[data-type="taskList"] {
+    list-style: none !important;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+
+    li {
+      align-items: flex-start;
+      display: flex;
+      margin-bottom: 0.25rem;
+
+      >label {
+        flex: 0 0 auto;
+        margin-right: 0.5rem;
+        margin-top: 0.2rem;
+        user-select: none;
+      }
+
+      >div {
+        flex: 1 1 auto;
+      }
+    }
+
+    input[type="checkbox"] {
+      cursor: pointer;
+      width: 1rem;
+      height: 1rem;
+      border-radius: 0.25rem;
+      accent-color: #2563eb;
+    }
+  }
+}
+
+.dark .tiptap {
+  background-color: transparent !important;
+  color: #f3f4f6 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.dark .tiptap table td,
+.dark .tiptap table th {
+  border-color: #3f3f46;
+}
+
+.dark .tiptap table th {
+  background-color: #27272a;
+}
+
+.tiptap.resize-cursor,
+.tiptap.resize-cursor *,
+.tiptap table.resize-cursor,
+.tiptap table.resize-cursor * {
+  cursor: col-resize !important;
+}
+
+.tiptap.rm-with-pagination {
+  border: none !important;
+}
+
+/* Override tiptap-pagination-plus display: contents hack which breaks tables and column resizing */
+.tiptap.rm-with-pagination table,
+.rm-with-pagination table {
+  display: table !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+  box-sizing: border-box !important;
+}
+
+.tiptap.rm-with-pagination table tbody,
+.rm-with-pagination table tbody {
+  display: table-row-group !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.tiptap.rm-with-pagination table colgroup,
+.rm-with-pagination table colgroup {
+  display: table-column-group !important;
+}
+
+.tiptap.rm-with-pagination table col,
+.rm-with-pagination table col {
+  display: table-column !important;
+}
+
+.tiptap.rm-with-pagination table tr,
+.rm-with-pagination table tr {
+  display: table-row !important;
+}
+
+.tiptap.rm-with-pagination table td,
+.tiptap.rm-with-pagination table th,
+.rm-with-pagination table td,
+.rm-with-pagination table th {
+  display: table-cell !important;
+  box-sizing: border-box !important;
+}
+
+/* Page Gap — natural void between discrete A4 sheets (Google Docs style) */
+.rm-pagination-gap {
+  display: block !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  width: 100% !important;
+  pointer-events: none !important;
+}
+
+.dark .rm-pagination-gap {
+  background-color: transparent !important;
+  border: none !important;
+}
+
+/* Ensure the last page-break's gap and header are hidden as designed by tiptap-pagination-plus */
+.rm-with-pagination .rm-page-break:last-child .rm-pagination-gap,
+.rm-page-break:last-child .rm-pagination-gap {
+  display: none !important;
+}
+
+.rm-with-pagination .rm-page-break:last-child .rm-page-header,
+.rm-page-break:last-child .rm-page-header {
+  display: none !important;
+}
+
+/* Header & Footer Zones for A4 Document Pages */
+.rm-page-header,
+.rm-first-page-header {
+  display: flex !important;
+  width: 100% !important;
+  font-size: 11px !important;
+  color: #9ca3af !important;
+  user-select: none;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  box-sizing: border-box;
+  min-height: calc(var(--rm-margin-top) + var(--rm-content-margin-top)) !important;
+}
+
+.rm-page-footer {
+  display: flex !important;
+  width: 100% !important;
+  font-size: 11px !important;
+  color: #9ca3af !important;
+  user-select: none;
+  border-top: 1px dashed transparent;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  box-sizing: border-box;
+  min-height: calc(var(--rm-margin-bottom) + var(--rm-content-margin-bottom)) !important;
+}
+
+.rm-page-header:hover,
+.rm-first-page-header:hover {
+  border-bottom-color: rgba(59, 130, 246, 0.4);
+}
+
+.rm-page-header:hover::after,
+.rm-first-page-header:hover::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #3b82f6;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.rm-page-footer:hover {
+  border-top-color: rgba(59, 130, 246, 0.4);
+}
+
+.rm-page-footer:hover::after {
+  content: "";
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #3b82f6;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.rm-page-header-left,
+.rm-page-header-right,
+.rm-page-footer-left,
+.rm-page-footer-right {
+  font-size: 11px !important;
+  color: #9ca3af !important;
+  font-style: normal !important;
+}
+
+div[data-radix-popper-content-wrapper] {
+  z-index: 60 !important;
+}
+
+/* Page Break Node (Google Docs style manual page break) */
+.doc-page-break-node {
+  display: block;
+  width: 100%;
+  position: relative;
+  box-sizing: border-box;
+  user-select: none;
+  cursor: pointer;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.doc-page-break-node.ProseMirror-selectednode .doc-page-break-indicator {
+  border-top-color: #2563eb;
+  opacity: 1;
+}
+
+.doc-page-break-node.ProseMirror-selectednode .doc-page-break-indicator span {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+.doc-page-break-indicator {
+  width: 100%;
+  height: 0;
+  border-top: 1px dashed #93c5fd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+  margin-bottom: 6px;
+  opacity: 0.65;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.doc-page-break-indicator:hover {
+  opacity: 1;
+  border-top-color: #3b82f6;
+}
+
+.doc-page-break-indicator span {
+  font-size: 10px;
+  font-family: inherit;
+  color: #3b82f6;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  transform: translateY(-50%);
+  user-select: none;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.dark .doc-page-break-indicator {
+  border-top-color: #3b82f6;
+}
+
+.dark .doc-page-break-indicator span {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #60a5fa;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm 15mm 15mm 15mm;
+  }
+
+  html, body, #root {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Completely hide all Admin and Editor chrome UI */
+  aside,
+  header,
+  nav,
+  .print\:hidden,
+  [data-print-hidden="true"],
+  .page-sheets-layer,
+  .ruler-container,
+  .tiptap-table-handle,
+  .doc-page-break-indicator,
+  .rm-pagination-gap,
+  button,
+  input,
+  [role="dialog"],
+  [data-radix-popper-content-wrapper] {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Reset all containers so layout engine allows multi-page overflow and page breaks */
+  main,
+  section,
+  div {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Ensure page canvas background doesn't constrain or add extra borders */
+  .page-canvas-bg {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    display: block !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .page-canvas-sheet {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+  }
+
+  .tiptap.ProseMirror {
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: auto !important;
+    color: #000000 !important;
+    background: transparent !important;
+  }
+
+  .tiptap.ProseMirror * {
+    color: inherit;
+  }
+
+  /* Page breaks */
+  .doc-page-break-node {
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  .rm-page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  /* Headers and footers clean display */
+  .rm-page-header,
+  .rm-first-page-header,
+  .rm-page-footer {
+    border: none !important;
+    background: transparent !important;
+  }
+
+  .rm-page-header:hover::after,
+  .rm-first-page-header:hover::after,
+  .rm-page-footer:hover::after {
+    display: none !important;
+  }
+
+  /* Prevent awkward splits inside elements */
+  table {
+    page-break-inside: auto;
+    width: 100% !important;
+  }
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  img {
+    page-break-inside: avoid;
+    max-width: 100% !important;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+}

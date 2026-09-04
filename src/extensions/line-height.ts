@@ -1,4 +1,4 @@
-import { Extension } from "@tiptap/core";
+import { Extension } from "@tiptap/react";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -9,7 +9,7 @@ declare module "@tiptap/core" {
   }
 }
 
-export const LineHeight = Extension.create({
+export const LineHeightExtension = Extension.create({
   name: "lineHeight",
   addOptions() {
     return {
@@ -25,7 +25,7 @@ export const LineHeight = Extension.create({
           lineHeight: {
             default: this.options.defaultLineHeight,
             renderHTML: (attributes) => {
-              if (!attributes.lineHeight || attributes.lineHeight === "normal") return {};
+              if (!attributes.lineHeight) return {};
               return {
                 style: `line-height: ${attributes.lineHeight}`,
               };

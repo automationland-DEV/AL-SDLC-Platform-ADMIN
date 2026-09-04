@@ -65,7 +65,7 @@ export function AdminLayout() {
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[var(--bg-primary)] flex font-sans">
+    <div className="h-screen w-screen overflow-hidden bg-[var(--bg-primary)] flex font-sans print:h-auto print:w-auto print:overflow-visible print:bg-white">
       {/* Mobile Sidebar Overlay */}
       {!collapsed && (
         <div
@@ -76,7 +76,7 @@ export function AdminLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full z-50 transition-all duration-250 ease-in-out ${
+        className={`fixed left-0 top-0 h-full z-50 transition-all duration-250 ease-in-out print:hidden ${
           collapsed ? '-translate-x-full md:translate-x-0 md:w-20' : 'translate-x-0 w-64'
         } bg-[var(--bg-card)] border-r border-[var(--border-color)] flex flex-col shadow-sm`}
       >
@@ -171,12 +171,12 @@ export function AdminLayout() {
 
       {/* Main Container */}
       <main
-        className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-250 ease-in-out ${
+        className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-250 ease-in-out print:m-0 print:p-0 print:h-auto print:overflow-visible print:block ${
           collapsed ? 'md:ml-20' : 'md:ml-64'
         }`}
       >
         {/* Fixed Header */}
-        <header className="h-16 shrink-0 border-b border-[var(--border-color)] flex items-center justify-between px-4 md:px-6 bg-[var(--bg-card)]/90 backdrop-blur-md z-40">
+        <header className="h-16 shrink-0 border-b border-[var(--border-color)] flex items-center justify-between px-4 md:px-6 bg-[var(--bg-card)]/90 backdrop-blur-md z-40 print:hidden">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setCollapsed(!collapsed)}
@@ -282,7 +282,7 @@ export function AdminLayout() {
 
         {/* Page Viewport Area */}
         <div
-          className={`flex-1 w-full px-4 md:px-6 lg:px-8 ${
+          className={`flex-1 w-full px-4 md:px-6 lg:px-8 print:p-0 print:h-auto print:overflow-visible print:block ${
             isTablePage
               ? 'flex flex-col min-h-0 py-3.5 overflow-hidden'
               : 'py-5 overflow-y-auto'

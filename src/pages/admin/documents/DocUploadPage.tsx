@@ -11,7 +11,7 @@ import { useMemo } from 'react';
 export default function DocUploadPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
 
   const returnPath = (location.state as { from?: string } | undefined)?.from || '/documents';
   
@@ -36,7 +36,7 @@ export default function DocUploadPage() {
 
   const handleUpload = async () => {
     if (!selectedFile) {
-      toast.error(language === 'vi' ? 'Vui lòng chọn file cần upload' : 'Please select a file to upload');
+      toast.error(t('docUpload.selectFileWarning'));
       return;
     }
     setIsSaving(true);
@@ -46,11 +46,11 @@ export default function DocUploadPage() {
         name: docName,
         workspaceIds: selectedWorkspaceId ? [selectedWorkspaceId] : [],
       });
-      toast.success(language === 'vi' ? 'Upload file thành công' : 'File uploaded successfully');
+      toast.success(t('docUpload.uploadSuccess'));
       navigate(returnPath);
     } catch (error) {
       console.error(error);
-      toast.error(language === 'vi' ? 'Lỗi khi upload file' : 'Error uploading file');
+      toast.error(t('docUpload.uploadError'));
     } finally {
       setIsSaving(false);
     }
@@ -73,15 +73,15 @@ export default function DocUploadPage() {
     <div className="w-full">
       <PageHeader
         breadcrumbs={[
-          { label: language === 'vi' ? 'Tài liệu' : 'Documents', href: '/documents' },
-          { label: language === 'vi' ? 'Tải lên' : 'Upload' },
+          { label: t('nav.documents'), href: '/documents' },
+          { label: t('docUpload.title') },
         ]}
-        title={language === 'vi' ? 'Tải lên Tài liệu' : 'Upload Document'}
-        subtitle={language === 'vi' ? 'Thêm tài liệu mới vào hệ thống' : 'Add new documents to system'}
+        title={t('docUpload.title')}
+        subtitle={t('docUpload.subtitle')}
       
         actions={
           <Button variant="secondary" onClick={() => navigate(returnPath)} className="px-4">
-            {language === 'vi' ? 'Quay lại' : 'Go Back'}
+            {t('common.cancel')}
           </Button>
         }
       />
@@ -92,7 +92,7 @@ export default function DocUploadPage() {
             <Upload className="w-5 h-5" />
           </div>
           <h3 className="text-sm font-bold text-[var(--text-primary)]">
-            {language === 'vi' ? 'Chọn file tải lên' : 'Select file to upload'}
+            {t('docUpload.selectFileTitle')}
           </h3>
         </div>
 
@@ -148,7 +148,7 @@ export default function DocUploadPage() {
                   }}
                   className="mt-4 px-4 py-1.5 rounded-full text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 transition-colors flex items-center gap-1 z-10 relative shadow-sm"
                 >
-                  <X className="w-3 h-3" /> {language === 'vi' ? 'Gỡ bỏ file' : 'Remove file'}
+                  <X className="w-3 h-3" /> {t('docUpload.removeFile')}
                 </button>
               </div>
             ) : (
@@ -157,10 +157,10 @@ export default function DocUploadPage() {
                   <UploadCloud className="w-8 h-8" />
                 </div>
                 <p className="text-base font-semibold text-[var(--text-primary)]">
-                  {language === 'vi' ? 'Click hoặc kéo thả file vào đây' : 'Click or drag & drop file here'}
+                  {t('docUpload.dragDropText')}
                 </p>
                 <p className="text-sm text-[var(--text-secondary)] mt-2">
-                  {language === 'vi' ? 'Hỗ trợ Word, Excel, PDF, Hình ảnh...' : 'Supports Word, Excel, PDF, Images...'}
+                  {t('docUpload.supportedFormats')}
                 </p>
               </div>
             )}
@@ -169,11 +169,11 @@ export default function DocUploadPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-20">
             <div className="space-y-1.5">
               <label className="block text-sm font-semibold text-[var(--text-primary)]">
-                {language === 'vi' ? 'Tên hiển thị' : 'Display Name'} <span className="text-[var(--text-muted)] font-normal">({language === 'vi' ? 'Tùy chọn' : 'Optional'})</span>
+                {t('docUpload.displayName')} <span className="text-[var(--text-muted)] font-normal">({t('docUpload.optional')})</span>
               </label>
               <input
                 type="text"
-                placeholder={language === 'vi' ? 'Ví dụ: Báo cáo tháng 7...' : 'e.g. July Report...'}
+                placeholder={t('docUpload.namePlaceholder')}
                 value={docName}
                 onChange={(e) => setDocName(e.target.value)}
                 className="w-full px-4 py-2.5 border border-[var(--border-color)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 bg-[var(--bg-tertiary)] text-[var(--text-primary)] transition-all text-sm"
@@ -182,14 +182,14 @@ export default function DocUploadPage() {
 
             <div className="space-y-1.5">
               <label className="block text-sm font-semibold text-[var(--text-primary)]">
-                {language === 'vi' ? 'Workspace liên kết' : 'Linked Workspace'} <span className="text-[var(--text-muted)] font-normal">({language === 'vi' ? 'Tùy chọn' : 'Optional'})</span>
+                {t('docUpload.linkedWorkspace')} <span className="text-[var(--text-muted)] font-normal">({t('docUpload.optional')})</span>
               </label>
               <div className="relative">
                 <SearchableSelect
                   options={workspaces.map(ws => ({ value: ws._id, label: ws.name }))}
                   value={selectedWorkspaceId}
                   onChange={setSelectedWorkspaceId}
-                  placeholder={language === 'vi' ? 'Chọn Workspace...' : 'Select Workspace...'}
+                  placeholder={t('docUpload.selectWorkspace')}
                 />
               </div>
             </div>
@@ -201,10 +201,11 @@ export default function DocUploadPage() {
             {t('common.cancel')}
           </Button>
           <Button type="button" onClick={handleUpload} disabled={isSaving || !selectedFile} className="px-8 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600">
-            {isSaving ? (language === 'vi' ? 'Đang tải lên...' : 'Uploading...') : (language === 'vi' ? 'Tải lên ngay' : 'Upload Now')}
+            {isSaving ? t('docUpload.uploading') : t('docUpload.uploadNow')}
           </Button>
         </div>
       </div>
     </div>
   );
 }
+

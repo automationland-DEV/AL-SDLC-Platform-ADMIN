@@ -9,4 +9,5 @@ export { DatePicker } from './DatePicker';
 export { ConfirmModal } from './ConfirmModal';
 export { PageHeader } from './PageHeader';
 export { MultiSearchableSelect } from './MultiSearchableSelect';  
+export { DocumentNameModal } from './DocumentNameModal';
  

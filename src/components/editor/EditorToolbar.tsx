@@ -17,6 +17,7 @@ import LinkEditorPopover from "./LinkEditorPopover";
 import TableGridPicker from "./TableGridPicker";
 import ColorPickerDropdown from "./ColorPickerDropdown";
 import { stopUndoCapturing } from "./undoCapture";
+import { insertTableWithColWidths } from "./tableUtils";
 
 const DEFAULT_FONT_FAMILY = "Arial";
 const FONT_FAMILIES = [DEFAULT_FONT_FAMILY, "Times New Roman", "Courier New", "Inter", "Georgia"];
@@ -232,7 +233,7 @@ export default function EditorToolbar({
   const toggleTablePicker = () => setTablePickerOpen((c) => !c);
   const insertTable = (rows: number, cols: number) => {
     runWithUndoBoundary(() => {
-      editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
+      insertTableWithColWidths(editor, rows, cols, true);
     });
     closeTablePicker();
   };
