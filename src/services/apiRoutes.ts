@@ -56,6 +56,26 @@ export const API_ROUTES = {
     BASE: '/imagesapi',
     UPLOAD: '/imagesapi/upload',
   },
+  MAIL: {
+    BASE: '/mail',
+    BOX: (box: string) => `/mail/box/${box}`,
+    STATS: '/mail/stats',
+    UNREAD_COUNT: '/mail/unread-count',
+    SEARCH_RECIPIENTS: '/mail/search-recipients',
+    ADMIN_BASE: '/admin/mail',
+    ADMIN_STATS: '/admin/mail/stats',
+    BROADCASTS: '/admin/mail/broadcasts',
+    BROADCAST_BY_ID: (id: string) => `/admin/mail/broadcasts/${id}`,
+    CANCEL_BROADCAST: (id: string) => `/admin/mail/broadcasts/${id}/cancel`,
+    AUDIENCE_PREVIEW: '/admin/mail/audience/preview',
+    TEMPLATES: '/admin/mail/templates',
+    TEMPLATE_BY_ID: (id: string) => `/admin/mail/templates/${id}`,
+    TEMPLATE_PLACEHOLDERS: '/admin/mail/templates/placeholders',
+    MEDIA: '/admin/mail/media',
+    INTERNAL_MESSAGES: '/admin/mail/internal-messages',
+    INTERNAL_MESSAGE_STATS: '/admin/mail/internal-messages/stats',
+    INTERNAL_MESSAGE_BY_ID: (id: string) => `/admin/mail/internal-messages/${id}`,
+  },
 };
 
 const getApiBaseUrl = () => {

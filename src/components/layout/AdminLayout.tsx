@@ -11,6 +11,7 @@ import {
   LogOut,
   Activity,
   MessageSquare,
+  Mail,
   User,
   ShieldCheck,
   Menu,
@@ -48,6 +49,7 @@ export function AdminLayout() {
     { path: '/documents', labelKey: 'nav.documents' as const, icon: FileText },
     { path: '/channels', labelKey: 'nav.channels' as const, icon: MessageSquare },
     { path: '/activity', labelKey: 'nav.activity' as const, icon: Activity },
+    { path: '/mail', labelKey: 'nav.mail' as const, icon: Mail },
   ];
 
   const handleLogout = async () => {
@@ -61,7 +63,7 @@ export function AdminLayout() {
     }
   };
 
-  const isTablePage = ['/users', '/workspaces', '/documents', '/channels', '/activity'].includes(location.pathname);
+  const isTablePage = ['/users', '/workspaces', '/documents', '/channels', '/activity', '/mail'].includes(location.pathname);
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
 
   return (

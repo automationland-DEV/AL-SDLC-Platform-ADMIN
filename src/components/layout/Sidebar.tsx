@@ -4,6 +4,7 @@ import {
   Users,
   Briefcase,
   GitBranch,
+  Mail,
   ChevronLeft,
   ChevronRight,
   Settings,
@@ -20,6 +21,7 @@ const menuItems = [
   { path: '/users', label: 'Quản lý Users', icon: Users },
   { path: '/workspaces', label: 'Quản lý Workspaces', icon: Briefcase },
   { path: '/workflows', label: 'Quản lý Workflows', icon: GitBranch },
+  { path: '/mail', label: 'Mail nội bộ', icon: Mail },
 ];
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {

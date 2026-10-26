@@ -4,4 +4,5 @@ export { authService, userService } from './authService';
 export { workspaceService } from './workspaceService';
 export { documentService } from './documentService';
 export { chatChannelService } from './chatChannelService';
+export { mailService } from './mailService';
 export * from './dashboardService';

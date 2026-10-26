@@ -6,3 +6,4 @@ export * from './useActivityQuery';
 export * from './useTasksQuery';
 export * from './useDashboardStatsQuery';
 export * from './useWorkspaceOptionsQuery';
+export * from './useMailQuery';
