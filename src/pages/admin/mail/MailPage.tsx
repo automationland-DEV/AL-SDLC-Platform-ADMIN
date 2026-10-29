@@ -49,14 +49,17 @@ import type {
   MailRecipient,
 } from '../../../services/mailService';
 import { hasHtmlContent, plainTextToHtml } from '../../../utils/mailBody';
+import { resolveAvatarUrl } from '../../../utils/avatar';
 import MailRichTextEditor from '../../../components/mail/MailRichTextEditor';
 
 /** Avatar of a recipient, falling back to the first letter of the name. */
 function RecipientAvatar({ avatarUrl, name }: { avatarUrl?: string; name: string }) {
-  if (avatarUrl) {
+  const resolved = resolveAvatarUrl(avatarUrl);
+
+  if (resolved) {
     return (
       <img
-        src={avatarUrl}
+        src={resolved}
         alt=""
         className="h-8 w-8 shrink-0 rounded-lg border border-[var(--border-color)] object-cover"
       />
@@ -868,10 +871,18 @@ function InternalMailPanel() {
               {messages.map((message) => (
                 <TableRow key={message.id}>
                   <TableCell>
-                    <p className="font-medium text-[var(--text-primary)]">{message.senderName}</p>
-                    <p className="mt-0.5 max-w-[180px] truncate text-xs text-[var(--text-muted)]">
-                      {message.senderEmail}
-                    </p>
+                    <div className="flex items-center gap-2.5">
+                      <RecipientAvatar
+                        avatarUrl={message.senderAvatar ?? undefined}
+                        name={message.senderName}
+                      />
+                      <div className="min-w-0">
+                        <p className="font-medium text-[var(--text-primary)]">{message.senderName}</p>
+                        <p className="mt-0.5 max-w-[180px] truncate text-xs text-[var(--text-muted)]">
+                          {message.senderEmail}
+                        </p>
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <p className="text-sm text-[var(--text-primary)]">
@@ -979,6 +990,10 @@ function InternalMailPanel() {
                   className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] p-3"
                 >
                   <div className="flex flex-wrap items-center gap-2">
+                    <RecipientAvatar
+                      avatarUrl={item.senderAvatar ?? undefined}
+                      name={item.senderName}
+                    />
                     <p className="text-sm font-semibold text-[var(--text-primary)]">
                       {item.senderName}
                     </p>

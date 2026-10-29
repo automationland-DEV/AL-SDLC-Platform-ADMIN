@@ -18,11 +18,17 @@ export interface AuditLogStats {
   bySeverity: Record<string, number>;
   byType: Record<string, number>;
   recentCount: number;
+  retention?: {
+    infoRetentionDays: number;
+    securityRetentionDays: number;
+    ipRetentionDays: number;
+  };
 }
 
 export interface AuditLogQueryParams {
   userId?: string;
   type?: string;
+  /** Single severity or a comma-separated list (e.g. `WARN,CRITICAL`). */
   severity?: string;
   ip?: string;
   startDate?: string;

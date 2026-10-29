@@ -7,3 +7,5 @@ export * from './useTasksQuery';
 export * from './useDashboardStatsQuery';
 export * from './useWorkspaceOptionsQuery';
 export * from './useMailQuery';
+export * from './useDailyReportsQuery';
+export * from './useStorageQuery';

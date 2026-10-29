@@ -5,4 +5,5 @@ export { workspaceService } from './workspaceService';
 export { documentService } from './documentService';
 export { chatChannelService } from './chatChannelService';
 export { mailService } from './mailService';
+export { dailyReportService } from './dailyReportService';
 export * from './dashboardService';
