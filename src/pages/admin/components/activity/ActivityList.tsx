@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { LogIn, LogOut, AlertTriangle, Info, Shield, Clock, User as UserIcon, MapPin, Activity, RefreshCw } from 'lucide-react';
+import { LogIn, LogOut, AlertTriangle, Info, Shield, Clock, User as UserIcon, MapPin, Activity, RefreshCw, ShieldAlert, Eraser } from 'lucide-react';
 import { Badge, Button } from '../../../../components/ui';
 import { useActivityStore } from '../../../../stores';
-import { useActivityLogsQuery } from '../../../../hooks/queries';
+import { useActivityLogsQuery, useActivityStatsQuery } from '../../../../hooks/queries';
 import { useTranslation } from '../../../../i18n/useTranslation';
 import type { AuditLogQueryParams } from '../../../../services/auditService';
 
@@ -36,6 +36,8 @@ export function ActivityList({ selectedUserId }: ActivityListProps) {
   const { filters } = useActivityStore();
   const [page, setPage] = useState(1);
   const { language } = useTranslation();
+  const { data: stats } = useActivityStatsQuery();
+  const ipRetentionDays = stats?.retention?.ipRetentionDays;
 
   // Build query params from store filters + page
   const queryParams: AuditLogQueryParams = { page, limit: 20 };
@@ -80,6 +82,16 @@ export function ActivityList({ selectedUserId }: ActivityListProps) {
             <span>{language === 'vi' ? 'Trang' : 'Page'} {page} / {totalPages || 1}</span>
           </div>
         </div>
+        {ipRetentionDays ? (
+          <p className="mt-2 flex items-start gap-1.5 text-xs text-[var(--text-muted)]">
+            <ShieldAlert className="w-3.5 h-3.5 mt-px shrink-0" />
+            <span>
+              {language === 'vi'
+                ? `Chỉ sự kiện vi phạm (Cảnh báo / Nghiêm trọng) được lưu lâu dài. Sự kiện thường và địa chỉ IP bị dọn sau ${ipRetentionDays} ngày.`
+                : `Only violations (Warning / Critical) are kept long-term. Routine events and IP addresses are cleaned after ${ipRetentionDays} days.`}
+            </span>
+          </p>
+        ) : null}
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
@@ -128,6 +140,12 @@ export function ActivityList({ selectedUserId }: ActivityListProps) {
                       <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="font-medium text-[var(--text-primary)]">{eventLabel}</h4>
                         <Badge variant={severity.badge}>{log.severity}</Badge>
+                        {log.severity !== 'INFO' && (
+                          <Badge variant="danger">
+                            <ShieldAlert className="w-3 h-3 mr-1" />
+                            {language === 'vi' ? 'Vi phạm' : 'Violation'}
+                          </Badge>
+                        )}
                         {isAuthEvent && (
                           <Badge variant="default">
                             {log.type.includes('SUCCESS') || log.type === 'LOGOUT' ? (
@@ -159,10 +177,17 @@ export function ActivityList({ selectedUserId }: ActivityListProps) {
                           <span className="text-xs">ID: {log.userId.slice(-8)}</span>
                         </div>
                       )}
-                      {log.ip && (
+                      {log.ip ? (
                         <div className="flex items-center gap-1">
                           <MapPin className="w-3 h-3" />
                           <span>{log.ip}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-[var(--text-muted)]">
+                          <Eraser className="w-3 h-3" />
+                          <span className="italic">
+                            {language === 'vi' ? 'IP đã được xóa' : 'IP removed'}
+                          </span>
                         </div>
                       )}
                       <div className="flex items-center gap-1">

@@ -3,6 +3,7 @@ export { default as UsersPage } from './users/UsersPage';
 export { default as WorkspacesPage } from './workspaces/WorkspacesPage';
 export { default as DocumentsPage } from './documents/DocumentsPage';
 export { default as ActivityPage } from './ActivityPage';
+export { default as DailyReportsPage } from './reports/DailyReportsPage';
 export { default as SettingsPage } from './SettingsPage';
 export { default as ChatChannelsPage } from './channels/ChatChannelsPage';
 export { default as ProfilePage } from './ProfilePage';

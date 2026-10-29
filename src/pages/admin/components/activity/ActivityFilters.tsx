@@ -1,4 +1,4 @@
-import { Search, X } from 'lucide-react';
+import { Search, X, ShieldAlert } from 'lucide-react';
 import { Button, Select, DatePicker } from '../../../../components/ui';
 import { useActivityStore } from '../../../../stores';
 import { useTranslation } from '../../../../i18n/useTranslation';
@@ -15,6 +15,13 @@ export function ActivityFilters({ onSearch, onReset, hasActiveFilters }: Activit
 
   const handleFilterChange = (key: keyof typeof filters, value: string) => {
     setFilters({ [key]: value });
+  };
+
+  // "Violations only" shows the events that are kept long-term (WARN + CRITICAL).
+  const violationsOnly = filters.severity === 'WARN,CRITICAL';
+
+  const handleViolationsOnly = () => {
+    setFilters({ severity: violationsOnly ? '' : 'WARN,CRITICAL' });
   };
 
   return (
@@ -47,6 +54,10 @@ export function ActivityFilters({ onSearch, onReset, hasActiveFilters }: Activit
               { value: 'LOGIN_FAILED', label: language === 'vi' ? 'Đăng nhập thất bại' : 'Login failed' },
               { value: 'LOGOUT', label: language === 'vi' ? 'Đăng xuất' : 'Logout' },
               { value: 'UNAUTHORIZED_ACCESS', label: language === 'vi' ? 'Truy cập trái phép' : 'Unauthorized access' },
+              { value: 'REFRESH_REUSED', label: language === 'vi' ? 'Tái sử dụng refresh token' : 'Refresh token reused' },
+              { value: 'TOKEN_FAMILY_REVOKED', label: language === 'vi' ? 'Thu hồi token' : 'Token family revoked' },
+              { value: 'RATE_LIMIT_HIT', label: language === 'vi' ? 'Vượt giới hạn truy cập' : 'Rate limit hit' },
+              { value: 'PASSWORD_RESET_FAILED', label: language === 'vi' ? 'Đặt lại mật khẩu thất bại' : 'Password reset failed' },
               { value: 'TASK_VIEWED', label: language === 'vi' ? 'Xem task' : 'Task viewed' },
               { value: 'TASK_CREATE_SUCCESS', label: language === 'vi' ? 'Tạo task' : 'Task created' },
               { value: 'TASK_UPDATE_SUCCESS', label: language === 'vi' ? 'Cập nhật task' : 'Task updated' },
@@ -60,10 +71,11 @@ export function ActivityFilters({ onSearch, onReset, hasActiveFilters }: Activit
             {language === 'vi' ? 'Mức độ' : 'Severity'}
           </label>
           <Select
-            value={filters.severity}
-            onChange={(val) => handleFilterChange('severity', val)}
+            value={violationsOnly ? 'VIOLATIONS' : filters.severity}
+            onChange={(val) => handleFilterChange('severity', val === 'VIOLATIONS' ? 'WARN,CRITICAL' : val)}
             options={[
               { value: '', label: language === 'vi' ? 'Tất cả' : 'All' },
+              { value: 'VIOLATIONS', label: language === 'vi' ? 'Chỉ vi phạm' : 'Violations only' },
               { value: 'INFO', label: 'Info' },
               { value: 'WARN', label: 'Warning' },
               { value: 'CRITICAL', label: 'Critical' }
@@ -98,6 +110,19 @@ export function ActivityFilters({ onSearch, onReset, hasActiveFilters }: Activit
           </Button>
         </div>
       </div>
+      <button
+        onClick={handleViolationsOnly}
+        className={`mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+          violationsOnly
+            ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30'
+            : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border-color)] hover:bg-[var(--bg-hover)]'
+        }`}
+      >
+        <ShieldAlert className="w-3.5 h-3.5" />
+        {language === 'vi'
+          ? 'Chỉ hiển thị hành vi trái phép (được lưu lâu dài)'
+          : 'Show violations only (kept long-term)'}
+      </button>
     </div>
   );
 }

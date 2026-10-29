@@ -8,11 +8,15 @@ export const authService = {
       withCredentials: true,
     });
     const resData = response.data as unknown as Record<string, unknown>;
+    const rawTokens =
+      (resData?.tokens as Record<string, unknown>) ||
+      ((resData?.data as Record<string, unknown>)?.tokens as Record<string, unknown>) ||
+      resData;
     const token =
+      (rawTokens?.accessToken as string) ||
+      (rawTokens?.access_token as string) ||
       (resData?.accessToken as string) ||
-      (resData?.access_token as string) ||
-      ((resData?.data as Record<string, unknown>)?.accessToken as string) ||
-      ((resData?.data as Record<string, unknown>)?.access_token as string);
+      (resData?.access_token as string);
 
     if (token) {
       localStorage.setItem('accessToken', token);
@@ -98,7 +102,7 @@ export const userService = {
   },
 
   updateUser: async (id: string, data: Partial<User>): Promise<User> => {
-    const response = await api.put<unknown>(API_ROUTES.USERS.BY_ID(id), data);
+    const response = await api.put<unknown>(API_ROUTES.USERS.UPDATE(id), data);
     const raw = response.data as Record<string, unknown>;
     return (raw?.data ?? raw) as User;
   },
@@ -120,7 +124,7 @@ export const userService = {
   },
 
   createUser: async (data: Partial<User>): Promise<User> => {
-    const response = await api.post<unknown>(API_ROUTES.USERS.BASE, data);
+    const response = await api.post<unknown>(API_ROUTES.USERS.CREATE, data);
     const raw = response.data as Record<string, unknown>;
     return (raw?.data ?? raw) as User;
   },
@@ -128,7 +132,7 @@ export const userService = {
   importUsersCsv: async (file: File): Promise<{ success: boolean; insertedCount: number; skippedCount: number; errors: string[] }> => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await api.post<unknown>(`${API_ROUTES.USERS.BASE}/import/csv`, formData, {
+    const response = await api.post<unknown>(API_ROUTES.USERS.IMPORT_CSV, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     const raw = response.data as Record<string, unknown>;

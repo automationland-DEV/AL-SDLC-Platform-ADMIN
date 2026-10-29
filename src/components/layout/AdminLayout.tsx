@@ -15,6 +15,8 @@ import {
   User,
   ShieldCheck,
   Menu,
+  ClipboardList,
+  HardDrive,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores';
 import ThemeSwitcher from '../ThemeSwitcher';
@@ -49,7 +51,9 @@ export function AdminLayout() {
     { path: '/documents', labelKey: 'nav.documents' as const, icon: FileText },
     { path: '/channels', labelKey: 'nav.channels' as const, icon: MessageSquare },
     { path: '/activity', labelKey: 'nav.activity' as const, icon: Activity },
+    { path: '/reports', labelKey: 'nav.reports' as const, icon: ClipboardList },
     { path: '/mail', labelKey: 'nav.mail' as const, icon: Mail },
+    { path: '/storage', labelKey: 'nav.storage' as const, icon: HardDrive },
   ];
 
   const handleLogout = async () => {
@@ -63,7 +67,7 @@ export function AdminLayout() {
     }
   };
 
-  const isTablePage = ['/users', '/workspaces', '/documents', '/channels', '/activity', '/mail'].includes(location.pathname);
+  const isTablePage = ['/users', '/workspaces', '/documents', '/channels', '/activity', '/mail', '/reports'].includes(location.pathname);
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
 
   return (
