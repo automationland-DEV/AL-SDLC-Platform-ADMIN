@@ -9,3 +9,4 @@ export * from './useWorkspaceOptionsQuery';
 export * from './useMailQuery';
 export * from './useDailyReportsQuery';
 export * from './useStorageQuery';
+export * from './useWorkSchedulesQuery';

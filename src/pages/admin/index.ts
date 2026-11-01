@@ -28,3 +28,4 @@ export { default as DocEditPage } from './documents/DocEditPage';
 // Chat Channels Module
 export { default as ChannelDetailPage } from './channels/ChannelDetailPage';
 export { default as ChatViewerPage } from './channels/ChatViewerPage';
+export { default as WorkSchedulesPage } from './schedules/WorkSchedulesPage';
