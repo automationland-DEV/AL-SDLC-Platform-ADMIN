@@ -17,6 +17,7 @@ import {
   Menu,
   ClipboardList,
   HardDrive,
+  CalendarClock,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores';
 import ThemeSwitcher from '../ThemeSwitcher';
@@ -50,6 +51,7 @@ export function AdminLayout() {
     { path: '/workspaces', labelKey: 'nav.workspaces' as const, icon: Briefcase },
     { path: '/documents', labelKey: 'nav.documents' as const, icon: FileText },
     { path: '/channels', labelKey: 'nav.channels' as const, icon: MessageSquare },
+    { path: '/schedules', labelKey: 'nav.schedules' as const, icon: CalendarClock },
     { path: '/activity', labelKey: 'nav.activity' as const, icon: Activity },
     { path: '/reports', labelKey: 'nav.reports' as const, icon: ClipboardList },
     { path: '/mail', labelKey: 'nav.mail' as const, icon: Mail },
@@ -67,7 +69,7 @@ export function AdminLayout() {
     }
   };
 
-  const isTablePage = ['/users', '/workspaces', '/documents', '/channels', '/activity', '/mail', '/reports'].includes(location.pathname);
+  const isTablePage = ['/users', '/workspaces', '/documents', '/channels', '/schedules', '/activity', '/mail', '/reports'].includes(location.pathname);
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
 
   return (

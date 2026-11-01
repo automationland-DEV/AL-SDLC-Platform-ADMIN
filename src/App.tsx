@@ -30,6 +30,7 @@ const ChatViewerPage = lazy(() => import('./pages/admin/channels/ChatViewerPage'
 const ProfilePage = lazy(() => import('./pages/admin/ProfilePage'));
 const MailPage = lazy(() => import('./pages/admin/mail/MailPage'));
 const DailyReportsPage = lazy(() => import('./pages/admin/reports/DailyReportsPage'));
+const WorkSchedulesPage = lazy(() => import('./pages/admin/schedules/WorkSchedulesPage'));
 const StoragePage = lazy(() => import('./pages/admin/storage/StoragePage'));
 
 function PageLoader() {
@@ -92,6 +93,7 @@ function App() {
             <Route path="channels/:id" element={<ChannelDetailPage />} />
             <Route path="channels/:id/chat" element={<ChatViewerPage />} />
             <Route path="chat-channels" element={<Navigate to="/channels" replace />} />
+            <Route path="schedules" element={<WorkSchedulesPage />} />
             <Route path="activity" element={<ActivityPage />} />
             <Route path="reports" element={<DailyReportsPage />} />
             <Route path="mail" element={<MailPage />} />

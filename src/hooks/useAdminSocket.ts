@@ -12,12 +12,15 @@ const ADMIN_EVENTS = {
 
 export function useAdminSocket() {
   const socketRef = useRef<Socket | null>(null);
-  const { isAuthenticated, user } = useAuthStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const userRole = useAuthStore((s) => s.user?.role);
   const addNotification = useAdminNotificationStore((s) => s.addNotification);
 
   useEffect(() => {
+    const role = String(userRole ?? '').toLowerCase();
+    const isAdmin = role === 'super_admin' || role === 'admin';
     // Only connect if authenticated and user is super_admin
-    if (!isAuthenticated || !user || user.role !== 'super_admin') {
+    if (!isAuthenticated || !isAdmin) {
       return;
     }
 
@@ -83,7 +86,7 @@ export function useAdminSocket() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [isAuthenticated, user, addNotification]);
+  }, [isAuthenticated, userRole, addNotification]);
 
   return socketRef;
 }
