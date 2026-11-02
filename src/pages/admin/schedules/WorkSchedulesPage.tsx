@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
@@ -32,8 +32,10 @@ import { useTranslation } from '../../../i18n/useTranslation';
 import { userService } from '../../../services/authService';
 import {
   formatDisplayDate,
+  resolveWorkModeLabel,
   todayIsoDate,
   WEEKDAY_LABELS,
+  WORK_MODE_OPTIONS,
   type AdminWorkScheduleItem,
   type AdminWorkScheduleTemplate,
 } from '../../../services/workScheduleService';
@@ -86,9 +88,47 @@ function SectionCard({ children }: { children: React.ReactNode }) {
   );
 }
 
+function parseWorkDateValue(value: string): Date {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return new Date(value);
+  return new Date(year, month - 1, day);
+}
+
+function toIsoDateValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getWeekStartIso(workDate: string): string {
+  const date = parseWorkDateValue(workDate);
+  const mondayOffset = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - mondayOffset);
+  return toIsoDateValue(date);
+}
+
+function addDaysIso(workDate: string, days: number): string {
+  const date = parseWorkDateValue(workDate);
+  date.setDate(date.getDate() + days);
+  return toIsoDateValue(date);
+}
+
+function getMonthKey(workDate: string): string {
+  return workDate.slice(0, 7);
+}
+
+function getScheduleMinutes(item: AdminWorkScheduleItem): number {
+  const [sh, sm] = item.startTime.split(':').map(Number);
+  const [eh, em] = item.endTime.split(':').map(Number);
+  if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return 0;
+  return Math.max(0, eh * 60 + em - (sh * 60 + sm));
+}
+
 export default function WorkSchedulesPage() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<MainTab>('schedules');
+  type ScheduleView = 'all' | 'user' | 'week' | 'month';
 
   // ─── Filters ───
   const [page, setPage] = useState(1);
@@ -98,6 +138,8 @@ export default function WorkSchedulesPage() {
   const [from, setFrom] = useState(todayIsoDate(-7));
   const [to, setTo] = useState(todayIsoDate(30));
   const [status, setStatus] = useState('');
+  const [workModeFilter, setWorkModeFilter] = useState('');
+  const [scheduleView, setScheduleView] = useState<ScheduleView>('user');
 
   // ─── Assign modal ───
   const [showAssign, setShowAssign] = useState(false);
@@ -108,6 +150,7 @@ export default function WorkSchedulesPage() {
   const [assignStart, setAssignStart] = useState('08:00');
   const [assignEnd, setAssignEnd] = useState('17:00');
   const [assignTitle, setAssignTitle] = useState('');
+  const [assignWorkMode, setAssignWorkMode] = useState('office');
 
   // ─── Edit modal ───
   const [editing, setEditing] = useState<AdminWorkScheduleItem | null>(null);
@@ -116,6 +159,7 @@ export default function WorkSchedulesPage() {
   const [editEnd, setEditEnd] = useState('');
   const [editTitle, setEditTitle] = useState('');
   const [editStatus, setEditStatus] = useState('');
+  const [editWorkMode, setEditWorkMode] = useState('office');
 
   // ─── Delete ───
   const [deleting, setDeleting] = useState<AdminWorkScheduleItem | null>(null);
@@ -126,6 +170,7 @@ export default function WorkSchedulesPage() {
   const [templateStart, setTemplateStart] = useState('08:00');
   const [templateEnd, setTemplateEnd] = useState('17:00');
   const [templateTitle, setTemplateTitle] = useState('');
+  const [templateWorkMode, setTemplateWorkMode] = useState('office');
   const [editingTemplate, setEditingTemplate] = useState<AdminWorkScheduleTemplate | null>(null);
   const [deletingTemplate, setDeletingTemplate] = useState<AdminWorkScheduleTemplate | null>(null);
 
@@ -158,16 +203,25 @@ export default function WorkSchedulesPage() {
       from: from || undefined,
       to: to || undefined,
       status: status || undefined,
+      workMode: workModeFilter || undefined,
       page,
       limit: 20,
     }),
-    [filterUserId, from, to, status, page],
+    [filterUserId, from, to, status, workModeFilter, page],
   );
 
   const { data: listData, isLoading, isFetching, refetch } = useWorkSchedulesQuery(listParams);
-  const schedules = listData?.items ?? [];
+  const schedules = useMemo(() => listData?.items ?? [], [listData]);
   const total = listData?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / (listData?.limit ?? 20)));
+
+  const userById = useMemo(() => {
+    const map = new Map<string, (typeof allUsers)[number]>();
+    (allUsers ?? []).forEach((u) => {
+      if (u?.id) map.set(u.id, u);
+    });
+    return map;
+  }, [allUsers]);
 
   const filteredSchedules = useMemo(() => {
     const keyword = debouncedSearch.trim().toLowerCase();
@@ -181,6 +235,60 @@ export default function WorkSchedulesPage() {
       );
     });
   }, [schedules, debouncedSearch]);
+
+  const sortedSchedules = useMemo(
+    () =>
+      filteredSchedules.slice().sort((a, b) => {
+        if (a.workDate !== b.workDate) return a.workDate < b.workDate ? -1 : 1;
+        if (a.startTime !== b.startTime) return a.startTime < b.startTime ? -1 : 1;
+        return (a.userName || '').localeCompare(b.userName || '', 'vi');
+      }),
+    [filteredSchedules],
+  );
+
+  const schedulesByUser = useMemo(() => {
+    const groups = new Map<string, { userId: string; displayName: string; items: AdminWorkScheduleItem[]; minutes: number }>();
+    for (const item of sortedSchedules) {
+      const displayName = item.userName || userById.get(item.userId)?.fullName || userById.get(item.userId)?.email || 'Nhân viên';
+      if (!groups.has(item.userId)) {
+        groups.set(item.userId, { userId: item.userId, displayName, items: [], minutes: 0 });
+      }
+      const group = groups.get(item.userId)!;
+      group.items.push(item);
+      group.minutes += getScheduleMinutes(item);
+    }
+    return [...groups.values()].sort((a, b) => a.displayName.localeCompare(b.displayName, 'vi'));
+  }, [sortedSchedules, userById]);
+
+  const schedulesByWeek = useMemo(() => {
+    const groups = new Map<string, { weekStart: string; weekEnd: string; items: AdminWorkScheduleItem[]; minutes: number }>();
+    for (const item of sortedSchedules) {
+      const weekStart = getWeekStartIso(item.workDate);
+      const weekEnd = addDaysIso(weekStart, 6);
+      if (!groups.has(weekStart)) groups.set(weekStart, { weekStart, weekEnd, items: [], minutes: 0 });
+      const group = groups.get(weekStart)!;
+      group.items.push(item);
+      group.minutes += getScheduleMinutes(item);
+    }
+    return [...groups.values()].sort((a, b) => (a.weekStart < b.weekStart ? -1 : 1));
+  }, [sortedSchedules]);
+
+  const schedulesByMonth = useMemo(() => {
+    const groups = new Map<string, { monthKey: string; items: AdminWorkScheduleItem[]; minutes: number }>();
+    for (const item of sortedSchedules) {
+      const monthKey = getMonthKey(item.workDate);
+      if (!groups.has(monthKey)) groups.set(monthKey, { monthKey, items: [], minutes: 0 });
+      const group = groups.get(monthKey)!;
+      group.items.push(item);
+      group.minutes += getScheduleMinutes(item);
+    }
+    return [...groups.values()].sort((a, b) => (a.monthKey < b.monthKey ? -1 : 1));
+  }, [sortedSchedules]);
+
+  const totalMinutes = useMemo(
+    () => sortedSchedules.reduce((sum, item) => sum + getScheduleMinutes(item), 0),
+    [sortedSchedules],
+  );
 
   const templatesQuery = useWorkScheduleTemplatesQuery(templateUserId || undefined);
   const templates = templatesQuery.data ?? [];
@@ -203,6 +311,7 @@ export default function WorkSchedulesPage() {
     setEditEnd(item.endTime);
     setEditTitle(item.title || '');
     setEditStatus(item.status);
+    setEditWorkMode(item.workMode || 'office');
   };
 
   const handleAssign = async () => {
@@ -218,6 +327,7 @@ export default function WorkSchedulesPage() {
           startTime: assignStart,
           endTime: assignEnd,
           title: assignTitle.trim() || undefined,
+          workMode: assignWorkMode || undefined,
         });
         toast.success(t('schedules.assignSuccess'));
       } else {
@@ -231,6 +341,7 @@ export default function WorkSchedulesPage() {
           startTime: assignStart,
           endTime: assignEnd,
           title: assignTitle.trim() || undefined,
+          workMode: assignWorkMode || undefined,
         });
         toast.success(t('schedules.bulkSuccess', { count: result.length }));
       }
@@ -254,6 +365,7 @@ export default function WorkSchedulesPage() {
           endTime: editEnd || undefined,
           title: editTitle,
           status: editStatus || undefined,
+          workMode: editWorkMode || undefined,
         },
       });
       toast.success(t('schedules.updateSuccess'));
@@ -278,6 +390,7 @@ export default function WorkSchedulesPage() {
             startTime: templateStart,
             endTime: templateEnd,
             title: templateTitle.trim() || undefined,
+            workMode: templateWorkMode || undefined,
           },
         });
         toast.success(t('schedules.templateUpdateSuccess'));
@@ -288,6 +401,7 @@ export default function WorkSchedulesPage() {
           startTime: templateStart,
           endTime: templateEnd,
           title: templateTitle.trim() || undefined,
+          workMode: templateWorkMode || undefined,
         });
         toast.success(t('schedules.templateCreateSuccess'));
       }
@@ -327,6 +441,59 @@ export default function WorkSchedulesPage() {
     ) : (
       <Badge variant="danger">{t('schedules.cancelled')}</Badge>
     );
+
+  const workModeBadge = (value?: string | null) => (
+    <Badge variant="info">{resolveWorkModeLabel(value)}</Badge>
+  );
+
+  const renderScheduleRow = (item: AdminWorkScheduleItem) => (
+    <TableRow key={item.id}>
+      <TableCell>
+        <div className="flex items-center gap-2.5">
+          {item.userAvatar ? (
+            <img src={item.userAvatar} alt="" className="h-8 w-8 rounded-lg border border-[var(--border-color)] object-cover" />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10 text-xs font-bold text-sky-500">
+              {(item.userName || 'U').charAt(0).toUpperCase()}
+            </div>
+          )}
+          <span className="text-xs font-semibold">{userNameOf(item)}</span>
+        </div>
+      </TableCell>
+      <TableCell>
+        <span className="text-xs font-semibold">{formatDisplayDate(item.workDate)}</span>
+        <span className="ml-2 rounded bg-[var(--bg-tertiary)] px-1.5 py-0.5 font-mono-code text-[10px] text-[var(--text-muted)]">
+          {item.source === 'template' ? t('schedules.fromTemplate') : t('schedules.manual')}
+        </span>
+      </TableCell>
+      <TableCell className="font-mono-code text-xs">
+        {item.startTime} - {item.endTime}
+      </TableCell>
+      <TableCell className="max-w-[220px] truncate text-xs text-[var(--text-secondary)]">
+        {item.title || '—'}
+      </TableCell>
+      <TableCell>{workModeBadge(item.workMode)}</TableCell>
+      <TableCell>{statusBadge(item.status)}</TableCell>
+      <TableCell>
+        <div className="flex items-center justify-center gap-1">
+          <button
+            onClick={() => openEdit(item)}
+            title={t('common.edit')}
+            className="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-sky-500"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => setDeleting(item)}
+            title={t('common.delete')}
+            className="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-rose-500"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col font-sans">
@@ -372,7 +539,7 @@ export default function WorkSchedulesPage() {
       {tab === 'schedules' && (
         <SectionCard>
           <div className="grid grid-cols-1 gap-2.5 border-b border-[var(--border-color)] p-3 md:grid-cols-12">
-            <div className="relative md:col-span-4">
+            <div className="relative md:col-span-3">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-muted)]" />
               <Input
                 value={searchTerm}
@@ -384,7 +551,7 @@ export default function WorkSchedulesPage() {
                 className="pl-9"
               />
             </div>
-            <div className="md:col-span-3">
+            <div className="md:col-span-2">
               <SearchableSelect
                 options={filterUserOptions}
                 value={filterUserId}
@@ -414,6 +581,46 @@ export default function WorkSchedulesPage() {
                 ]}
               />
             </div>
+            <div className="md:col-span-2">
+              <Select
+                value={workModeFilter}
+                onChange={(v) => {
+                  setWorkModeFilter(v);
+                  setPage(1);
+                }}
+                options={[
+                  { value: '', label: t('schedules.allWorkModes') },
+                  ...WORK_MODE_OPTIONS.map((option) => ({ value: option.value, label: option.label })),
+                ]}
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] px-3 py-2.5">
+            <div className="flex w-fit items-center gap-1 rounded-lg bg-[var(--bg-tertiary)] p-1">
+              {(
+                [
+                  { id: 'user', label: t('schedules.viewUser') },
+                  { id: 'week', label: t('schedules.viewWeek') },
+                  { id: 'month', label: t('schedules.viewMonth') },
+                  { id: 'all', label: t('schedules.viewAll') },
+                ] as Array<{ id: ScheduleView; label: string }>
+              ).map((view) => (
+                <button
+                  key={view.id}
+                  onClick={() => setScheduleView(view.id)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    scheduleView === view.id
+                      ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-xs'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  {view.label}
+                </button>
+              ))}
+            </div>
+            <p className="font-mono-code text-xs text-[var(--text-muted)]">
+              {sortedSchedules.length} ca • {(totalMinutes / 60).toFixed(1)} giờ
+            </p>
           </div>
 
           <Table
@@ -422,66 +629,79 @@ export default function WorkSchedulesPage() {
               t('schedules.colDate'),
               t('schedules.colTime'),
               t('schedules.colShift'),
+              t('schedules.colWorkMode'),
               t('schedules.colStatus'),
               { label: t('table.actions'), align: 'center' },
             ]}
           >
-            {(isLoading ? [] : filteredSchedules).map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>
-                  <div className="flex items-center gap-2.5">
-                    {item.userAvatar ? (
-                      <img src={item.userAvatar} alt="" className="h-8 w-8 rounded-lg border border-[var(--border-color)] object-cover" />
-                    ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10 text-xs font-bold text-sky-500">
-                        {(item.userName || 'U').charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <span className="text-xs font-semibold">{userNameOf(item)}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <span className="text-xs font-semibold">{formatDisplayDate(item.workDate)}</span>
-                  <span className="ml-2 rounded bg-[var(--bg-tertiary)] px-1.5 py-0.5 font-mono-code text-[10px] text-[var(--text-muted)]">
-                    {item.source === 'template' ? t('schedules.fromTemplate') : t('schedules.manual')}
-                  </span>
-                </TableCell>
-                <TableCell className="font-mono-code text-xs">
-                  {item.startTime} - {item.endTime}
-                </TableCell>
-                <TableCell className="max-w-[220px] truncate text-xs text-[var(--text-secondary)]">
-                  {item.title || '—'}
-                </TableCell>
-                <TableCell>{statusBadge(item.status)}</TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-center gap-1">
-                    <button
-                      onClick={() => openEdit(item)}
-                      title={t('common.edit')}
-                      className="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-sky-500"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setDeleting(item)}
-                      title={t('common.delete')}
-                      className="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-rose-500"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+            {isLoading ? null : sortedSchedules.length === 0 ? (
+              <TableRow key="empty">
+                <TableCell colSpan={7}>
+                  <div className="flex flex-col items-center gap-2 py-14 text-center">
+                    <CalendarClock className="h-8 w-8 text-[var(--text-muted)]" />
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">{t('schedules.emptyTitle')}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{t('schedules.emptyHint')}</p>
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : scheduleView === 'all' ? (
+              sortedSchedules.map((item) => renderScheduleRow(item))
+            ) : scheduleView === 'user' ? (
+              schedulesByUser.map((group) => (
+                <Fragment key={group.userId}>
+                  <TableRow key={`${group.userId}-header`}>
+                    <TableCell colSpan={7}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-bold text-[var(--text-primary)]">{group.displayName}</span>
+                        <span className="font-mono-code text-[11px] text-[var(--text-muted)]">
+                          {group.items.length} ca • {(group.minutes / 60).toFixed(1)} giờ
+                        </span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {group.items.map((item) => renderScheduleRow(item))}
+                </Fragment>
+              ))
+            ) : scheduleView === 'week' ? (
+              schedulesByWeek.map((group) => (
+                <Fragment key={group.weekStart}>
+                  <TableRow key={`${group.weekStart}-header`}>
+                    <TableCell colSpan={7}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <CalendarDays className="h-3.5 w-3.5 text-sky-500" />
+                        <span className="text-xs font-bold text-[var(--text-primary)]">
+                          Tuần {formatDisplayDate(group.weekStart)} → {formatDisplayDate(group.weekEnd)}
+                        </span>
+                        <span className="font-mono-code text-[11px] text-[var(--text-muted)]">
+                          {group.items.length} ca • {(group.minutes / 60).toFixed(1)} giờ
+                        </span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {group.items.map((item) => renderScheduleRow(item))}
+                </Fragment>
+              ))
+            ) : (
+              schedulesByMonth.map((group) => (
+                <Fragment key={group.monthKey}>
+                  <TableRow key={`${group.monthKey}-header`}>
+                    <TableCell colSpan={7}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <CalendarDays className="h-3.5 w-3.5 text-sky-500" />
+                        <span className="text-xs font-bold text-[var(--text-primary)]">Tháng {group.monthKey}</span>
+                        <span className="font-mono-code text-[11px] text-[var(--text-muted)]">
+                          {group.items.length} ca • {(group.minutes / 60).toFixed(1)} giờ
+                        </span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {group.items.map((item) => renderScheduleRow(item))}
+                </Fragment>
+              ))
+            )}
           </Table>
 
-          {!isLoading && filteredSchedules.length === 0 && (
-            <div className="flex flex-col items-center gap-2 py-14 text-center">
-              <CalendarClock className="h-8 w-8 text-[var(--text-muted)]" />
-              <p className="text-sm font-semibold text-[var(--text-primary)]">{t('schedules.emptyTitle')}</p>
-              <p className="text-xs text-[var(--text-muted)]">{t('schedules.emptyHint')}</p>
-            </div>
-          )}
+          {!isLoading && sortedSchedules.length === 0 && null}
 
           {isLoading && (
             <div className="flex items-center justify-center gap-2 py-14 text-xs text-[var(--text-muted)]">
@@ -549,6 +769,16 @@ export default function WorkSchedulesPage() {
                 onChange={(e) => setTemplateTitle(e.target.value)}
                 placeholder={t('schedules.shiftPlaceholder')}
               />
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                  {t('schedules.colWorkMode')}
+                </label>
+                <Select
+                  value={templateWorkMode}
+                  onChange={setTemplateWorkMode}
+                  options={WORK_MODE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                />
+              </div>
               <div className="flex gap-2 pt-1">
                 {editingTemplate && (
                   <Button
@@ -557,6 +787,7 @@ export default function WorkSchedulesPage() {
                     onClick={() => {
                       setEditingTemplate(null);
                       setTemplateTitle('');
+                      setTemplateWorkMode('office');
                     }}
                   >
                     {t('common.cancel')}
@@ -611,7 +842,7 @@ export default function WorkSchedulesPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-bold text-[var(--text-primary)]">
-                          {WEEKDAY_LABELS[tpl.weekday]} · {tpl.startTime} - {tpl.endTime}
+                          {WEEKDAY_LABELS[tpl.weekday]} · {tpl.startTime} - {tpl.endTime} · {resolveWorkModeLabel(tpl.workMode)}
                         </p>
                         <p className="truncate text-[11px] text-[var(--text-muted)]">
                           {tpl.userName || ''} {tpl.title ? `· ${tpl.title}` : ''}
@@ -643,6 +874,7 @@ export default function WorkSchedulesPage() {
                           setTemplateStart(tpl.startTime);
                           setTemplateEnd(tpl.endTime);
                           setTemplateTitle(tpl.title || '');
+                          setTemplateWorkMode(tpl.workMode || 'office');
                         }}
                         className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-sky-500"
                       >
@@ -760,6 +992,16 @@ export default function WorkSchedulesPage() {
                 onChange={(e) => setAssignTitle(e.target.value)}
                 placeholder={t('schedules.shiftPlaceholder')}
               />
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                  {t('schedules.colWorkMode')}
+                </label>
+                <Select
+                  value={assignWorkMode}
+                  onChange={setAssignWorkMode}
+                  options={WORK_MODE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                />
+              </div>
 
               <div className="flex gap-2 pt-1">
                 <Button variant="secondary" className="flex-1" onClick={() => setShowAssign(false)}>
@@ -798,6 +1040,16 @@ export default function WorkSchedulesPage() {
                 <Input label={t('schedules.colEnd')} type="time" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} />
               </div>
               <Input label={t('schedules.colShift')} value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                  {t('schedules.colWorkMode')}
+                </label>
+                <Select
+                  value={editWorkMode}
+                  onChange={setEditWorkMode}
+                  options={WORK_MODE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                />
+              </div>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
                   {t('table.status')}

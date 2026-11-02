@@ -32,6 +32,10 @@ export interface AdminDailyReport {
   taskTitles: string[];
   replies: AdminDailyReportReply[];
   submittedAt?: string | null;
+  firstSubmittedAt?: string | null;
+  isLate?: boolean;
+  isEdited?: boolean;
+  editedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
