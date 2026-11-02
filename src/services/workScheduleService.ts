@@ -9,6 +9,7 @@ export interface AdminWorkScheduleItem {
   startTime: string;
   endTime: string;
   title?: string;
+  workMode: string;
   status: string;
   source: string;
   templateId?: string | null;
@@ -32,6 +33,7 @@ export interface AdminWorkScheduleTemplate {
   startTime: string;
   endTime: string;
   title?: string;
+  workMode: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -42,6 +44,7 @@ export interface AdminWorkScheduleQueryParams {
   from?: string;
   to?: string;
   status?: string;
+  workMode?: string;
   page?: number;
   limit?: number;
 }
@@ -52,6 +55,7 @@ export interface AssignSchedulePayload {
   startTime: string;
   endTime: string;
   title?: string;
+  workMode?: string;
 }
 
 export interface BulkAssignSchedulePayload {
@@ -60,6 +64,7 @@ export interface BulkAssignSchedulePayload {
   startTime: string;
   endTime: string;
   title?: string;
+  workMode?: string;
 }
 
 export interface UpdateSchedulePayload {
@@ -68,6 +73,7 @@ export interface UpdateSchedulePayload {
   endTime?: string;
   title?: string;
   status?: string;
+  workMode?: string;
 }
 
 export interface CreateTemplatePayload {
@@ -76,6 +82,7 @@ export interface CreateTemplatePayload {
   startTime: string;
   endTime: string;
   title?: string;
+  workMode?: string;
 }
 
 export interface UpdateTemplatePayload {
@@ -84,6 +91,7 @@ export interface UpdateTemplatePayload {
   endTime?: string;
   title?: string;
   isActive?: boolean;
+  workMode?: string;
 }
 
 export interface GenerateSchedulesPayload {
@@ -146,6 +154,23 @@ export const WEEKDAY_OPTIONS = [1, 2, 3, 4, 5, 6, 0].map((weekday) => ({
   label: WEEKDAY_LABELS[weekday],
 }));
 
+export const WORK_MODE_LABELS: Record<string, string> = {
+  office: 'Tại văn phòng',
+  remote: 'Remote',
+  half_day: 'Nửa ngày',
+};
+
+export const WORK_MODE_OPTIONS = [
+  { value: 'office', label: 'Tại văn phòng' },
+  { value: 'remote', label: 'Remote' },
+  { value: 'half_day', label: 'Nửa ngày' },
+];
+
+export function resolveWorkModeLabel(workMode?: string | null): string {
+  if (!workMode) return WORK_MODE_LABELS.office;
+  return WORK_MODE_LABELS[workMode] ?? workMode;
+}
+
 export function formatDisplayDate(workDate: string): string {
   const [year, month, day] = workDate.split('-');
   if (!year || !month || !day) return workDate;
@@ -171,6 +196,7 @@ export const workScheduleService = {
         from: params.from || undefined,
         to: params.to || undefined,
         status: params.status || undefined,
+        workMode: params.workMode || undefined,
         page,
         limit,
       },
