@@ -144,6 +144,8 @@ const ReportContent = ({ report }: { report: AdminDailyReport }) => {
 /** Nhóm theo người báo cáo bên trong một workspace. */
 const ReporterRow = ({ group }: { group: AdminReporterGroup }) => {
   const [expanded, setExpanded] = useState(false);
+  const lateCount = group.reports.filter((report) => report.isLate).length;
+  const editedCount = group.reports.filter((report) => report.isEdited).length;
 
   return (
     <div className="border-t border-[var(--border-color)] first:border-t-0">
@@ -179,6 +181,12 @@ const ReporterRow = ({ group }: { group: AdminReporterGroup }) => {
           </p>
         </div>
 
+        {lateCount > 0 ? (
+          <Badge variant="warning">{lateCount} nộp trễ</Badge>
+        ) : null}
+        {editedCount > 0 ? (
+          <Badge variant="info">{editedCount} đã sửa</Badge>
+        ) : null}
         <Badge variant="info">{group.total} báo cáo</Badge>
       </button>
 
@@ -189,14 +197,20 @@ const ReporterRow = ({ group }: { group: AdminReporterGroup }) => {
               key={report.id}
               className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-3.5"
             >
-              <div className="mb-2.5 flex flex-wrap items-center gap-3">
+              <div className="mb-2.5 flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
                   <CalendarDays className="h-3.5 w-3.5 text-sky-500" />
                   {formatDate(report.reportDate)}
                 </span>
                 <span className="font-mono-code text-[10px] text-[var(--text-muted)]">
-                  Nộp lúc {formatDateTime(report.submittedAt ?? report.updatedAt)}
+                  Nộp lần đầu {formatDateTime(report.firstSubmittedAt ?? report.submittedAt ?? report.updatedAt)}
                 </span>
+                {report.isLate ? (
+                  <Badge variant="warning">Nộp trễ</Badge>
+                ) : null}
+                {report.isEdited ? (
+                  <Badge variant="info">Đã chỉnh sửa</Badge>
+                ) : null}
               </div>
               <ReportContent report={report} />
             </div>
@@ -210,6 +224,13 @@ const ReporterRow = ({ group }: { group: AdminReporterGroup }) => {
 /** Nhóm theo workspace — cấp cao nhất của dữ liệu báo cáo trong admin. */
 const WorkspaceRow = ({ group }: { group: AdminWorkspaceReportGroup }) => {
   const [expanded, setExpanded] = useState(false);
+  const lateReports = group.reporters.reduce(
+    (sum, reporter) => sum + reporter.reports.filter((report) => report.isLate).length,
+    0,
+  );
+  const lateReporters = group.reporters.filter((reporter) =>
+    reporter.reports.some((report) => report.isLate),
+  ).length;
 
   return (
     <div className="border-t border-[var(--border-color)] first:border-t-0">
@@ -241,6 +262,11 @@ const WorkspaceRow = ({ group }: { group: AdminWorkspaceReportGroup }) => {
           <Users className="h-3.5 w-3.5" />
           {group.reporters.length} người báo cáo
         </span>
+        {lateReporters > 0 ? (
+          <Badge variant="warning">
+            {lateReporters} người nộp trễ · {lateReports} báo cáo trễ
+          </Badge>
+        ) : null}
         <Badge variant="info">{group.total} báo cáo</Badge>
       </button>
 
@@ -290,8 +316,24 @@ export default function DailyReportsPage() {
 
   const { data, isLoading, isFetching, refetch } = useDailyReportsQuery(params);
 
-  const workspaces = data?.workspaces ?? [];
+  const workspaces = useMemo(() => data?.workspaces ?? [], [data]);
   const total = data?.total ?? 0;
+
+  const lateSummary = useMemo(() => {
+    let lateReports = 0;
+    const lateReporterIds = new Set<string>();
+    for (const workspace of workspaces) {
+      for (const reporter of workspace.reporters) {
+        for (const report of reporter.reports) {
+          if (report.isLate) {
+            lateReports += 1;
+            lateReporterIds.add(reporter.reporterId);
+          }
+        }
+      }
+    }
+    return { lateReports, lateReporters: lateReporterIds.size };
+  }, [workspaces]);
 
   const workspaceSelectOptions = useMemo(
     () => [
@@ -361,6 +403,15 @@ export default function DailyReportsPage() {
           />
         </div>
       </div>
+
+      {/* Tổng quan nộp trễ theo bộ lọc hiện tại */}
+      {lateSummary.lateReports > 0 ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <Badge variant="warning">
+            {lateSummary.lateReporters} người nộp trễ · {lateSummary.lateReports} báo cáo trễ
+          </Badge>
+        </div>
+      ) : null}
 
       {/* Danh sách */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs">
