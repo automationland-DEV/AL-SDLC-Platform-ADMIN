@@ -1,18 +1,24 @@
-import { Fragment, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
-  CalendarClock,
   CalendarDays,
-  Clock,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Layers,
   Loader2,
   Pencil,
   Plus,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   Trash2,
+  UserRound,
   Users,
   Wand2,
+  X,
 } from 'lucide-react';
 import {
   Badge,
@@ -23,9 +29,6 @@ import {
   PageHeader,
   SearchableSelect,
   Select,
-  Table,
-  TableCell,
-  TableRow,
 } from '../../../components/ui';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useTranslation } from '../../../i18n/useTranslation';
@@ -34,8 +37,6 @@ import {
   formatDisplayDate,
   resolveWorkModeLabel,
   todayIsoDate,
-  WEEKDAY_LABELS,
-  WORK_MODE_OPTIONS,
   type AdminWorkScheduleItem,
   type AdminWorkScheduleTemplate,
 } from '../../../services/workScheduleService';
@@ -80,14 +81,6 @@ function useAllUsers() {
   });
 }
 
-function SectionCard({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs">
-      {children}
-    </div>
-  );
-}
-
 function parseWorkDateValue(value: string): Date {
   const [year, month, day] = value.split('-').map(Number);
   if (!year || !month || !day) return new Date(value);
@@ -114,10 +107,6 @@ function addDaysIso(workDate: string, days: number): string {
   return toIsoDateValue(date);
 }
 
-function getMonthKey(workDate: string): string {
-  return workDate.slice(0, 7);
-}
-
 function getScheduleMinutes(item: AdminWorkScheduleItem): number {
   const [sh, sm] = item.startTime.split(':').map(Number);
   const [eh, em] = item.endTime.split(':').map(Number);
@@ -125,13 +114,111 @@ function getScheduleMinutes(item: AdminWorkScheduleItem): number {
   return Math.max(0, eh * 60 + em - (sh * 60 + sm));
 }
 
-export default function WorkSchedulesPage() {
-  const { t } = useTranslation();
-  const [tab, setTab] = useState<MainTab>('schedules');
-  type ScheduleView = 'all' | 'user' | 'week' | 'month';
+function formatHours(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (m === 0) return `${h} giờ`;
+  return `${h}h${String(m).padStart(2, '0')}`;
+}
 
-  // ─── Filters ───
-  const [page, setPage] = useState(1);
+function weekdayShort(workDate: string, lang: string): string {
+  const d = parseWorkDateValue(workDate).getDay();
+  if (lang === 'vi') return ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d];
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d];
+}
+
+function weekdayFull(weekday: number, lang: string): string {
+  if (lang === 'vi') return ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'][weekday];
+  return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][weekday];
+}
+
+const QUICK_SHIFTS = [
+  { id: 'morning', labelVi: 'Sáng 8h30–12h', labelEn: 'Morning 8:30–12', start: '08:30', end: '12:00', titleVi: 'Ca sáng', titleEn: 'Morning' },
+  { id: 'afternoon', labelVi: 'Chiều 13–17h', labelEn: 'Afternoon 13–17', start: '13:00', end: '17:00', titleVi: 'Ca chiều', titleEn: 'Afternoon' },
+  { id: 'full', labelVi: 'Cả ngày 8h30–17h', labelEn: 'Full day 8:30–17', start: '08:30', end: '17:00', titleVi: 'Ca cả ngày', titleEn: 'Full day' },
+  { id: 'night', labelVi: 'Tối 18–22h', labelEn: 'Evening 18–22', start: '18:00', end: '22:00', titleVi: 'Ca tối', titleEn: 'Evening' },
+];
+
+const WORK_MODE_DOT: Record<string, string> = {
+  office: 'bg-sky-500',
+  remote: 'bg-violet-500',
+  half_day: 'bg-amber-500',
+};
+
+function Avatar({ name, src, size = 'md' }: { name: string; src?: string | null; size?: 'sm' | 'md' | 'lg' }) {
+  const cls = size === 'sm' ? 'h-7 w-7 text-[11px]' : size === 'lg' ? 'h-11 w-11 text-base' : 'h-9 w-9 text-sm';
+  if (src) {
+    return <img src={src} alt="" className={`${cls} rounded-full border border-[var(--border-color)] object-cover`} />;
+  }
+  return (
+    <div className={`${cls} flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-500/25 to-violet-500/25 font-bold text-sky-600 dark:text-sky-300`}>
+      {(name || 'U').charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+function ModalShell({
+  title,
+  subtitle,
+  onClose,
+  children,
+  footer,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
+      <div
+        className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-2xl sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-[var(--border-color)] px-5 py-4">
+          <div>
+            <h3 className="text-[15px] font-bold text-[var(--text-primary)]">{title}</h3>
+            {subtitle && <p className="mt-0.5 text-xs text-[var(--text-muted)]">{subtitle}</p>}
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Đóng"
+            className="rounded-lg p-2 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        {footer && (
+          <div className="flex gap-2 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)]/40 px-5 py-3.5">
+            {footer}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FieldLabel({ step, children }: { step?: string; children: React.ReactNode }) {
+  return (
+    <label className="mb-1.5 flex items-center gap-2 text-xs font-bold text-[var(--text-primary)]">
+      {step && (
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sky-600 text-[11px] font-bold text-white">
+          {step}
+        </span>
+      )}
+      {children}
+    </label>
+  );
+}
+
+export default function WorkSchedulesPage() {
+  const { t, language } = useTranslation();
+  const vi = language === 'vi';
+  const [tab, setTab] = useState<MainTab>('schedules');
+
+  // Filters — keep minimal on screen
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 400);
   const [filterUserId, setFilterUserId] = useState('');
@@ -139,20 +226,21 @@ export default function WorkSchedulesPage() {
   const [to, setTo] = useState(todayIsoDate(30));
   const [status, setStatus] = useState('');
   const [workModeFilter, setWorkModeFilter] = useState('');
-  const [scheduleView, setScheduleView] = useState<ScheduleView>('user');
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
+  const [weekAnchor, setWeekAnchor] = useState(() => getWeekStartIso(todayIsoDate(0)));
+  const todayIso = todayIsoDate(0);
 
-  // ─── Assign modal ───
+  // Assign modal
   const [showAssign, setShowAssign] = useState(false);
   const [assignMode, setAssignMode] = useState<'single' | 'bulk'>('single');
   const [assignUserId, setAssignUserId] = useState('');
   const [assignUserIds, setAssignUserIds] = useState<string[]>([]);
   const [assignDate, setAssignDate] = useState(todayIsoDate(1));
-  const [assignStart, setAssignStart] = useState('08:00');
+  const [assignStart, setAssignStart] = useState('08:30');
   const [assignEnd, setAssignEnd] = useState('17:00');
   const [assignTitle, setAssignTitle] = useState('');
-  const [assignWorkMode, setAssignWorkMode] = useState('office');
 
-  // ─── Edit modal ───
+  // Edit modal
   const [editing, setEditing] = useState<AdminWorkScheduleItem | null>(null);
   const [editDate, setEditDate] = useState('');
   const [editStart, setEditStart] = useState('');
@@ -161,25 +249,24 @@ export default function WorkSchedulesPage() {
   const [editStatus, setEditStatus] = useState('');
   const [editWorkMode, setEditWorkMode] = useState('office');
 
-  // ─── Delete ───
   const [deleting, setDeleting] = useState<AdminWorkScheduleItem | null>(null);
 
-  // ─── Templates ───
+  // Templates
   const [templateUserId, setTemplateUserId] = useState('');
   const [templateWeekday, setTemplateWeekday] = useState('1');
-  const [templateStart, setTemplateStart] = useState('08:00');
+  const [templateStart, setTemplateStart] = useState('08:30');
   const [templateEnd, setTemplateEnd] = useState('17:00');
   const [templateTitle, setTemplateTitle] = useState('');
   const [templateWorkMode, setTemplateWorkMode] = useState('office');
   const [editingTemplate, setEditingTemplate] = useState<AdminWorkScheduleTemplate | null>(null);
   const [deletingTemplate, setDeletingTemplate] = useState<AdminWorkScheduleTemplate | null>(null);
 
-  // ─── Generate ───
+  // Generate
   const [generateUserId, setGenerateUserId] = useState('');
   const [generateFrom, setGenerateFrom] = useState(todayIsoDate(0));
   const [generateTo, setGenerateTo] = useState(todayIsoDate(30));
 
-  const { data: allUsers = [], isLoading: usersLoading } = useAllUsers();
+  const { data: allUsers = [] } = useAllUsers();
 
   const userOptions = useMemo(
     () =>
@@ -193,27 +280,20 @@ export default function WorkSchedulesPage() {
   );
 
   const filterUserOptions = useMemo(
-    () => [{ value: '', label: t('schedules.allUsers') }, ...userOptions],
-    [t, userOptions],
+    () => [{ value: '', label: vi ? 'Tất cả nhân viên' : 'All staff' }, ...userOptions],
+    [userOptions, vi],
   );
 
-  const listParams = useMemo(
-    () => ({
-      userId: filterUserId || undefined,
-      from: from || undefined,
-      to: to || undefined,
-      status: status || undefined,
-      workMode: workModeFilter || undefined,
-      page,
-      limit: 20,
-    }),
-    [filterUserId, from, to, status, workModeFilter, page],
-  );
-
-  const { data: listData, isLoading, isFetching, refetch } = useWorkSchedulesQuery(listParams);
+  const { data: listData, isLoading, isFetching, refetch } = useWorkSchedulesQuery({
+    userId: filterUserId || undefined,
+    from: from || undefined,
+    to: to || undefined,
+    status: status || undefined,
+    workMode: workModeFilter || undefined,
+    page: 1,
+    limit: 200,
+  });
   const schedules = useMemo(() => listData?.items ?? [], [listData]);
-  const total = listData?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / (listData?.limit ?? 20)));
 
   const userById = useMemo(() => {
     const map = new Map<string, (typeof allUsers)[number]>();
@@ -223,72 +303,47 @@ export default function WorkSchedulesPage() {
     return map;
   }, [allUsers]);
 
+  const displayNameOf = (userId: string, fallback?: string) =>
+    fallback || userById.get(userId)?.fullName || userById.get(userId)?.email || (vi ? 'Nhân viên' : 'Staff');
+
   const filteredSchedules = useMemo(() => {
     const keyword = debouncedSearch.trim().toLowerCase();
     if (!keyword) return schedules;
     return schedules.filter((item) => {
-      const name = (item.userName || '').toLowerCase();
+      const name = (item.userName || userById.get(item.userId)?.fullName || '').toLowerCase();
       return (
         name.includes(keyword) ||
         (item.title || '').toLowerCase().includes(keyword) ||
         item.workDate.includes(keyword)
       );
     });
-  }, [schedules, debouncedSearch]);
+  }, [schedules, debouncedSearch, userById]);
 
   const sortedSchedules = useMemo(
     () =>
       filteredSchedules.slice().sort((a, b) => {
         if (a.workDate !== b.workDate) return a.workDate < b.workDate ? -1 : 1;
         if (a.startTime !== b.startTime) return a.startTime < b.startTime ? -1 : 1;
-        return (a.userName || '').localeCompare(b.userName || '', 'vi');
+        return 0;
       }),
     [filteredSchedules],
   );
 
-  const schedulesByUser = useMemo(() => {
-    const groups = new Map<string, { userId: string; displayName: string; items: AdminWorkScheduleItem[]; minutes: number }>();
-    for (const item of sortedSchedules) {
-      const displayName = item.userName || userById.get(item.userId)?.fullName || userById.get(item.userId)?.email || 'Nhân viên';
-      if (!groups.has(item.userId)) {
-        groups.set(item.userId, { userId: item.userId, displayName, items: [], minutes: 0 });
-      }
-      const group = groups.get(item.userId)!;
-      group.items.push(item);
-      group.minutes += getScheduleMinutes(item);
-    }
-    return [...groups.values()].sort((a, b) => a.displayName.localeCompare(b.displayName, 'vi'));
-  }, [sortedSchedules, userById]);
+  const totalMinutes = sortedSchedules.reduce((sum, item) => sum + getScheduleMinutes(item), 0);
+  const staffCount = new Set(sortedSchedules.map((s) => s.userId)).size;
 
-  const schedulesByWeek = useMemo(() => {
-    const groups = new Map<string, { weekStart: string; weekEnd: string; items: AdminWorkScheduleItem[]; minutes: number }>();
+  // Week calendar
+  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDaysIso(weekAnchor, i)), [weekAnchor]);
+  const weekEnd = weekDays[6];
+  const shiftsByDate = useMemo(() => {
+    const map = new Map<string, AdminWorkScheduleItem[]>();
     for (const item of sortedSchedules) {
-      const weekStart = getWeekStartIso(item.workDate);
-      const weekEnd = addDaysIso(weekStart, 6);
-      if (!groups.has(weekStart)) groups.set(weekStart, { weekStart, weekEnd, items: [], minutes: 0 });
-      const group = groups.get(weekStart)!;
-      group.items.push(item);
-      group.minutes += getScheduleMinutes(item);
+      if (!map.has(item.workDate)) map.set(item.workDate, []);
+      map.get(item.workDate)!.push(item);
     }
-    return [...groups.values()].sort((a, b) => (a.weekStart < b.weekStart ? -1 : 1));
+    for (const list of map.values()) list.sort((a, b) => (a.startTime < b.startTime ? -1 : 1));
+    return map;
   }, [sortedSchedules]);
-
-  const schedulesByMonth = useMemo(() => {
-    const groups = new Map<string, { monthKey: string; items: AdminWorkScheduleItem[]; minutes: number }>();
-    for (const item of sortedSchedules) {
-      const monthKey = getMonthKey(item.workDate);
-      if (!groups.has(monthKey)) groups.set(monthKey, { monthKey, items: [], minutes: 0 });
-      const group = groups.get(monthKey)!;
-      group.items.push(item);
-      group.minutes += getScheduleMinutes(item);
-    }
-    return [...groups.values()].sort((a, b) => (a.monthKey < b.monthKey ? -1 : 1));
-  }, [sortedSchedules]);
-
-  const totalMinutes = useMemo(
-    () => sortedSchedules.reduce((sum, item) => sum + getScheduleMinutes(item), 0),
-    [sortedSchedules],
-  );
 
   const templatesQuery = useWorkScheduleTemplatesQuery(templateUserId || undefined);
   const templates = templatesQuery.data ?? [];
@@ -302,8 +357,6 @@ export default function WorkSchedulesPage() {
   const removeTemplateMutation = useRemoveTemplateMutation();
   const generateMutation = useGenerateSchedulesMutation();
 
-  const userNameOf = (item: AdminWorkScheduleItem) => item.userName || '—';
-
   const openEdit = (item: AdminWorkScheduleItem) => {
     setEditing(item);
     setEditDate(item.workDate);
@@ -312,6 +365,41 @@ export default function WorkSchedulesPage() {
     setEditTitle(item.title || '');
     setEditStatus(item.status);
     setEditWorkMode(item.workMode || 'office');
+  };
+
+  const openQuickAssign = (dateIso?: string, userId?: string) => {
+    if (dateIso) setAssignDate(dateIso);
+    if (userId) {
+      setAssignMode('single');
+      setAssignUserId(userId);
+    }
+    setShowAssign(true);
+  };
+
+  const applyPreset = (kind: 'today' | 'week' | 'month') => {
+    if (kind === 'today') {
+      setFrom(todayIsoDate(0));
+      setTo(todayIsoDate(0));
+      setWeekAnchor(getWeekStartIso(todayIsoDate(0)));
+    } else if (kind === 'week') {
+      const start = getWeekStartIso(todayIsoDate(0));
+      setFrom(start);
+      setTo(addDaysIso(start, 6));
+      setWeekAnchor(start);
+    } else {
+      const now = new Date();
+      const first = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const lastDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const last = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDate).padStart(2, '0')}`;
+      setFrom(first);
+      setTo(last);
+    }
+  };
+
+  const pickQuickShift = (start: string, end: string, title: string, setter: { setStart: (v: string) => void; setEnd: (v: string) => void; setTitle: (v: string) => void }) => {
+    setter.setStart(start);
+    setter.setEnd(end);
+    setter.setTitle(title);
   };
 
   const handleAssign = async () => {
@@ -327,7 +415,7 @@ export default function WorkSchedulesPage() {
           startTime: assignStart,
           endTime: assignEnd,
           title: assignTitle.trim() || undefined,
-          workMode: assignWorkMode || undefined,
+          workMode: 'office',
         });
         toast.success(t('schedules.assignSuccess'));
       } else {
@@ -341,7 +429,7 @@ export default function WorkSchedulesPage() {
           startTime: assignStart,
           endTime: assignEnd,
           title: assignTitle.trim() || undefined,
-          workMode: assignWorkMode || undefined,
+          workMode: 'office',
         });
         toast.success(t('schedules.bulkSuccess', { count: result.length }));
       }
@@ -429,423 +517,470 @@ export default function WorkSchedulesPage() {
     }
   };
 
-  const tabs: Array<{ id: MainTab; label: string; icon: typeof CalendarDays }> = [
-    { id: 'schedules', label: `${t('schedules.tabSchedules')} (${total})`, icon: CalendarDays },
-    { id: 'templates', label: t('schedules.tabTemplates'), icon: Clock },
-    { id: 'generate', label: t('schedules.tabGenerate'), icon: Wand2 },
+  const tabs: Array<{ id: MainTab; label: string; hint: string; icon: typeof CalendarDays }> = [
+    { id: 'schedules', label: vi ? 'Lịch làm việc' : 'Schedule', hint: vi ? 'Xem và gán ca' : 'View & assign', icon: CalendarDays },
+    { id: 'templates', label: vi ? 'Ca mẫu lặp lại' : 'Repeating shifts', hint: vi ? 'Đặt ca cố định mỗi tuần' : 'Fixed weekly shifts', icon: Layers },
+    { id: 'generate', label: vi ? 'Tự tạo lịch' : 'Auto create', hint: vi ? 'Sinh lịch từ ca mẫu' : 'Generate from templates', icon: Wand2 },
   ];
 
-  const statusBadge = (value: string) =>
-    value === 'published' ? (
-      <Badge variant="success">{t('schedules.published')}</Badge>
-    ) : (
-      <Badge variant="danger">{t('schedules.cancelled')}</Badge>
-    );
-
-  const workModeBadge = (value?: string | null) => (
-    <Badge variant="info">{resolveWorkModeLabel(value)}</Badge>
-  );
-
-  const renderScheduleRow = (item: AdminWorkScheduleItem) => (
-    <TableRow key={item.id}>
-      <TableCell>
-        <div className="flex items-center gap-2.5">
-          {item.userAvatar ? (
-            <img src={item.userAvatar} alt="" className="h-8 w-8 rounded-lg border border-[var(--border-color)] object-cover" />
-          ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10 text-xs font-bold text-sky-500">
-              {(item.userName || 'U').charAt(0).toUpperCase()}
-            </div>
-          )}
-          <span className="text-xs font-semibold">{userNameOf(item)}</span>
-        </div>
-      </TableCell>
-      <TableCell>
-        <span className="text-xs font-semibold">{formatDisplayDate(item.workDate)}</span>
-        <span className="ml-2 rounded bg-[var(--bg-tertiary)] px-1.5 py-0.5 font-mono-code text-[10px] text-[var(--text-muted)]">
-          {item.source === 'template' ? t('schedules.fromTemplate') : t('schedules.manual')}
-        </span>
-      </TableCell>
-      <TableCell className="font-mono-code text-xs">
-        {item.startTime} - {item.endTime}
-      </TableCell>
-      <TableCell className="max-w-[220px] truncate text-xs text-[var(--text-secondary)]">
-        {item.title || '—'}
-      </TableCell>
-      <TableCell>{workModeBadge(item.workMode)}</TableCell>
-      <TableCell>{statusBadge(item.status)}</TableCell>
-      <TableCell>
-        <div className="flex items-center justify-center gap-1">
-          <button
-            onClick={() => openEdit(item)}
-            title={t('common.edit')}
-            className="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-sky-500"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={() => setDeleting(item)}
-            title={t('common.delete')}
-            className="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-rose-500"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-
   return (
-    <div className="flex h-full min-h-0 flex-col font-sans">
+    <div className="flex w-full flex-col gap-4 pb-6 font-sans">
       <PageHeader
-        breadcrumbs={[{ label: 'Admin' }, { label: t('schedules.title') }]}
-        title={t('schedules.title')}
-        subtitle={t('schedules.subtitle', { count: total })}
+        breadcrumbs={[{ label: 'Admin' }, { label: vi ? 'Lịch làm việc' : 'Schedules' }]}
+        title={vi ? 'Lịch làm việc' : 'Work schedules'}
+        subtitle={
+          vi
+            ? `${sortedSchedules.length} ca • ${formatHours(totalMinutes)} • ${staffCount} nhân viên`
+            : `${sortedSchedules.length} shifts • ${formatHours(totalMinutes)} • ${staffCount} staff`
+        }
         actions={
           <>
             <Button variant="secondary" onClick={() => void refetch()} disabled={isFetching}>
-              {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-              {t('common.refresh')}
+              {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              {vi ? 'Tải lại' : 'Reload'}
             </Button>
-            <Button onClick={() => setShowAssign(true)}>
-              <Plus className="h-3.5 w-3.5" />
-              {t('schedules.assign')}
+            <Button onClick={() => openQuickAssign()} className="px-5 py-2.5 text-sm font-bold">
+              <Plus className="h-4 w-4" />
+              {vi ? 'Gán ca mới' : 'New shift'}
             </Button>
           </>
         }
       />
 
-      {/* Tabs */}
-      <div className="mb-4 flex w-fit items-center gap-1 rounded-lg bg-[var(--bg-tertiary)] p-1">
+      {/* 3 big actions — pick what you want to do */}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {tabs.map((item) => {
           const Icon = item.icon;
+          const active = tab === item.id;
           return (
             <button
               key={item.id}
               onClick={() => setTab(item.id)}
-              className={`flex items-center gap-2 rounded-md px-4 py-2 text-xs font-semibold transition-colors ${
-                tab === item.id
-                  ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-xs'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              className={`flex items-center gap-3 rounded-2xl border-2 p-3.5 text-left transition-all ${
+                active
+                  ? 'border-sky-500 bg-sky-500/[0.07] shadow-sm'
+                  : 'border-[var(--border-color)] bg-[var(--bg-card)] hover:border-sky-500/40'
               }`}
             >
-              <Icon className="h-3.5 w-3.5" />
-              {item.label}
+              <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${active ? 'bg-sky-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'}`}>
+                <Icon className="h-5 w-5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-bold text-[var(--text-primary)]">{item.label}</span>
+                <span className="block truncate text-xs text-[var(--text-muted)]">{item.hint}</span>
+              </span>
             </button>
           );
         })}
       </div>
 
       {tab === 'schedules' && (
-        <SectionCard>
-          <div className="grid grid-cols-1 gap-2.5 border-b border-[var(--border-color)] p-3 md:grid-cols-12">
-            <div className="relative md:col-span-3">
-              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-muted)]" />
-              <Input
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setPage(1);
-                }}
-                placeholder={t('schedules.searchPlaceholder')}
-                className="pl-9"
-              />
+        <div className="flex w-full flex-col gap-3">
+          {/* Super simple toolbar: search + staff + quick dates */}
+          <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-3 shadow-xs">
+            <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={vi ? 'Gõ tên nhân viên hoặc tên ca để tìm...' : 'Type staff or shift name to search...'}
+                  className="rounded-xl py-2.5 pl-10 text-sm"
+                />
+              </div>
+              <div className="w-full lg:w-64">
+                <SearchableSelect
+                  options={filterUserOptions}
+                  value={filterUserId}
+                  onChange={setFilterUserId}
+                  placeholder={vi ? 'Chọn nhân viên...' : 'Pick staff...'}
+                />
+              </div>
             </div>
-            <div className="md:col-span-2">
-              <SearchableSelect
-                options={filterUserOptions}
-                value={filterUserId}
-                onChange={(v) => {
-                  setFilterUserId(v);
-                  setPage(1);
-                }}
-                placeholder={t('schedules.allUsers')}
-              />
-            </div>
-            <div className="flex items-center gap-2 md:col-span-3">
-              <Input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} />
-              <span className="text-xs text-[var(--text-muted)]">→</span>
-              <Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} />
-            </div>
-            <div className="md:col-span-2">
-              <Select
-                value={status}
-                onChange={(v) => {
-                  setStatus(v);
-                  setPage(1);
-                }}
-                options={[
-                  { value: '', label: t('schedules.allStatus') },
-                  { value: 'published', label: t('schedules.published') },
-                  { value: 'cancelled', label: t('schedules.cancelled') },
-                ]}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Select
-                value={workModeFilter}
-                onChange={(v) => {
-                  setWorkModeFilter(v);
-                  setPage(1);
-                }}
-                options={[
-                  { value: '', label: t('schedules.allWorkModes') },
-                  ...WORK_MODE_OPTIONS.map((option) => ({ value: option.value, label: option.label })),
-                ]}
-              />
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] px-3 py-2.5">
-            <div className="flex w-fit items-center gap-1 rounded-lg bg-[var(--bg-tertiary)] p-1">
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">{vi ? 'Xem nhanh:' : 'Quick view:'}</span>
               {(
                 [
-                  { id: 'user', label: t('schedules.viewUser') },
-                  { id: 'week', label: t('schedules.viewWeek') },
-                  { id: 'month', label: t('schedules.viewMonth') },
-                  { id: 'all', label: t('schedules.viewAll') },
-                ] as Array<{ id: ScheduleView; label: string }>
-              ).map((view) => (
+                  { id: 'today', label: vi ? 'Hôm nay' : 'Today' },
+                  { id: 'week', label: vi ? 'Tuần này' : 'This week' },
+                  { id: 'month', label: vi ? 'Tháng này' : 'This month' },
+                ] as const
+              ).map((p) => (
                 <button
-                  key={view.id}
-                  onClick={() => setScheduleView(view.id)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    scheduleView === view.id
-                      ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-xs'
-                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                  }`}
+                  key={p.id}
+                  onClick={() => applyPreset(p.id)}
+                  className="rounded-full border border-[var(--border-color)] bg-[var(--bg-tertiary)]/60 px-4 py-1.5 text-xs font-bold text-[var(--text-secondary)] transition-all hover:border-sky-500 hover:text-sky-600"
                 >
-                  {view.label}
+                  {p.label}
                 </button>
               ))}
+              <span className="font-mono-code text-[11px] text-[var(--text-muted)]">
+                {formatDisplayDate(from)} → {formatDisplayDate(to)}
+              </span>
+              <button
+                onClick={() => setShowMoreFilters((v) => !v)}
+                className="ml-auto flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                {vi ? 'Lọc thêm' : 'More filters'}
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showMoreFilters ? 'rotate-180' : ''}`} />
+              </button>
             </div>
-            <p className="font-mono-code text-xs text-[var(--text-muted)]">
-              {sortedSchedules.length} ca • {(totalMinutes / 60).toFixed(1)} giờ
-            </p>
-          </div>
-
-          <Table
-            headers={[
-              t('schedules.colUser'),
-              t('schedules.colDate'),
-              t('schedules.colTime'),
-              t('schedules.colShift'),
-              t('schedules.colWorkMode'),
-              t('schedules.colStatus'),
-              { label: t('table.actions'), align: 'center' },
-            ]}
-          >
-            {isLoading ? null : sortedSchedules.length === 0 ? (
-              <TableRow key="empty">
-                <TableCell colSpan={7}>
-                  <div className="flex flex-col items-center gap-2 py-14 text-center">
-                    <CalendarClock className="h-8 w-8 text-[var(--text-muted)]" />
-                    <p className="text-sm font-semibold text-[var(--text-primary)]">{t('schedules.emptyTitle')}</p>
-                    <p className="text-xs text-[var(--text-muted)]">{t('schedules.emptyHint')}</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : scheduleView === 'all' ? (
-              sortedSchedules.map((item) => renderScheduleRow(item))
-            ) : scheduleView === 'user' ? (
-              schedulesByUser.map((group) => (
-                <Fragment key={group.userId}>
-                  <TableRow key={`${group.userId}-header`}>
-                    <TableCell colSpan={7}>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-bold text-[var(--text-primary)]">{group.displayName}</span>
-                        <span className="font-mono-code text-[11px] text-[var(--text-muted)]">
-                          {group.items.length} ca • {(group.minutes / 60).toFixed(1)} giờ
-                        </span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  {group.items.map((item) => renderScheduleRow(item))}
-                </Fragment>
-              ))
-            ) : scheduleView === 'week' ? (
-              schedulesByWeek.map((group) => (
-                <Fragment key={group.weekStart}>
-                  <TableRow key={`${group.weekStart}-header`}>
-                    <TableCell colSpan={7}>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <CalendarDays className="h-3.5 w-3.5 text-sky-500" />
-                        <span className="text-xs font-bold text-[var(--text-primary)]">
-                          Tuần {formatDisplayDate(group.weekStart)} → {formatDisplayDate(group.weekEnd)}
-                        </span>
-                        <span className="font-mono-code text-[11px] text-[var(--text-muted)]">
-                          {group.items.length} ca • {(group.minutes / 60).toFixed(1)} giờ
-                        </span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  {group.items.map((item) => renderScheduleRow(item))}
-                </Fragment>
-              ))
-            ) : (
-              schedulesByMonth.map((group) => (
-                <Fragment key={group.monthKey}>
-                  <TableRow key={`${group.monthKey}-header`}>
-                    <TableCell colSpan={7}>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <CalendarDays className="h-3.5 w-3.5 text-sky-500" />
-                        <span className="text-xs font-bold text-[var(--text-primary)]">Tháng {group.monthKey}</span>
-                        <span className="font-mono-code text-[11px] text-[var(--text-muted)]">
-                          {group.items.length} ca • {(group.minutes / 60).toFixed(1)} giờ
-                        </span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  {group.items.map((item) => renderScheduleRow(item))}
-                </Fragment>
-              ))
+            {showMoreFilters && (
+              <div className="mt-2.5 grid grid-cols-1 gap-2.5 border-t border-[var(--border-color)] pt-2.5 sm:grid-cols-2 lg:grid-cols-4">
+                <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} label={vi ? 'Từ ngày' : 'From'} />
+                <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} label={vi ? 'Đến ngày' : 'To'} />
+                <div>
+                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">{vi ? 'Trạng thái' : 'Status'}</label>
+                  <Select
+                    value={status}
+                    onChange={setStatus}
+                    options={[
+                      { value: '', label: vi ? 'Tất cả' : 'All' },
+                      { value: 'published', label: t('schedules.published') },
+                      { value: 'cancelled', label: t('schedules.cancelled') },
+                    ]}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">{vi ? 'Nơi làm việc' : 'Work mode'}</label>
+                  <Select
+                    value={workModeFilter}
+                    onChange={setWorkModeFilter}
+                    options={[
+                      { value: '', label: vi ? 'Tất cả' : 'All' },
+                      { value: 'office', label: resolveWorkModeLabel('office') },
+                      { value: 'remote', label: resolveWorkModeLabel('remote') },
+                      { value: 'half_day', label: resolveWorkModeLabel('half_day') },
+                    ]}
+                  />
+                </div>
+              </div>
             )}
-          </Table>
-
-          {!isLoading && sortedSchedules.length === 0 && null}
-
-          {isLoading && (
-            <div className="flex items-center justify-center gap-2 py-14 text-xs text-[var(--text-muted)]">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {t('common.loading')}
-            </div>
-          )}
-
-          <div className="flex items-center justify-between border-t border-[var(--border-color)] px-4 py-3">
-            <p className="font-mono-code text-xs text-[var(--text-muted)]">
-              {t('documents.page')} {page} / {totalPages} ({t('documents.total')} {total} {t('documents.records')})
-            </p>
-            <div className="flex gap-2">
-              <Button size="sm" variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                {t('documents.prevPage')}
-              </Button>
-              <Button size="sm" variant="secondary" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-                {t('documents.nextPage')}
-              </Button>
-            </div>
           </div>
-        </SectionCard>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center gap-2 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] py-16 text-sm text-[var(--text-muted)]">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              {vi ? 'Đang tải lịch...' : 'Loading...'}
+            </div>
+          ) : sortedSchedules.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-[var(--border-color)] bg-[var(--bg-card)] px-6 py-16 text-center">
+              <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-500/10 text-3xl">📅</span>
+              <p className="text-base font-bold text-[var(--text-primary)]">
+                {vi ? 'Chưa có ca làm việc nào' : 'No shifts yet'}
+              </p>
+              <p className="max-w-sm text-sm text-[var(--text-muted)]">
+                {vi ? 'Bấm nút bên dưới để gán ca đầu tiên. Chỉ mất 10 giây!' : 'Press the button below to assign the first shift. Only 10 seconds!'}
+              </p>
+              <Button onClick={() => openQuickAssign()} className="mt-1 px-6 py-3 text-sm font-bold">
+                <Plus className="h-4 w-4" />
+                {vi ? 'Gán ca đầu tiên' : 'Assign first shift'}
+              </Button>
+            </div>
+          ) : (
+            <>
+              {/* Week calendar — big touch targets, always-visible add */}
+              <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] bg-[var(--bg-tertiary)]/40 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setWeekAnchor((v) => addDaysIso(v, -7))}
+                      aria-label={vi ? 'Tuần trước' : 'Previous week'}
+                      className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-2 text-[var(--text-secondary)] transition-colors hover:border-sky-500 hover:text-sky-500"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => setWeekAnchor(getWeekStartIso(todayIsoDate(0)))}
+                      className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] px-4 py-2 text-xs font-bold text-[var(--text-primary)] transition-colors hover:border-sky-500"
+                    >
+                      {vi ? 'Về hôm nay' : 'Today'}
+                    </button>
+                    <button
+                      onClick={() => setWeekAnchor((v) => addDaysIso(v, 7))}
+                      aria-label={vi ? 'Tuần sau' : 'Next week'}
+                      className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-2 text-[var(--text-secondary)] transition-colors hover:border-sky-500 hover:text-sky-500"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                    <p className="ml-1 text-sm font-bold text-[var(--text-primary)]">
+                      {formatDisplayDate(weekAnchor)} → {formatDisplayDate(weekEnd)}
+                    </p>
+                  </div>
+                  <p className="hidden text-xs text-[var(--text-muted)] sm:block">
+                    {vi ? 'Bấm vào ca để sửa • Bấm + để thêm ca mới' : 'Click a shift to edit • Click + to add'}
+                  </p>
+                </div>
+                <div className="overflow-x-auto">
+                  <div className="grid min-w-[900px] grid-cols-7 divide-x divide-[var(--border-color)]">
+                    {weekDays.map((day) => {
+                      const dayShifts = shiftsByDate.get(day) ?? [];
+                      const isToday = day === todayIso;
+                      return (
+                        <div key={day} className={`flex min-h-[300px] flex-col ${isToday ? 'bg-sky-500/[0.05]' : ''}`}>
+                          <div className={`border-b border-[var(--border-color)] px-2 py-2.5 text-center ${isToday ? 'bg-sky-600 text-white' : 'bg-[var(--bg-tertiary)]/60'}`}>
+                            <p className={`text-[11px] font-bold uppercase tracking-wider ${isToday ? 'text-sky-100' : 'text-[var(--text-muted)]'}`}>
+                              {weekdayShort(day, language)}
+                            </p>
+                            <p className={`text-lg font-bold leading-tight ${isToday ? 'text-white' : 'text-[var(--text-primary)]'}`}>
+                              {day.split('-')[2]}
+                            </p>
+                            <p className={`font-mono-code text-[10px] ${isToday ? 'text-sky-100' : 'text-[var(--text-muted)]'}`}>
+                              {dayShifts.length} {vi ? 'ca' : 'shifts'}
+                            </p>
+                          </div>
+                          <div className="flex flex-1 flex-col gap-2 p-2">
+                            {dayShifts.map((item) => (
+                              <button
+                                key={item.id}
+                                onClick={() => openEdit(item)}
+                                title={vi ? 'Bấm để sửa ca này' : 'Click to edit'}
+                                className={`rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-2.5 text-left shadow-xs transition-all hover:-translate-y-px hover:shadow-md ${
+                                  item.status === 'cancelled' ? 'opacity-60' : ''
+                                }`}
+                              >
+                                <p className="flex items-center gap-1 font-mono-code text-xs font-bold text-[var(--text-primary)]">
+                                  <Clock3 className="h-3 w-3 shrink-0 text-sky-500" />
+                                  {item.startTime}–{item.endTime}
+                                </p>
+                                <p className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
+                                  <span className={`h-2 w-2 shrink-0 rounded-full ${WORK_MODE_DOT[item.workMode] ?? 'bg-sky-500'}`} />
+                                  <span className="truncate">{displayNameOf(item.userId, item.userName)}</span>
+                                </p>
+                                {item.title && (
+                                  <p className="mt-0.5 truncate text-[11px] text-[var(--text-muted)]">{item.title}</p>
+                                )}
+                                {item.status === 'cancelled' && (
+                                  <span className="mt-1.5 inline-block rounded-md bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-500">
+                                    {t('schedules.cancelled')}
+                                  </span>
+                                )}
+                              </button>
+                            ))}
+                            {/* Always-visible big add button — easiest to discover */}
+                            <button
+                              onClick={() => openQuickAssign(day)}
+                              className="mt-auto flex items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-[var(--border-color)] py-2.5 text-xs font-bold text-[var(--text-muted)] transition-all hover:border-sky-500 hover:bg-sky-500/5 hover:text-sky-600"
+                            >
+                              <Plus className="h-4 w-4" />
+                              {vi ? 'Thêm ca' : 'Add'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Simple list below — newest first, big rows */}
+              <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs">
+                <div className="border-b border-[var(--border-color)] px-4 py-3">
+                  <p className="text-sm font-bold text-[var(--text-primary)]">
+                    {vi ? `Danh sách ca (${sortedSchedules.length})` : `Shift list (${sortedSchedules.length})`}
+                  </p>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    {vi ? 'Bấm cây bút để sửa, thùng rác để xoá' : 'Click pencil to edit, trash to delete'}
+                  </p>
+                </div>
+                <div className="divide-y divide-[var(--border-color)]">
+                  {sortedSchedules.slice(0, 30).map((item) => (
+                    <div key={item.id} className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-hover)]/50">
+                      <Avatar name={displayNameOf(item.userId, item.userName)} src={item.userAvatar} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold text-[var(--text-primary)]">
+                          {displayNameOf(item.userId, item.userName)}
+                        </p>
+                        <p className="truncate text-xs text-[var(--text-secondary)]">
+                          {weekdayFull(parseWorkDateValue(item.workDate).getDay(), language)}, {formatDisplayDate(item.workDate)} • {item.startTime}–{item.endTime}
+                          {item.title ? ` • ${item.title}` : ''}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <Badge variant={item.workMode === 'remote' ? 'purple' : item.workMode === 'half_day' ? 'warning' : 'info'}>
+                            {resolveWorkModeLabel(item.workMode)}
+                          </Badge>
+                          {item.status === 'published' ? (
+                            <Badge variant="success" dot>{t('schedules.published')}</Badge>
+                          ) : (
+                            <Badge variant="danger" dot>{t('schedules.cancelled')}</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 gap-1">
+                        <button
+                          onClick={() => openEdit(item)}
+                          aria-label={vi ? 'Sửa ca' : 'Edit shift'}
+                          className="rounded-xl border border-[var(--border-color)] p-2.5 text-[var(--text-secondary)] transition-colors hover:border-sky-500 hover:text-sky-500"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleting(item)}
+                          aria-label={vi ? 'Xoá ca' : 'Delete shift'}
+                          className="rounded-xl border border-[var(--border-color)] p-2.5 text-[var(--text-secondary)] transition-colors hover:border-rose-500 hover:text-rose-500"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {sortedSchedules.length > 30 && (
+                  <p className="border-t border-[var(--border-color)] px-4 py-2.5 text-center text-xs text-[var(--text-muted)]">
+                    {vi ? `Đang hiện 30 / ${sortedSchedules.length} ca — hãy dùng ô tìm kiếm để lọc` : `Showing 30 of ${sortedSchedules.length} — use search to filter`}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {tab === 'templates' && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <SectionCard>
-            <div className="border-b border-[var(--border-color)] p-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+          {/* Step-by-step form */}
+          <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs lg:col-span-2 lg:sticky lg:top-0 lg:self-start">
+            <div className="border-b border-[var(--border-color)] bg-[var(--bg-tertiary)]/40 px-5 py-4">
               <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                {editingTemplate ? t('schedules.editTemplate') : t('schedules.newTemplate')}
+                {editingTemplate ? (vi ? 'Sửa ca mẫu' : 'Edit template') : (vi ? 'Tạo ca mẫu mới — 3 bước' : 'New template — 3 steps')}
               </h3>
-              <p className="mt-0.5 text-xs text-[var(--text-muted)]">{t('schedules.templateHint')}</p>
+              <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                {vi ? 'Ca mẫu tự lặp lại mỗi tuần. Ví dụ: Thứ 2 hàng tuần 8h–17h.' : 'Templates repeat every week. E.g. every Monday 8am–5pm.'}
+              </p>
             </div>
-            <div className="space-y-3 p-4">
+            <div className="space-y-4 p-5">
               {!editingTemplate && (
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                    {t('schedules.colUser')}
-                  </label>
+                  <FieldLabel step="1">{vi ? 'Chọn nhân viên' : 'Pick staff'}</FieldLabel>
                   <SearchableSelect
                     options={userOptions}
                     value={templateUserId}
                     onChange={setTemplateUserId}
-                    placeholder={t('schedules.pickUser')}
+                    placeholder={vi ? 'Bấm để chọn nhân viên...' : 'Click to pick staff...'}
                   />
                 </div>
               )}
+              {editingTemplate && (
+                <div className="flex items-center gap-2.5 rounded-xl bg-[var(--bg-tertiary)] px-3 py-2">
+                  <Avatar name={editingTemplate.userName || '?'} src={editingTemplate.userAvatar} size="sm" />
+                  <p className="truncate text-xs font-bold text-[var(--text-primary)]">
+                    {displayNameOf(editingTemplate.userId, editingTemplate.userName)}
+                  </p>
+                </div>
+              )}
               <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                  {t('schedules.colWeekday')}
-                </label>
-                <Select
-                  value={templateWeekday}
-                  onChange={setTemplateWeekday}
-                  options={[1, 2, 3, 4, 5, 6, 0].map((d) => ({ value: String(d), label: WEEKDAY_LABELS[d] }))}
-                />
+                <FieldLabel step={editingTemplate ? undefined : '2'}>{vi ? 'Chọn ngày trong tuần' : 'Pick weekday'}</FieldLabel>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setTemplateWeekday(String(d))}
+                      className={`rounded-xl border-2 py-2 text-xs font-bold transition-all ${
+                        templateWeekday === String(d)
+                          ? 'border-sky-500 bg-sky-500/10 text-sky-600 dark:text-sky-400'
+                          : 'border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--border-hover)]'
+                      }`}
+                    >
+                      {weekdayShort(`2024-01-0${d === 0 ? 7 : d}`, language)}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-xs text-[var(--text-muted)]">
+                  {vi ? 'Đang chọn: ' : 'Selected: '}<b className="text-[var(--text-primary)]">{weekdayFull(Number(templateWeekday), language)}</b>
+                </p>
               </div>
-              <div className="grid grid-cols-2 gap-2.5">
-                <Input label={t('schedules.colStart')} type="time" value={templateStart} onChange={(e) => setTemplateStart(e.target.value)} />
-                <Input label={t('schedules.colEnd')} type="time" value={templateEnd} onChange={(e) => setTemplateEnd(e.target.value)} />
+              <div>
+                <FieldLabel step={editingTemplate ? undefined : '3'}>{vi ? 'Chọn giờ làm' : 'Pick hours'}</FieldLabel>
+                <div className="mb-2 grid grid-cols-2 gap-1.5">
+                  {QUICK_SHIFTS.map((q) => (
+                    <button
+                      key={q.id}
+                      onClick={() => pickQuickShift(q.start, q.end, vi ? q.titleVi : q.titleEn, { setStart: setTemplateStart, setEnd: setTemplateEnd, setTitle: setTemplateTitle })}
+                      className="rounded-xl border border-[var(--border-color)] px-2 py-2 text-xs font-bold text-[var(--text-secondary)] transition-all hover:border-sky-500 hover:text-sky-600"
+                    >
+                      {vi ? q.labelVi : q.labelEn}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <Input label={vi ? 'Giờ bắt đầu' : 'Start'} type="time" value={templateStart} onChange={(e) => setTemplateStart(e.target.value)} />
+                  <Input label={vi ? 'Giờ kết thúc' : 'End'} type="time" value={templateEnd} onChange={(e) => setTemplateEnd(e.target.value)} />
+                </div>
               </div>
               <Input
-                label={t('schedules.colShift')}
+                label={vi ? 'Tên ca (không bắt buộc)' : 'Shift name (optional)'}
                 value={templateTitle}
                 onChange={(e) => setTemplateTitle(e.target.value)}
-                placeholder={t('schedules.shiftPlaceholder')}
+                placeholder={vi ? 'Ví dụ: Ca sáng...' : 'E.g. Morning shift...'}
               />
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                  {t('schedules.colWorkMode')}
-                </label>
-                <Select
-                  value={templateWorkMode}
-                  onChange={setTemplateWorkMode}
-                  options={WORK_MODE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-                />
-              </div>
               <div className="flex gap-2 pt-1">
                 {editingTemplate && (
                   <Button
                     variant="secondary"
-                    className="flex-1"
+                    className="flex-1 py-2.5"
                     onClick={() => {
                       setEditingTemplate(null);
                       setTemplateTitle('');
-                      setTemplateWorkMode('office');
                     }}
                   >
                     {t('common.cancel')}
                   </Button>
                 )}
                 <Button
-                  className="flex-1"
+                  className="flex-1 py-2.5 text-sm font-bold"
                   disabled={createTemplateMutation.isPending || updateTemplateMutation.isPending}
                   onClick={() => void handleSaveTemplate()}
                 >
                   {(createTemplateMutation.isPending || updateTemplateMutation.isPending) && (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   )}
-                  {t('common.save')}
+                  {vi ? 'Lưu ca mẫu' : 'Save template'}
                 </Button>
               </div>
             </div>
-          </SectionCard>
+          </div>
 
-          <div className="lg:col-span-2">
-            <SectionCard>
+          <div className="lg:col-span-3">
+            <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs">
               <div className="flex flex-wrap items-center gap-2.5 border-b border-[var(--border-color)] p-3">
-                <div className="min-w-[220px] flex-1">
+                <div className="min-w-[200px] flex-1">
                   <SearchableSelect
                     options={filterUserOptions}
                     value={templateUserId}
                     onChange={setTemplateUserId}
-                    placeholder={t('schedules.allUsers')}
+                    placeholder={vi ? 'Lọc theo nhân viên...' : 'Filter by staff...'}
                   />
                 </div>
-                <span className="font-mono-code text-xs text-[var(--text-muted)]">
-                  {templates.length} {t('schedules.templateUnit')}
+                <span className="rounded-full bg-[var(--bg-tertiary)] px-3 py-1 font-mono-code text-xs font-bold text-[var(--text-secondary)]">
+                  {templates.length} {vi ? 'ca mẫu' : 'templates'}
                 </span>
               </div>
               {templatesQuery.isLoading ? (
-                <div className="flex items-center justify-center gap-2 py-14 text-xs text-[var(--text-muted)]">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                <div className="flex items-center justify-center gap-2 py-14 text-sm text-[var(--text-muted)]">
+                  <Loader2 className="h-5 w-5 animate-spin" />
                   {t('common.loading')}
                 </div>
               ) : templates.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-14 text-center">
-                  <Clock className="h-8 w-8 text-[var(--text-muted)]" />
-                  <p className="text-sm font-semibold text-[var(--text-primary)]">{t('schedules.noTemplate')}</p>
-                  <p className="text-xs text-[var(--text-muted)]">{t('schedules.noTemplateHint')}</p>
+                <div className="flex flex-col items-center gap-2 px-6 py-14 text-center">
+                  <span className="text-4xl">📋</span>
+                  <p className="text-sm font-bold text-[var(--text-primary)]">{vi ? 'Chưa có ca mẫu nào' : 'No templates yet'}</p>
+                  <p className="max-w-xs text-xs text-[var(--text-muted)]">
+                    {vi ? 'Tạo ca mẫu ở khung bên trái, sau đó dùng nút "Tự tạo lịch" để sinh lịch hàng loạt.' : 'Create a template on the left, then use auto-generate to create shifts in bulk.'}
+                  </p>
                 </div>
               ) : (
                 <div className="divide-y divide-[var(--border-color)]">
                   {templates.map((tpl) => (
                     <div key={tpl.id} className="flex items-center gap-3 px-4 py-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-xs font-bold text-sky-500">
-                        {WEEKDAY_LABELS[tpl.weekday]?.charAt(0) ?? '?'}
-                      </div>
+                      <Avatar name={tpl.userName || '?'} src={tpl.userAvatar} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-bold text-[var(--text-primary)]">
-                          {WEEKDAY_LABELS[tpl.weekday]} · {tpl.startTime} - {tpl.endTime} · {resolveWorkModeLabel(tpl.workMode)}
+                        <p className="truncate text-sm font-bold text-[var(--text-primary)]">
+                          {displayNameOf(tpl.userId, tpl.userName)}
                         </p>
-                        <p className="truncate text-[11px] text-[var(--text-muted)]">
-                          {tpl.userName || ''} {tpl.title ? `· ${tpl.title}` : ''}
+                        <p className="truncate text-xs text-[var(--text-secondary)]">
+                          {weekdayFull(tpl.weekday, language)} • {tpl.startTime}–{tpl.endTime} • {resolveWorkModeLabel(tpl.workMode)}
+                          {tpl.title ? ` • ${tpl.title}` : ''}
                         </p>
                       </div>
                       <button
@@ -855,17 +990,10 @@ export default function WorkSchedulesPage() {
                             { onError: (e) => toast.error(getErrorMessage(e, t('schedules.templateSaveFailed'))) },
                           )
                         }
-                        className={`relative h-5.5 w-10 shrink-0 cursor-pointer rounded-full p-0.5 transition-colors ${
-                          tpl.isActive ? 'bg-emerald-500' : 'bg-[var(--border-color)]'
-                        }`}
-                        style={{ height: 22 }}
-                        title={tpl.isActive ? t('schedules.active') : t('schedules.inactive')}
+                        className={`relative h-7 w-12 shrink-0 rounded-full p-1 transition-colors ${tpl.isActive ? 'bg-emerald-500' : 'bg-[var(--border-color)]'}`}
+                        title={tpl.isActive ? (vi ? 'Đang bật — bấm để tắt' : 'On — click to turn off') : (vi ? 'Đang tắt — bấm để bật' : 'Off — click to turn on')}
                       >
-                        <span
-                          className={`block h-[18px] w-[18px] rounded-full bg-white shadow transition-transform ${
-                            tpl.isActive ? 'translate-x-[18px]' : 'translate-x-0'
-                          }`}
-                        />
+                        <span className={`block h-5 w-5 rounded-full bg-white shadow transition-transform ${tpl.isActive ? 'translate-x-5' : 'translate-x-0'}`} />
                       </button>
                       <button
                         onClick={() => {
@@ -876,212 +1004,278 @@ export default function WorkSchedulesPage() {
                           setTemplateTitle(tpl.title || '');
                           setTemplateWorkMode(tpl.workMode || 'office');
                         }}
-                        className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-sky-500"
+                        aria-label={vi ? 'Sửa' : 'Edit'}
+                        className="rounded-xl border border-[var(--border-color)] p-2.5 text-[var(--text-secondary)] hover:border-sky-500 hover:text-sky-500"
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Pencil className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => setDeletingTemplate(tpl)}
-                        className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-rose-500"
+                        aria-label={vi ? 'Xoá' : 'Delete'}
+                        className="rounded-xl border border-[var(--border-color)] p-2.5 text-[var(--text-secondary)] hover:border-rose-500 hover:text-rose-500"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   ))}
                 </div>
               )}
-            </SectionCard>
+            </div>
           </div>
         </div>
       )}
 
       {tab === 'generate' && (
-        <SectionCard>
-          <div className="border-b border-[var(--border-color)] p-4">
-            <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)]">
-              <Users className="h-4 w-4 text-sky-500" />
-              {t('schedules.generateTitle')}
-            </h3>
-            <p className="mt-0.5 text-xs text-[var(--text-muted)]">{t('schedules.generateHint')}</p>
-          </div>
-          <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-4">
-            <div className="md:col-span-2">
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                {t('schedules.colUser')}
-              </label>
-              <SearchableSelect
-                options={userOptions}
-                value={generateUserId}
-                onChange={setGenerateUserId}
-                placeholder={t('schedules.pickUser')}
-              />
+        <div className="mx-auto w-full max-w-xl">
+          <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs">
+            <div className="border-b border-[var(--border-color)] bg-gradient-to-r from-sky-500/10 to-violet-500/10 px-5 py-4">
+              <h3 className="flex items-center gap-2.5 text-[15px] font-bold text-[var(--text-primary)]">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-600 text-white">
+                  <Wand2 className="h-5 w-5" />
+                </span>
+                {vi ? 'Tự tạo lịch từ ca mẫu' : 'Auto-create from templates'}
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-[var(--text-muted)]">
+                {vi ? 'Bước 1: chọn nhân viên. Bước 2: chọn khoảng ngày. Bước 3: bấm nút tạo. Ca nào trùng giờ sẽ tự bỏ qua.' : 'Step 1: pick staff. Step 2: pick dates. Step 3: press create. Overlapping shifts are skipped.'}
+              </p>
             </div>
-            <Input label={t('schedules.colFrom')} type="date" value={generateFrom} onChange={(e) => setGenerateFrom(e.target.value)} />
-            <Input label={t('schedules.colTo')} type="date" value={generateTo} onChange={(e) => setGenerateTo(e.target.value)} />
+            <div className="space-y-4 p-5">
+              <div>
+                <FieldLabel step="1">{vi ? 'Chọn nhân viên' : 'Pick staff'}</FieldLabel>
+                <SearchableSelect
+                  options={userOptions}
+                  value={generateUserId}
+                  onChange={setGenerateUserId}
+                  placeholder={vi ? 'Bấm để chọn nhân viên...' : 'Click to pick staff...'}
+                />
+              </div>
+              <div>
+                <FieldLabel step="2">{vi ? 'Chọn khoảng ngày' : 'Pick date range'}</FieldLabel>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <Input label={vi ? 'Từ ngày' : 'From'} type="date" value={generateFrom} onChange={(e) => setGenerateFrom(e.target.value)} />
+                  <Input label={vi ? 'Đến ngày' : 'To'} type="date" value={generateTo} onChange={(e) => setGenerateTo(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <FieldLabel step="3">{vi ? 'Bấm nút để tạo' : 'Press to create'}</FieldLabel>
+                <Button
+                  className="w-full py-3 text-sm font-bold"
+                  disabled={generateMutation.isPending || !generateUserId}
+                  onClick={() => void handleGenerate()}
+                >
+                  {generateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                  {vi ? 'Tạo lịch ngay' : 'Create now'}
+                </Button>
+                {!generateUserId && (
+                  <p className="mt-1.5 text-center text-xs text-[var(--text-muted)]">
+                    {vi ? 'Hãy chọn nhân viên ở bước 1 trước nhé' : 'Please pick staff in step 1 first'}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="flex justify-end border-t border-[var(--border-color)] p-4">
-            <Button disabled={generateMutation.isPending || !generateUserId} onClick={() => void handleGenerate()}>
-              {generateMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
-              {t('schedules.generateNow')}
-            </Button>
-          </div>
-        </SectionCard>
+        </div>
       )}
 
-      {/* ─── Assign modal ─── */}
+      {/* Assign modal — 3 steps */}
       {showAssign && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" onClick={() => setShowAssign(false)}>
-          <div
-            className="w-full max-w-md rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="border-b border-[var(--border-color)] p-4">
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">{t('schedules.assignTitle')}</h3>
-            </div>
-            <div className="space-y-3 p-4">
-              <div className="flex gap-1 rounded-lg bg-[var(--bg-tertiary)] p-1">
-                {(
-                  [
-                    { id: 'single', label: t('schedules.single') },
-                    { id: 'bulk', label: t('schedules.bulk') },
-                  ] as Array<{ id: 'single' | 'bulk'; label: string }>
-                ).map((m) => (
+        <ModalShell
+          title={vi ? 'Gán ca mới' : 'New shift'}
+          subtitle={vi ? 'Chỉ 3 bước là xong!' : 'Only 3 steps!'}
+          onClose={() => setShowAssign(false)}
+          footer={
+            <>
+              <Button variant="secondary" className="flex-1 py-3 text-sm font-bold" onClick={() => setShowAssign(false)}>
+                {vi ? 'Để sau' : 'Later'}
+              </Button>
+              <Button
+                className="flex-[2] py-3 text-sm font-bold"
+                disabled={assignMutation.isPending || bulkAssignMutation.isPending}
+                onClick={() => void handleAssign()}
+              >
+                {(assignMutation.isPending || bulkAssignMutation.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
+                {vi ? 'Xong — Lưu ca' : 'Done — Save'}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-1 rounded-xl bg-[var(--bg-tertiary)] p-1">
+              {(
+                [
+                  { id: 'single', label: vi ? '1 người' : '1 person', icon: UserRound },
+                  { id: 'bulk', label: vi ? 'Nhiều người' : 'Many people', icon: Users },
+                ] as Array<{ id: 'single' | 'bulk'; label: string; icon: typeof Users }>
+              ).map((m) => {
+                const Icon = m.icon;
+                return (
                   <button
                     key={m.id}
                     onClick={() => setAssignMode(m.id)}
-                    className={`flex-1 rounded-md px-3 py-1.5 text-xs font-semibold ${
+                    className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${
                       assignMode === m.id
-                        ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-xs'
+                        ? 'bg-[var(--bg-card)] text-sky-600 shadow-xs dark:text-sky-400'
                         : 'text-[var(--text-muted)]'
                     }`}
                   >
+                    <Icon className="h-4 w-4" />
                     {m.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div>
+              <FieldLabel step="1">{vi ? 'Ai làm ca này?' : 'Who works?'}</FieldLabel>
+              {assignMode === 'single' ? (
+                <SearchableSelect
+                  options={userOptions}
+                  value={assignUserId}
+                  onChange={setAssignUserId}
+                  placeholder={vi ? 'Bấm để chọn nhân viên...' : 'Click to pick staff...'}
+                />
+              ) : (
+                <MultiSearchableSelect options={userOptions} values={assignUserIds} onChange={setAssignUserIds} placeholder={vi ? 'Bấm để chọn nhiều người...' : 'Click to pick people...'} />
+              )}
+            </div>
+
+            <div>
+              <FieldLabel step="2">{vi ? 'Làm ngày nào?' : 'Which day?'}</FieldLabel>
+              <Input type="date" value={assignDate} onChange={(e) => setAssignDate(e.target.value)} />
+              <p className="mt-1.5 text-xs text-[var(--text-muted)]">
+                {vi ? 'Đang chọn: ' : 'Selected: '}<b className="text-[var(--text-primary)]">{weekdayFull(parseWorkDateValue(assignDate).getDay(), language)}, {formatDisplayDate(assignDate)}</b>
+              </p>
+            </div>
+
+            <div>
+              <FieldLabel step="3">{vi ? 'Làm giờ nào?' : 'What hours?'}</FieldLabel>
+              <div className="mb-2 grid grid-cols-2 gap-1.5">
+                {QUICK_SHIFTS.map((q) => (
+                  <button
+                    key={q.id}
+                    onClick={() => pickQuickShift(q.start, q.end, vi ? q.titleVi : q.titleEn, { setStart: setAssignStart, setEnd: setAssignEnd, setTitle: setAssignTitle })}
+                    className={`rounded-xl border-2 px-2 py-2.5 text-xs font-bold transition-all ${
+                      assignStart === q.start && assignEnd === q.end
+                        ? 'border-sky-500 bg-sky-500/10 text-sky-600 dark:text-sky-400'
+                        : 'border-[var(--border-color)] text-[var(--text-secondary)] hover:border-sky-500/50'
+                    }`}
+                  >
+                    {vi ? q.labelVi : q.labelEn}
                   </button>
                 ))}
               </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                <Input label={vi ? 'Bắt đầu' : 'Start'} type="time" value={assignStart} onChange={(e) => setAssignStart(e.target.value)} />
+                <Input label={vi ? 'Kết thúc' : 'End'} type="time" value={assignEnd} onChange={(e) => setAssignEnd(e.target.value)} />
+              </div>
+              <div className="mt-2.5">
+                <Input
+                  label={vi ? 'Tên ca (không bắt buộc)' : 'Shift name (optional)'}
+                  value={assignTitle}
+                  onChange={(e) => setAssignTitle(e.target.value)}
+                  placeholder={vi ? 'Ví dụ: Ca sáng...' : 'E.g. Morning shift...'}
+                />
+              </div>
+            </div>
+          </div>
+        </ModalShell>
+      )}
 
-              {assignMode === 'single' ? (
+      {/* Edit modal — same 3 steps, prefilled */}
+      {editing && (
+        <ModalShell
+          title={vi ? 'Sửa ca làm việc' : 'Edit shift'}
+          subtitle={`${displayNameOf(editing.userId, editing.userName)} • ${formatDisplayDate(editing.workDate)}`}
+          onClose={() => setEditing(null)}
+          footer={
+            <>
+              <Button variant="secondary" className="flex-1 py-3 text-sm font-bold" onClick={() => setEditing(null)}>
+                {vi ? 'Để sau' : 'Later'}
+              </Button>
+              <Button className="flex-[2] py-3 text-sm font-bold" disabled={updateMutation.isPending} onClick={() => void handleUpdate()}>
+                {updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                {vi ? 'Xong — Lưu lại' : 'Done — Save'}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 rounded-2xl bg-[var(--bg-tertiary)] px-4 py-3">
+              <Avatar name={displayNameOf(editing.userId, editing.userName)} src={editing.userAvatar} size="md" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-[var(--text-primary)]">
+                  {displayNameOf(editing.userId, editing.userName)}
+                </p>
+                <p className="font-mono-code text-xs text-[var(--text-muted)]">
+                  {editing.startTime}–{editing.endTime} • {formatDisplayDate(editing.workDate)}
+                </p>
+              </div>
+            </div>
+            <div>
+              <FieldLabel step="1">{vi ? 'Đổi ngày (nếu cần)' : 'Change day (if needed)'}</FieldLabel>
+              <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
+            </div>
+            <div>
+              <FieldLabel step="2">{vi ? 'Đổi giờ' : 'Change hours'}</FieldLabel>
+              <div className="mb-2 grid grid-cols-2 gap-1.5">
+                {QUICK_SHIFTS.map((q) => (
+                  <button
+                    key={q.id}
+                    onClick={() => pickQuickShift(q.start, q.end, vi ? q.titleVi : q.titleEn, { setStart: setEditStart, setEnd: setEditEnd, setTitle: setEditTitle })}
+                    className="rounded-xl border border-[var(--border-color)] px-2 py-2 text-xs font-bold text-[var(--text-secondary)] hover:border-sky-500 hover:text-sky-600"
+                  >
+                    {vi ? q.labelVi : q.labelEn}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                <Input label={vi ? 'Bắt đầu' : 'Start'} type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)} />
+                <Input label={vi ? 'Kết thúc' : 'End'} type="time" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <FieldLabel step="3">{vi ? 'Tên ca & trạng thái' : 'Name & status'}</FieldLabel>
+              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder={vi ? 'Tên ca...' : 'Shift name...'} />
+              <div className="mt-2.5 grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                    {t('schedules.colUser')}
-                  </label>
-                  <SearchableSelect
-                    options={userOptions}
-                    value={assignUserId}
-                    onChange={setAssignUserId}
-                    placeholder={t('schedules.pickUser')}
+                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">{vi ? 'Nơi làm' : 'Where'}</label>
+                  <Select
+                    value={editWorkMode}
+                    onChange={setEditWorkMode}
+                    options={[
+                      { value: 'office', label: resolveWorkModeLabel('office') },
+                      { value: 'remote', label: resolveWorkModeLabel('remote') },
+                      { value: 'half_day', label: resolveWorkModeLabel('half_day') },
+                    ]}
                   />
                 </div>
-              ) : (
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                    {t('schedules.pickedCount', { count: assignUserIds.length })}
-                  </label>
-                  <MultiSearchableSelect options={userOptions} values={assignUserIds} onChange={setAssignUserIds} placeholder={t('schedules.pickUser')} />
+                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">{t('table.status')}</label>
+                  <Select
+                    value={editStatus}
+                    onChange={setEditStatus}
+                    options={[
+                      { value: 'published', label: t('schedules.published') },
+                      { value: 'cancelled', label: t('schedules.cancelled') },
+                    ]}
+                  />
                 </div>
-              )}
-
-              <Input label={t('schedules.colDate')} type="date" value={assignDate} onChange={(e) => setAssignDate(e.target.value)} />
-              <div className="grid grid-cols-2 gap-2.5">
-                <Input label={t('schedules.colStart')} type="time" value={assignStart} onChange={(e) => setAssignStart(e.target.value)} />
-                <Input label={t('schedules.colEnd')} type="time" value={assignEnd} onChange={(e) => setAssignEnd(e.target.value)} />
-              </div>
-              <Input
-                label={t('schedules.colShift')}
-                value={assignTitle}
-                onChange={(e) => setAssignTitle(e.target.value)}
-                placeholder={t('schedules.shiftPlaceholder')}
-              />
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                  {t('schedules.colWorkMode')}
-                </label>
-                <Select
-                  value={assignWorkMode}
-                  onChange={setAssignWorkMode}
-                  options={WORK_MODE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-                />
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <Button variant="secondary" className="flex-1" onClick={() => setShowAssign(false)}>
-                  {t('common.cancel')}
-                </Button>
-                <Button
-                  className="flex-1"
-                  disabled={assignMutation.isPending || bulkAssignMutation.isPending || usersLoading}
-                  onClick={() => void handleAssign()}
-                >
-                  {(assignMutation.isPending || bulkAssignMutation.isPending) && (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  )}
-                  {t('schedules.assign')}
-                </Button>
               </div>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
-      {/* ─── Edit modal ─── */}
-      {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" onClick={() => setEditing(null)}>
-          <div
-            className="w-full max-w-md rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="border-b border-[var(--border-color)] p-4">
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">{t('schedules.editTitle')}</h3>
-            </div>
-            <div className="space-y-3 p-4">
-              <Input label={t('schedules.colDate')} type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
-              <div className="grid grid-cols-2 gap-2.5">
-                <Input label={t('schedules.colStart')} type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)} />
-                <Input label={t('schedules.colEnd')} type="time" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} />
-              </div>
-              <Input label={t('schedules.colShift')} value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                  {t('schedules.colWorkMode')}
-                </label>
-                <Select
-                  value={editWorkMode}
-                  onChange={setEditWorkMode}
-                  options={WORK_MODE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                  {t('table.status')}
-                </label>
-                <Select
-                  value={editStatus}
-                  onChange={setEditStatus}
-                  options={[
-                    { value: 'published', label: t('schedules.published') },
-                    { value: 'cancelled', label: t('schedules.cancelled') },
-                  ]}
-                />
-              </div>
-              <div className="flex gap-2 pt-1">
-                <Button variant="secondary" className="flex-1" onClick={() => setEditing(null)}>
-                  {t('common.cancel')}
-                </Button>
-                <Button className="flex-1" disabled={updateMutation.isPending} onClick={() => void handleUpdate()}>
-                  {updateMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  {t('common.save')}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Delete confirms ─── */}
       <ConfirmModal
         isOpen={Boolean(deleting)}
-        title={t('schedules.deleteTitle')}
-        message={t('schedules.deleteMessage')}
+        title={vi ? 'Xoá ca này?' : 'Delete this shift?'}
+        message={
+          deleting
+            ? vi
+              ? `Ca của ${displayNameOf(deleting.userId, deleting.userName)} ngày ${formatDisplayDate(deleting.workDate)} (${deleting.startTime}–${deleting.endTime}) sẽ bị xoá. Bạn chắc chứ?`
+              : `Shift of ${displayNameOf(deleting.userId, deleting.userName)} on ${formatDisplayDate(deleting.workDate)} will be deleted. Sure?`
+            : t('schedules.deleteMessage')
+        }
         type="danger"
         onConfirm={async () => {
           if (!deleting) return;

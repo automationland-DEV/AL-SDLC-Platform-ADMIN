@@ -69,7 +69,7 @@ export function AdminLayout() {
     }
   };
 
-  const isTablePage = ['/users', '/workspaces', '/documents', '/channels', '/schedules', '/activity', '/mail', '/reports'].includes(location.pathname);
+  const isTablePage = ['/users', '/workspaces', '/documents', '/channels', '/activity', '/mail', '/reports'].includes(location.pathname);
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
 
   return (
