@@ -4,6 +4,7 @@ import {
   Users,
   Briefcase,
   GitBranch,
+  FileText,
   Mail,
   ChevronLeft,
   ChevronRight,
@@ -21,6 +22,7 @@ const menuItems = [
   { path: '/users', label: 'Quản lý Users', icon: Users },
   { path: '/workspaces', label: 'Quản lý Workspaces', icon: Briefcase },
   { path: '/workflows', label: 'Quản lý Workflows', icon: GitBranch },
+  { path: '/reports', label: 'Báo cáo', icon: FileText },
   { path: '/mail', label: 'Mail nội bộ', icon: Mail },
 ];
 
