@@ -223,7 +223,7 @@ export const stickerService = {
     const res = await api.get(
       `/admin/stickers/source/items/${encodeURIComponent(cateId)}/${encodeURIComponent(stickerId)}`,
     );
-    return unwrap<Record<string, any>>(res.data);
+    return unwrap<Record<string, unknown>>(res.data);
   },
 
   importToBackend: async (payload: {

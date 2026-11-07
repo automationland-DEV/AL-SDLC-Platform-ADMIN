@@ -39,7 +39,7 @@ interface AnimatedStickerProps {
   className?: string;
 }
 
-export function AnimatedSticker({
+function AnimatedSticker({
   animatedUrl,
   thumbUrl,
   animatedType,
@@ -187,6 +187,13 @@ export default function StickersPage() {
     }
   };
 
+  const handleSelectImportedSticker = (sticker: ImportedStickerItem) => {
+    setSelectedImportedSticker(sticker);
+    setEditStickerTitle(sticker.title || '');
+    setEditStickerKeywords((sticker.keywords || []).join(', '));
+    setEditStickerActive(Boolean(sticker.isActive));
+  };
+
   const loadImportedPackDetail = async (cateId: string) => {
     if (!cateId) return;
     try {
@@ -224,13 +231,6 @@ export default function StickersPage() {
     }
   }, [selectedImportedCateId]);
 
-  const handleSelectImportedSticker = (sticker: ImportedStickerItem) => {
-    setSelectedImportedSticker(sticker);
-    setEditStickerTitle(sticker.title || '');
-    setEditStickerKeywords((sticker.keywords || []).join(', '));
-    setEditStickerActive(Boolean(sticker.isActive));
-  };
-
   const handleSaveImportedSticker = async () => {
     if (!selectedImportedSticker) return;
     try {
@@ -253,8 +253,9 @@ export default function StickersPage() {
         await loadImportedPackDetail(selectedImportedCateId);
       }
       await loadOverview();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Cập nhật sticker thất bại');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Cập nhật sticker thất bại';
+      toast.error(msg);
     } finally {
       setSavingSticker(false);
     }
@@ -608,7 +609,11 @@ export default function StickersPage() {
             </div>
             <select
               value={importedPackStatus}
-              onChange={(e) => setImportedPackStatus(e.target.value as any)}
+              onChange={(e) =>
+                setImportedPackStatus(
+                  e.target.value as 'all' | 'active' | 'inactive',
+                )
+              }
               className="w-full px-2.5 py-1.5 rounded-lg text-xs bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)]"
             >
               <option value="all">Tất cả trạng thái</option>
