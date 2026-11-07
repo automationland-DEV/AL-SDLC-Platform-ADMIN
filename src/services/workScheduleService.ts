@@ -11,6 +11,24 @@ export interface AdminWorkScheduleItem {
   title?: string;
   workMode: string;
   status: string;
+  attendanceStatus?: string;
+  checkInAt?: string | null;
+  checkOutAt?: string | null;
+  workedMinutes?: number;
+  earlyCheckInMinutes?: number;
+  lateMinutes?: number;
+  earlyLeaveMinutes?: number;
+  lateCheckOutMinutes?: number;
+  attendanceNote?: string;
+  checkInLocationId?: string | null;
+  checkInLocationName?: string;
+  checkInAddress?: string;
+  checkInLatitude?: number | null;
+  checkInLongitude?: number | null;
+  checkInDistanceMeters?: number | null;
+  checkOutLatitude?: number | null;
+  checkOutLongitude?: number | null;
+  checkOutDistanceMeters?: number | null;
   source: string;
   templateId?: string | null;
   createdAt: string;
@@ -45,6 +63,7 @@ export interface AdminWorkScheduleQueryParams {
   to?: string;
   status?: string;
   workMode?: string;
+  attendanceStatus?: string;
   page?: number;
   limit?: number;
 }
@@ -67,6 +86,12 @@ export interface BulkAssignSchedulePayload {
   workMode?: string;
 }
 
+export interface BulkAssignResult {
+  items: AdminWorkScheduleItem[];
+  created: number;
+  skipped: { userId: string; userName?: string; reason: string }[];
+}
+
 export interface UpdateSchedulePayload {
   workDate?: string;
   startTime?: string;
@@ -74,6 +99,9 @@ export interface UpdateSchedulePayload {
   title?: string;
   status?: string;
   workMode?: string;
+  attendanceStatus?: string;
+  attendanceNote?: string;
+  checkInLocationId?: string;
 }
 
 export interface CreateTemplatePayload {
@@ -171,6 +199,84 @@ export function resolveWorkModeLabel(workMode?: string | null): string {
   return WORK_MODE_LABELS[workMode] ?? workMode;
 }
 
+export const ATTENDANCE_STATUS_LABELS: Record<string, string> = {
+  pending: 'Chưa điểm danh',
+  checked_in: 'Đang làm việc',
+  checked_out: 'Đã hoàn thành',
+  absent: 'Vắng mặt',
+};
+
+export const ATTENDANCE_STATUS_OPTIONS = [
+  { value: 'pending', label: 'Chưa điểm danh' },
+  { value: 'checked_in', label: 'Đang làm việc' },
+  { value: 'checked_out', label: 'Đã hoàn thành' },
+  { value: 'absent', label: 'Vắng mặt' },
+];
+
+export function resolveAttendanceLabel(status?: string | null): string {
+  if (!status) return ATTENDANCE_STATUS_LABELS.pending;
+  return ATTENDANCE_STATUS_LABELS[status] ?? status;
+}
+
+export function formatCheckTime(iso?: string | null): string {
+  if (!iso) return '--:--';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '--:--';
+  return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+export const CHECKIN_MAX_RADIUS_METERS = 1000;
+
+export interface CheckInLocationOption {
+  id: string;
+  name: string;
+  shortName: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+  embedUrl: string;
+}
+
+export const CHECKIN_LOCATIONS: CheckInLocationOption[] = [
+  {
+    id: 'huce_hcm',
+    name: 'Trường đại học Xây dựng Hà Nội - Phân hiệu TP.HCM',
+    shortName: 'ĐH Xây dựng HN - Phân hiệu TP.HCM',
+    address: 'Trường đại học Xây dựng Hà Nội - Phân hiệu TP.HCM, 190, Võ Văn Ngân Thành phố Thủ Đức 71306 Thành phố Hồ Chí Minh',
+    latitude: 10.850666072336104,
+    longitude: 106.76418227254291,
+    radiusMeters: CHECKIN_MAX_RADIUS_METERS,
+    embedUrl:
+      'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d748.6777109911931!2d106.76418227254291!3d10.850666072336104!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x317527a21b082251%3A0xf4b983351b0c88a3!2zVHLGsOG7nW5nIMSR4bqhaSBo4buNYyBYw6J5IGThu7FuZyBIw6AgTuG7mWkgLSBQaMOibiBoaeG7h3UgVFAuSENN!5e1!3m2!1sen!2s!4v1794078977144!5m2!1sen!2s',
+  },
+  {
+    id: 'peak_garden_villa',
+    name: 'The Peak Garden Villa',
+    shortName: 'The Peak Garden Villa',
+    address: 'The Peak Garden Villa, Thành phố Hồ Chí Minh',
+    latitude: 10.70829872205756,
+    longitude: 106.73231696332599,
+    radiusMeters: CHECKIN_MAX_RADIUS_METERS,
+    embedUrl:
+      'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2519.433212608838!2d106.73231696332599!3d10.70829872205756!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x317525030a4e294d%3A0x209e455faf581838!2sThe%20Peak%20Garden%20Villa!5e1!3m2!1sen!2s!4v1794079038133!5m2!1sen!2s',
+  },
+];
+
+export function formatDistanceMeters(meters?: number | null): string {
+  if (meters === undefined || meters === null) return '';
+  if (meters < 1000) return `${meters}m`;
+  return `${(meters / 1000).toFixed(2)}km`;
+}
+
+export function resolveCheckInLocationLabel(locationId?: string | null, fallbackName?: string): string {
+  if (locationId) {
+    const found = CHECKIN_LOCATIONS.find((l) => l.id === locationId);
+    if (found) return found.shortName;
+  }
+  return fallbackName || '';
+}
+
 export function formatDisplayDate(workDate: string): string {
   const [year, month, day] = workDate.split('-');
   if (!year || !month || !day) return workDate;
@@ -197,6 +303,7 @@ export const workScheduleService = {
         to: params.to || undefined,
         status: params.status || undefined,
         workMode: params.workMode || undefined,
+        attendanceStatus: params.attendanceStatus || undefined,
         page,
         limit,
       },
@@ -209,13 +316,31 @@ export const workScheduleService = {
     return unwrap<AdminWorkScheduleItem>(res.data);
   },
 
-  bulkAssign: async (payload: BulkAssignSchedulePayload): Promise<AdminWorkScheduleItem[]> => {
+  bulkAssign: async (payload: BulkAssignSchedulePayload): Promise<BulkAssignResult> => {
     const res = await api.post('/admin/work-schedules/bulk', payload);
-    return normalizeArray<AdminWorkScheduleItem>(res.data);
+    const result = unwrap<BulkAssignResult | AdminWorkScheduleItem[]>(res.data);
+    if (Array.isArray(result)) {
+      return { items: result, created: result.length, skipped: [] };
+    }
+    return {
+      items: result?.items ?? [],
+      created: result?.created ?? (result?.items?.length ?? 0),
+      skipped: result?.skipped ?? [],
+    };
   },
 
   update: async (id: string, payload: UpdateSchedulePayload): Promise<AdminWorkScheduleItem> => {
     const res = await api.patch(`/admin/work-schedules/${id}`, payload);
+    return unwrap<AdminWorkScheduleItem>(res.data);
+  },
+
+  checkIn: async (id: string, note?: string): Promise<AdminWorkScheduleItem> => {
+    const res = await api.post(`/admin/work-schedules/${id}/check-in`, { note });
+    return unwrap<AdminWorkScheduleItem>(res.data);
+  },
+
+  checkOut: async (id: string, note?: string): Promise<AdminWorkScheduleItem> => {
+    const res = await api.post(`/admin/work-schedules/${id}/check-out`, { note });
     return unwrap<AdminWorkScheduleItem>(res.data);
   },
 

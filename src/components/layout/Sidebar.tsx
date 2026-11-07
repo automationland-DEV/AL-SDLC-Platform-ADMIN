@@ -6,6 +6,7 @@ import {
   GitBranch,
   FileText,
   Mail,
+  Sparkles,
   ChevronLeft,
   ChevronRight,
   Settings,
@@ -24,6 +25,7 @@ const menuItems = [
   { path: '/workflows', label: 'Quản lý Workflows', icon: GitBranch },
   { path: '/reports', label: 'Báo cáo', icon: FileText },
   { path: '/mail', label: 'Mail nội bộ', icon: Mail },
+  { path: '/stickers', label: 'Quản lý Sticker', icon: Sparkles },
 ];
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
