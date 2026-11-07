@@ -18,6 +18,7 @@ import {
   ClipboardList,
   HardDrive,
   CalendarClock,
+  Sparkles,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores';
 import ThemeSwitcher from '../ThemeSwitcher';
@@ -55,6 +56,7 @@ export function AdminLayout() {
     { path: '/activity', labelKey: 'nav.activity' as const, icon: Activity },
     { path: '/reports', labelKey: 'nav.reports' as const, icon: ClipboardList },
     { path: '/mail', labelKey: 'nav.mail' as const, icon: Mail },
+    { path: '/stickers', labelKey: 'nav.stickers' as const, icon: Sparkles },
     { path: '/storage', labelKey: 'nav.storage' as const, icon: HardDrive },
   ];
 

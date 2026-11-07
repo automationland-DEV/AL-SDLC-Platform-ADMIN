@@ -9,6 +9,8 @@ import {
   Clock3,
   Layers,
   Loader2,
+  LogIn,
+  LogOut,
   Pencil,
   Plus,
   RefreshCw,
@@ -34,13 +36,22 @@ import { useDebounce } from '../../../hooks/useDebounce';
 import { useTranslation } from '../../../i18n/useTranslation';
 import { userService } from '../../../services/authService';
 import {
+  ATTENDANCE_STATUS_OPTIONS,
+  CHECKIN_LOCATIONS,
+  WORK_MODE_OPTIONS,
+  formatCheckTime,
   formatDisplayDate,
+  formatDistanceMeters,
+  resolveAttendanceLabel,
+  resolveCheckInLocationLabel,
   resolveWorkModeLabel,
   todayIsoDate,
   type AdminWorkScheduleItem,
   type AdminWorkScheduleTemplate,
 } from '../../../services/workScheduleService';
 import {
+  useAdminCheckInScheduleMutation,
+  useAdminCheckOutScheduleMutation,
   useAssignScheduleMutation,
   useBulkAssignScheduleMutation,
   useCreateWorkScheduleTemplateMutation,
@@ -226,6 +237,7 @@ export default function WorkSchedulesPage() {
   const [to, setTo] = useState(todayIsoDate(30));
   const [status, setStatus] = useState('');
   const [workModeFilter, setWorkModeFilter] = useState('');
+  const [attendanceFilter, setAttendanceFilter] = useState('');
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [weekAnchor, setWeekAnchor] = useState(() => getWeekStartIso(todayIsoDate(0)));
   const todayIso = todayIsoDate(0);
@@ -239,6 +251,7 @@ export default function WorkSchedulesPage() {
   const [assignStart, setAssignStart] = useState('08:30');
   const [assignEnd, setAssignEnd] = useState('17:00');
   const [assignTitle, setAssignTitle] = useState('');
+  const [assignWorkMode, setAssignWorkMode] = useState('office');
 
   // Edit modal
   const [editing, setEditing] = useState<AdminWorkScheduleItem | null>(null);
@@ -248,6 +261,9 @@ export default function WorkSchedulesPage() {
   const [editTitle, setEditTitle] = useState('');
   const [editStatus, setEditStatus] = useState('');
   const [editWorkMode, setEditWorkMode] = useState('office');
+  const [editAttendanceStatus, setEditAttendanceStatus] = useState('pending');
+  const [editAttendanceNote, setEditAttendanceNote] = useState('');
+  const [editCheckInLocationId, setEditCheckInLocationId] = useState(CHECKIN_LOCATIONS[0].id);
 
   const [deleting, setDeleting] = useState<AdminWorkScheduleItem | null>(null);
 
@@ -290,6 +306,7 @@ export default function WorkSchedulesPage() {
     to: to || undefined,
     status: status || undefined,
     workMode: workModeFilter || undefined,
+    attendanceStatus: attendanceFilter || undefined,
     page: 1,
     limit: 200,
   });
@@ -356,6 +373,8 @@ export default function WorkSchedulesPage() {
   const updateTemplateMutation = useUpdateWorkScheduleTemplateMutation();
   const removeTemplateMutation = useRemoveTemplateMutation();
   const generateMutation = useGenerateSchedulesMutation();
+  const checkInMutation = useAdminCheckInScheduleMutation();
+  const checkOutMutation = useAdminCheckOutScheduleMutation();
 
   const openEdit = (item: AdminWorkScheduleItem) => {
     setEditing(item);
@@ -365,6 +384,9 @@ export default function WorkSchedulesPage() {
     setEditTitle(item.title || '');
     setEditStatus(item.status);
     setEditWorkMode(item.workMode || 'office');
+    setEditAttendanceStatus(item.attendanceStatus || 'pending');
+    setEditAttendanceNote(item.attendanceNote || '');
+    setEditCheckInLocationId(item.checkInLocationId || CHECKIN_LOCATIONS[0].id);
   };
 
   const openQuickAssign = (dateIso?: string, userId?: string) => {
@@ -376,11 +398,20 @@ export default function WorkSchedulesPage() {
     setShowAssign(true);
   };
 
+  const jumpWeek = (targetStartIso: string) => {
+    const start = getWeekStartIso(targetStartIso);
+    const end = addDaysIso(start, 6);
+    setWeekAnchor(start);
+    if (!from || start < from) setFrom(start);
+    if (!to || end > to) setTo(end);
+  };
+
   const applyPreset = (kind: 'today' | 'week' | 'month') => {
     if (kind === 'today') {
-      setFrom(todayIsoDate(0));
-      setTo(todayIsoDate(0));
-      setWeekAnchor(getWeekStartIso(todayIsoDate(0)));
+      const today = todayIsoDate(0);
+      setFrom(today);
+      setTo(today);
+      setWeekAnchor(getWeekStartIso(today));
     } else if (kind === 'week') {
       const start = getWeekStartIso(todayIsoDate(0));
       setFrom(start);
@@ -415,7 +446,7 @@ export default function WorkSchedulesPage() {
           startTime: assignStart,
           endTime: assignEnd,
           title: assignTitle.trim() || undefined,
-          workMode: 'office',
+          workMode: assignWorkMode || 'office',
         });
         toast.success(t('schedules.assignSuccess'));
       } else {
@@ -429,9 +460,17 @@ export default function WorkSchedulesPage() {
           startTime: assignStart,
           endTime: assignEnd,
           title: assignTitle.trim() || undefined,
-          workMode: 'office',
+          workMode: assignWorkMode || 'office',
         });
-        toast.success(t('schedules.bulkSuccess', { count: result.length }));
+        toast.success(t('schedules.bulkSuccess', { count: result.created }));
+        if (result.skipped?.length > 0) {
+          toast(
+            vi
+              ? `Bỏ qua ${result.skipped.length} nhân viên do trùng ca`
+              : `Skipped ${result.skipped.length} staff due to overlap`,
+            { icon: '⚠️' },
+          );
+        }
       }
       setShowAssign(false);
       setAssignUserIds([]);
@@ -454,12 +493,35 @@ export default function WorkSchedulesPage() {
           title: editTitle,
           status: editStatus || undefined,
           workMode: editWorkMode || undefined,
+          attendanceStatus: editAttendanceStatus || undefined,
+          attendanceNote: editAttendanceNote,
+          checkInLocationId: editCheckInLocationId || undefined,
         },
       });
       toast.success(t('schedules.updateSuccess'));
       setEditing(null);
     } catch (error) {
       toast.error(getErrorMessage(error, t('schedules.updateFailed')));
+    }
+  };
+
+  const handleCheckIn = async (item: AdminWorkScheduleItem, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    try {
+      await checkInMutation.mutateAsync({ id: item.id });
+      toast.success(vi ? 'Đã check-in ca làm việc' : 'Checked in shift');
+    } catch (error) {
+      toast.error(getErrorMessage(error, vi ? 'Không thể check-in' : 'Check-in failed'));
+    }
+  };
+
+  const handleCheckOut = async (item: AdminWorkScheduleItem, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    try {
+      await checkOutMutation.mutateAsync({ id: item.id });
+      toast.success(vi ? 'Đã check-out ca làm việc' : 'Checked out shift');
+    } catch (error) {
+      toast.error(getErrorMessage(error, vi ? 'Không thể check-out' : 'Check-out failed'));
     }
   };
 
@@ -627,7 +689,7 @@ export default function WorkSchedulesPage() {
               </button>
             </div>
             {showMoreFilters && (
-              <div className="mt-2.5 grid grid-cols-1 gap-2.5 border-t border-[var(--border-color)] pt-2.5 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-2.5 grid grid-cols-1 gap-2.5 border-t border-[var(--border-color)] pt-2.5 sm:grid-cols-2 lg:grid-cols-5">
                 <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} label={vi ? 'Từ ngày' : 'From'} />
                 <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} label={vi ? 'Đến ngày' : 'To'} />
                 <div>
@@ -639,6 +701,17 @@ export default function WorkSchedulesPage() {
                       { value: '', label: vi ? 'Tất cả' : 'All' },
                       { value: 'published', label: t('schedules.published') },
                       { value: 'cancelled', label: t('schedules.cancelled') },
+                    ]}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">{vi ? 'Điểm danh' : 'Attendance'}</label>
+                  <Select
+                    value={attendanceFilter}
+                    onChange={setAttendanceFilter}
+                    options={[
+                      { value: '', label: vi ? 'Tất cả điểm danh' : 'All attendance' },
+                      ...ATTENDANCE_STATUS_OPTIONS,
                     ]}
                   />
                 </div>
@@ -685,20 +758,20 @@ export default function WorkSchedulesPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] bg-[var(--bg-tertiary)]/40 px-4 py-3">
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => setWeekAnchor((v) => addDaysIso(v, -7))}
+                      onClick={() => jumpWeek(addDaysIso(weekAnchor, -7))}
                       aria-label={vi ? 'Tuần trước' : 'Previous week'}
                       className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-2 text-[var(--text-secondary)] transition-colors hover:border-sky-500 hover:text-sky-500"
                     >
                       <ChevronLeft className="h-5 w-5" />
                     </button>
                     <button
-                      onClick={() => setWeekAnchor(getWeekStartIso(todayIsoDate(0)))}
+                      onClick={() => jumpWeek(todayIsoDate(0))}
                       className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] px-4 py-2 text-xs font-bold text-[var(--text-primary)] transition-colors hover:border-sky-500"
                     >
                       {vi ? 'Về hôm nay' : 'Today'}
                     </button>
                     <button
-                      onClick={() => setWeekAnchor((v) => addDaysIso(v, 7))}
+                      onClick={() => jumpWeek(addDaysIso(weekAnchor, 7))}
                       aria-label={vi ? 'Tuần sau' : 'Next week'}
                       className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-2 text-[var(--text-secondary)] transition-colors hover:border-sky-500 hover:text-sky-500"
                     >
@@ -732,11 +805,16 @@ export default function WorkSchedulesPage() {
                           </div>
                           <div className="flex flex-1 flex-col gap-2 p-2">
                             {dayShifts.map((item) => (
-                              <button
+                              <div
                                 key={item.id}
                                 onClick={() => openEdit(item)}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') openEdit(item);
+                                }}
                                 title={vi ? 'Bấm để sửa ca này' : 'Click to edit'}
-                                className={`rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-2.5 text-left shadow-xs transition-all hover:-translate-y-px hover:shadow-md ${
+                                className={`cursor-pointer rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-2.5 text-left shadow-xs transition-all hover:-translate-y-px hover:shadow-md ${
                                   item.status === 'cancelled' ? 'opacity-60' : ''
                                 }`}
                               >
@@ -751,12 +829,66 @@ export default function WorkSchedulesPage() {
                                 {item.title && (
                                   <p className="mt-0.5 truncate text-[11px] text-[var(--text-muted)]">{item.title}</p>
                                 )}
-                                {item.status === 'cancelled' && (
+                                {item.status === 'cancelled' ? (
                                   <span className="mt-1.5 inline-block rounded-md bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-500">
                                     {t('schedules.cancelled')}
                                   </span>
+                                ) : (
+                                  <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1">
+                                    <span
+                                      className={`inline-block rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                                        item.attendanceStatus === 'checked_out'
+                                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                                          : item.attendanceStatus === 'checked_in'
+                                            ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
+                                            : item.attendanceStatus === 'absent'
+                                              ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                                              : 'bg-slate-500/10 text-[var(--text-muted)]'
+                                      }`}
+                                    >
+                                      {resolveAttendanceLabel(item.attendanceStatus)}
+                                    </span>
+                                    {(!item.attendanceStatus || item.attendanceStatus === 'pending' || item.attendanceStatus === 'absent') && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => void handleCheckIn(item, e)}
+                                        disabled={checkInMutation.isPending}
+                                        title="Check-in"
+                                        className="inline-flex items-center gap-0.5 rounded-md bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                                      >
+                                        <LogIn className="h-2.5 w-2.5" />
+                                        In
+                                      </button>
+                                    )}
+                                    {item.attendanceStatus === 'checked_in' && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => void handleCheckOut(item, e)}
+                                        disabled={checkOutMutation.isPending}
+                                        title="Check-out"
+                                        className="inline-flex items-center gap-0.5 rounded-md bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+                                      >
+                                        <LogOut className="h-2.5 w-2.5" />
+                                        Out
+                                      </button>
+                                    )}
+                                  </div>
                                 )}
-                              </button>
+                                {(item.checkInAt || item.checkOutAt) && (
+                                  <p className="mt-1 font-mono-code text-[10px] text-[var(--text-muted)]">
+                                    {formatCheckTime(item.checkInAt)} → {formatCheckTime(item.checkOutAt)}
+                                    {(item.earlyCheckInMinutes ?? 0) > 0 ? ` • Sớm ${item.earlyCheckInMinutes}p` : ''}
+                                    {(item.lateMinutes ?? 0) > 0 ? ` • Trễ ${item.lateMinutes}p` : ''}
+                                    {(item.lateCheckOutMinutes ?? 0) > 0 ? ` • Checkout trễ ${item.lateCheckOutMinutes}p` : ''}
+                                  </p>
+                                )}
+                                {(item.checkInLocationId || item.checkInLocationName) && (
+                                  <p className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">
+                                    📍 {resolveCheckInLocationLabel(item.checkInLocationId, item.checkInLocationName)}
+                                    {item.checkInDistanceMeters != null ? ` (${formatDistanceMeters(item.checkInDistanceMeters)})` : ''}
+                                  </p>
+                                )}
+                              </div>
                             ))}
                             {/* Always-visible big add button — easiest to discover */}
                             <button
@@ -781,7 +913,7 @@ export default function WorkSchedulesPage() {
                     {vi ? `Danh sách ca (${sortedSchedules.length})` : `Shift list (${sortedSchedules.length})`}
                   </p>
                   <p className="text-xs text-[var(--text-muted)]">
-                    {vi ? 'Bấm cây bút để sửa, thùng rác để xoá' : 'Click pencil to edit, trash to delete'}
+                    {vi ? 'Bấm Check-in/Check-out để điểm danh hộ, cây bút để sửa, thùng rác để xoá' : 'Click Check-in/Check-out to mark attendance, pencil to edit, trash to delete'}
                   </p>
                 </div>
                 <div className="divide-y divide-[var(--border-color)]">
@@ -805,9 +937,59 @@ export default function WorkSchedulesPage() {
                           ) : (
                             <Badge variant="danger" dot>{t('schedules.cancelled')}</Badge>
                           )}
+                          <Badge
+                            variant={
+                              item.attendanceStatus === 'checked_out'
+                                ? 'success'
+                                : item.attendanceStatus === 'checked_in'
+                                  ? 'info'
+                                  : item.attendanceStatus === 'absent'
+                                    ? 'danger'
+                                    : 'default'
+                            }
+                          >
+                            {resolveAttendanceLabel(item.attendanceStatus)}
+                          </Badge>
+                          {(item.checkInAt || item.checkOutAt) && (
+                            <span className="font-mono-code text-[11px] text-[var(--text-muted)]">
+                              ({formatCheckTime(item.checkInAt)} → {formatCheckTime(item.checkOutAt)}
+                              {(item.workedMinutes ?? 0) > 0 ? ` • ${formatHours(item.workedMinutes ?? 0)}` : ''}
+                              {(item.earlyCheckInMinutes ?? 0) > 0 ? ` • Sớm ${item.earlyCheckInMinutes}p` : ''}
+                              {(item.lateMinutes ?? 0) > 0 ? ` • Trễ ${item.lateMinutes}p` : ''}
+                              {(item.lateCheckOutMinutes ?? 0) > 0 ? ` • Checkout trễ ${item.lateCheckOutMinutes}p` : ''})
+                            </span>
+                          )}
+                          {(item.checkInLocationId || item.checkInLocationName) && (
+                            <span className="text-[11px] font-medium text-[var(--text-secondary)]">
+                              📍 {resolveCheckInLocationLabel(item.checkInLocationId, item.checkInLocationName)}
+                              {item.checkInDistanceMeters != null ? ` (${formatDistanceMeters(item.checkInDistanceMeters)})` : ''}
+                            </span>
+                          )}
                         </div>
                       </div>
-                      <div className="flex shrink-0 gap-1">
+                      <div className="flex shrink-0 items-center gap-1">
+                        {item.status === 'published' && (!item.attendanceStatus || item.attendanceStatus === 'pending' || item.attendanceStatus === 'absent') && (
+                          <button
+                            onClick={(e) => void handleCheckIn(item, e)}
+                            disabled={checkInMutation.isPending}
+                            title={vi ? 'Check-in hộ nhân viên' : 'Check-in staff'}
+                            className="inline-flex items-center gap-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                          >
+                            <LogIn className="h-3.5 w-3.5" />
+                            Check-in
+                          </button>
+                        )}
+                        {item.status === 'published' && item.attendanceStatus === 'checked_in' && (
+                          <button
+                            onClick={(e) => void handleCheckOut(item, e)}
+                            disabled={checkOutMutation.isPending}
+                            title={vi ? 'Check-out hộ nhân viên' : 'Check-out staff'}
+                            className="inline-flex items-center gap-1 rounded-xl border border-amber-500/30 bg-amber-500/10 px-2.5 py-2 text-xs font-bold text-amber-600 transition-colors hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
+                          >
+                            <LogOut className="h-3.5 w-3.5" />
+                            Check-out
+                          </button>
+                        )}
                         <button
                           onClick={() => openEdit(item)}
                           aria-label={vi ? 'Sửa ca' : 'Edit shift'}
@@ -914,6 +1096,14 @@ export default function WorkSchedulesPage() {
                 onChange={(e) => setTemplateTitle(e.target.value)}
                 placeholder={vi ? 'Ví dụ: Ca sáng...' : 'E.g. Morning shift...'}
               />
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-[var(--text-primary)]">{vi ? 'Hình thức làm việc' : 'Work mode'}</label>
+                <Select
+                  value={templateWorkMode}
+                  onChange={setTemplateWorkMode}
+                  options={WORK_MODE_OPTIONS}
+                />
+              </div>
               <div className="flex gap-2 pt-1">
                 {editingTemplate && (
                   <Button
@@ -1168,13 +1358,21 @@ export default function WorkSchedulesPage() {
                 <Input label={vi ? 'Bắt đầu' : 'Start'} type="time" value={assignStart} onChange={(e) => setAssignStart(e.target.value)} />
                 <Input label={vi ? 'Kết thúc' : 'End'} type="time" value={assignEnd} onChange={(e) => setAssignEnd(e.target.value)} />
               </div>
-              <div className="mt-2.5">
+              <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 <Input
                   label={vi ? 'Tên ca (không bắt buộc)' : 'Shift name (optional)'}
                   value={assignTitle}
                   onChange={(e) => setAssignTitle(e.target.value)}
                   placeholder={vi ? 'Ví dụ: Ca sáng...' : 'E.g. Morning shift...'}
                 />
+                <div>
+                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">{vi ? 'Hình thức làm việc' : 'Work mode'}</label>
+                  <Select
+                    value={assignWorkMode}
+                    onChange={setAssignWorkMode}
+                    options={WORK_MODE_OPTIONS}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1234,7 +1432,7 @@ export default function WorkSchedulesPage() {
               </div>
             </div>
             <div>
-              <FieldLabel step="3">{vi ? 'Tên ca & trạng thái' : 'Name & status'}</FieldLabel>
+              <FieldLabel step="3">{vi ? 'Tên ca, trạng thái & điểm danh' : 'Name, status & attendance'}</FieldLabel>
               <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder={vi ? 'Tên ca...' : 'Shift name...'} />
               <div className="mt-2.5 grid grid-cols-2 gap-2.5">
                 <div>
@@ -1261,6 +1459,39 @@ export default function WorkSchedulesPage() {
                   />
                 </div>
               </div>
+              <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">{vi ? 'Điểm danh' : 'Attendance'}</label>
+                  <Select
+                    value={editAttendanceStatus}
+                    onChange={setEditAttendanceStatus}
+                    options={ATTENDANCE_STATUS_OPTIONS}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">{vi ? 'Điểm check-in (≤ 1km)' : 'Check-in location'}</label>
+                  <Select
+                    value={editCheckInLocationId}
+                    onChange={setEditCheckInLocationId}
+                    options={CHECKIN_LOCATIONS.map((loc) => ({ value: loc.id, label: loc.shortName }))}
+                  />
+                </div>
+              </div>
+              <div className="mt-2.5">
+                <Input
+                  label={vi ? 'Ghi chú điểm danh' : 'Attendance note'}
+                  value={editAttendanceNote}
+                  onChange={(e) => setEditAttendanceNote(e.target.value)}
+                  placeholder={vi ? 'Lý do đi muộn / về sớm...' : 'Late / early leave note...'}
+                />
+              </div>
+              {(editing.checkInAt || editing.checkOutAt) && (
+                <p className="mt-2 font-mono-code text-xs text-[var(--text-muted)]">
+                  Check-in: {formatCheckTime(editing.checkInAt)} • Check-out: {formatCheckTime(editing.checkOutAt)}
+                  {(editing.workedMinutes ?? 0) > 0 ? ` • Thực làm: ${formatHours(editing.workedMinutes ?? 0)}` : ''}
+                  {(editing.lateMinutes ?? 0) > 0 ? ` • Đi trễ: ${editing.lateMinutes} phút` : ''}
+                </p>
+              )}
             </div>
           </div>
         </ModalShell>

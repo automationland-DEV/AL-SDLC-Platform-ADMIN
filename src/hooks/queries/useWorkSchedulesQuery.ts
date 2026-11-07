@@ -115,3 +115,23 @@ export function useGenerateSchedulesMutation() {
     },
   });
 }
+
+export function useAdminCheckInScheduleMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, note }: { id: string; note?: string }) => workScheduleService.checkIn(id, note),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: workScheduleKeys.all });
+    },
+  });
+}
+
+export function useAdminCheckOutScheduleMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, note }: { id: string; note?: string }) => workScheduleService.checkOut(id, note),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: workScheduleKeys.all });
+    },
+  });
+}
