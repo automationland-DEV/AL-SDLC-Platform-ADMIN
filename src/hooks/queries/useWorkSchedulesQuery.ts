@@ -4,6 +4,8 @@ import {
   type AdminWorkScheduleQueryParams,
   type AssignSchedulePayload,
   type BulkAssignSchedulePayload,
+  type CheckAttendancePayload,
+  type CopyWeekPayload,
   type CreateTemplatePayload,
   type GenerateSchedulesPayload,
   type UpdateSchedulePayload,
@@ -15,6 +17,10 @@ export const workScheduleKeys = {
   lists: () => [...workScheduleKeys.all, 'list'] as const,
   list: (params: AdminWorkScheduleQueryParams) => [...workScheduleKeys.lists(), params] as const,
   templates: (userId?: string) => [...workScheduleKeys.all, 'templates', userId ?? 'all'] as const,
+  availability: (userId: string, workDate: string, duration?: number) =>
+    [...workScheduleKeys.all, 'availability', userId, workDate, duration ?? 120] as const,
+  weeklySummary: (from: string, to: string, userId?: string) =>
+    [...workScheduleKeys.all, 'weekly-summary', from, to, userId ?? 'all'] as const,
 };
 
 export function useWorkSchedulesQuery(params: AdminWorkScheduleQueryParams = {}) {
@@ -119,7 +125,8 @@ export function useGenerateSchedulesMutation() {
 export function useAdminCheckInScheduleMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, note }: { id: string; note?: string }) => workScheduleService.checkIn(id, note),
+    mutationFn: ({ id, input }: { id: string; input?: string | CheckAttendancePayload }) =>
+      workScheduleService.checkIn(id, input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: workScheduleKeys.all });
     },
@@ -129,7 +136,42 @@ export function useAdminCheckInScheduleMutation() {
 export function useAdminCheckOutScheduleMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, note }: { id: string; note?: string }) => workScheduleService.checkOut(id, note),
+    mutationFn: ({ id, input }: { id: string; input?: string | CheckAttendancePayload }) =>
+      workScheduleService.checkOut(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: workScheduleKeys.all });
+    },
+  });
+}
+
+export function useAvailabilityQuery(
+  params: { userId: string; workDate: string; durationMinutes?: number },
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: workScheduleKeys.availability(params.userId, params.workDate, params.durationMinutes),
+    queryFn: () => workScheduleService.availability(params),
+    enabled: Boolean(enabled && params.userId && params.workDate),
+    staleTime: 1000 * 15,
+  });
+}
+
+export function useWeeklySummaryQuery(
+  params: { from: string; to: string; userId?: string; overtimeHours?: number },
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: workScheduleKeys.weeklySummary(params.from, params.to, params.userId),
+    queryFn: () => workScheduleService.weeklySummary(params),
+    enabled: Boolean(enabled && params.from && params.to),
+    staleTime: 1000 * 30,
+  });
+}
+
+export function useCopyWeekMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CopyWeekPayload) => workScheduleService.copyWeek(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: workScheduleKeys.all });
     },

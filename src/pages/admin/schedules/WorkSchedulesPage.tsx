@@ -1,13 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
+  AlertTriangle,
   CalendarDays,
+  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Copy,
   Layers,
+  LayoutGrid,
   Loader2,
   LogIn,
   LogOut,
@@ -16,6 +20,8 @@ import {
   RefreshCw,
   Search,
   SlidersHorizontal,
+  Sparkles,
+  Table,
   Trash2,
   UserRound,
   Users,
@@ -46,14 +52,18 @@ import {
   resolveCheckInLocationLabel,
   resolveWorkModeLabel,
   todayIsoDate,
+  workScheduleService,
   type AdminWorkScheduleItem,
   type AdminWorkScheduleTemplate,
+  type AvailabilityResult,
+  type WeeklySummaryUser,
 } from '../../../services/workScheduleService';
 import {
   useAdminCheckInScheduleMutation,
   useAdminCheckOutScheduleMutation,
   useAssignScheduleMutation,
   useBulkAssignScheduleMutation,
+  useCopyWeekMutation,
   useCreateWorkScheduleTemplateMutation,
   useGenerateSchedulesMutation,
   useRemoveScheduleMutation,
@@ -64,7 +74,9 @@ import {
   useWorkSchedulesQuery,
 } from '../../../hooks/queries/useWorkSchedulesQuery';
 
-type MainTab = 'schedules' | 'templates' | 'generate';
+type MainTab = 'schedules' | 'templates' | 'generate' | 'smart';
+
+type ScheduleView = 'week' | 'user' | 'month' | 'all';
 
 const getErrorMessage = (error: unknown, fallback: string): string => {
   try {
@@ -156,6 +168,27 @@ const WORK_MODE_DOT: Record<string, string> = {
   half_day: 'bg-amber-500',
 };
 
+function hasShiftConflict(shift: AdminWorkScheduleItem, allShifts: AdminWorkScheduleItem[]): boolean {
+  const [s1h, s1m] = shift.startTime.split(':').map(Number);
+  const [e1h, e1m] = shift.endTime.split(':').map(Number);
+  const start1 = s1h * 60 + s1m;
+  const end1 = e1h * 60 + e1m;
+
+  return allShifts.some((other) => {
+    if (other.id === shift.id) return false;
+    if (other.userId !== shift.userId) return false;
+    if (other.workDate !== shift.workDate) return false;
+    if (other.status === 'cancelled') return false;
+
+    const [s2h, s2m] = other.startTime.split(':').map(Number);
+    const [e2h, e2m] = other.endTime.split(':').map(Number);
+    const start2 = s2h * 60 + s2m;
+    const end2 = e2h * 60 + e2m;
+
+    return Math.max(start1, start2) < Math.min(end1, end2);
+  });
+}
+
 function Avatar({ name, src, size = 'md' }: { name: string; src?: string | null; size?: 'sm' | 'md' | 'lg' }) {
   const cls = size === 'sm' ? 'h-7 w-7 text-[11px]' : size === 'lg' ? 'h-11 w-11 text-base' : 'h-9 w-9 text-sm';
   if (src) {
@@ -241,6 +274,26 @@ export default function WorkSchedulesPage() {
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [weekAnchor, setWeekAnchor] = useState(() => getWeekStartIso(todayIsoDate(0)));
   const todayIso = todayIsoDate(0);
+  const [scheduleView, setScheduleView] = useState<ScheduleView>('week');
+
+  // Smart Tab states
+  const [smartUserId, setSmartUserId] = useState('');
+  const [smartDate, setSmartDate] = useState(todayIsoDate(1));
+  const [smartDuration, setSmartDuration] = useState(120);
+  const [availability, setAvailability] = useState<AvailabilityResult | null>(null);
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+
+  const [summaryFrom, setSummaryFrom] = useState(() => getWeekStartIso(todayIsoDate(0)));
+  const [summaryTo, setSummaryTo] = useState(() => addDaysIso(getWeekStartIso(todayIsoDate(0)), 6));
+  const [summaryUserId, setSummaryUserId] = useState('');
+  const [weeklySummaryList, setWeeklySummaryList] = useState<WeeklySummaryUser[]>([]);
+  const [isFetchingSummary, setIsFetchingSummary] = useState(false);
+
+  const [copyFromWeek, setCopyFromWeek] = useState(() => getWeekStartIso(todayIsoDate(-7)));
+  const [copyToWeek, setCopyToWeek] = useState(() => getWeekStartIso(todayIsoDate(0)));
+  const [copyUserId, setCopyUserId] = useState('');
+  const [copyOverwrite, setCopyOverwrite] = useState(false);
+  const [isCopyingWeek, setIsCopyingWeek] = useState(false);
 
   // Assign modal
   const [showAssign, setShowAssign] = useState(false);
@@ -320,8 +373,11 @@ export default function WorkSchedulesPage() {
     return map;
   }, [allUsers]);
 
-  const displayNameOf = (userId: string, fallback?: string) =>
-    fallback || userById.get(userId)?.fullName || userById.get(userId)?.email || (vi ? 'Nhân viên' : 'Staff');
+  const displayNameOf = useCallback(
+    (userId: string, fallback?: string) =>
+      fallback || userById.get(userId)?.fullName || userById.get(userId)?.email || (vi ? 'Nhân viên' : 'Staff'),
+    [userById, vi],
+  );
 
   const filteredSchedules = useMemo(() => {
     const keyword = debouncedSearch.trim().toLowerCase();
@@ -375,6 +431,133 @@ export default function WorkSchedulesPage() {
   const generateMutation = useGenerateSchedulesMutation();
   const checkInMutation = useAdminCheckInScheduleMutation();
   const checkOutMutation = useAdminCheckOutScheduleMutation();
+  const schedulesByUser = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        userId: string;
+        displayName: string;
+        email?: string;
+        avatar?: string | null;
+        items: AdminWorkScheduleItem[];
+        minutes: number;
+      }
+    >();
+    sortedSchedules.forEach((item) => {
+      const uId = item.userId;
+      if (!map.has(uId)) {
+        map.set(uId, {
+          userId: uId,
+          displayName: displayNameOf(uId, item.userName),
+          email: userById.get(uId)?.email,
+          avatar: item.userAvatar || userById.get(uId)?.avatar,
+          items: [],
+          minutes: 0,
+        });
+      }
+      const entry = map.get(uId)!;
+      entry.items.push(item);
+      entry.minutes += getScheduleMinutes(item);
+    });
+    return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
+  }, [sortedSchedules, userById, displayNameOf]);
+
+  const schedulesByMonth = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        monthKey: string;
+        label: string;
+        items: AdminWorkScheduleItem[];
+        minutes: number;
+      }
+    >();
+    sortedSchedules.forEach((item) => {
+      const monthKey = item.workDate.slice(0, 7);
+      if (!map.has(monthKey)) {
+        const [year, month] = monthKey.split('-');
+        map.set(monthKey, {
+          monthKey,
+          label: vi ? `Tháng ${month}/${year}` : `Month ${month}/${year}`,
+          items: [],
+          minutes: 0,
+        });
+      }
+      const entry = map.get(monthKey)!;
+      entry.items.push(item);
+      entry.minutes += getScheduleMinutes(item);
+    });
+    return Array.from(map.values()).sort((a, b) => (a.monthKey < b.monthKey ? 1 : -1));
+  }, [sortedSchedules, vi]);
+
+  const copyWeekMutation = useCopyWeekMutation();
+
+  const handleCheckAvailability = async () => {
+    if (!smartUserId) {
+      toast.error(vi ? 'Vui lòng chọn nhân viên' : 'Please select staff');
+      return;
+    }
+    setIsCheckingAvailability(true);
+    try {
+      const res = await workScheduleService.availability({
+        userId: smartUserId,
+        workDate: smartDate,
+        durationMinutes: smartDuration,
+      });
+      setAvailability(res);
+      toast.success(vi ? 'Đã tìm thấy khung giờ' : 'Slots found');
+    } catch (error) {
+      toast.error(getErrorMessage(error, vi ? 'Không kiểm tra được giờ rảnh' : 'Check failed'));
+    } finally {
+      setIsCheckingAvailability(false);
+    }
+  };
+
+  const handleFetchSummary = async () => {
+    setIsFetchingSummary(true);
+    try {
+      const res = await workScheduleService.weeklySummary({
+        from: summaryFrom,
+        to: summaryTo,
+        userId: summaryUserId || undefined,
+      });
+      setWeeklySummaryList(res);
+      toast.success(vi ? 'Đã tổng hợp dữ liệu tuần' : 'Summary loaded');
+    } catch (error) {
+      toast.error(getErrorMessage(error, vi ? 'Không tổng hợp được dữ liệu' : 'Summary failed'));
+    } finally {
+      setIsFetchingSummary(false);
+    }
+  };
+
+  const handleCopyWeek = async () => {
+    setIsCopyingWeek(true);
+    try {
+      const res = await copyWeekMutation.mutateAsync({
+        fromWeekStart: copyFromWeek,
+        toWeekStart: copyToWeek,
+        userId: copyUserId || undefined,
+        overwrite: copyOverwrite,
+      });
+      toast.success(
+        vi
+          ? `Đã sao chép thành công ${res.created} ca làm việc!`
+          : `Copied ${res.created} shifts successfully!`,
+      );
+      if (res.skipped > 0) {
+        toast(
+          vi
+            ? `Bỏ qua ${res.skipped} ca bị trùng giờ`
+            : `Skipped ${res.skipped} conflicting shifts`,
+          { icon: 'ℹ️' },
+        );
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, vi ? 'Sao chép tuần thất bại' : 'Copy failed'));
+    } finally {
+      setIsCopyingWeek(false);
+    }
+  };
 
   const openEdit = (item: AdminWorkScheduleItem) => {
     setEditing(item);
@@ -583,6 +766,7 @@ export default function WorkSchedulesPage() {
     { id: 'schedules', label: vi ? 'Lịch làm việc' : 'Schedule', hint: vi ? 'Xem và gán ca' : 'View & assign', icon: CalendarDays },
     { id: 'templates', label: vi ? 'Ca mẫu lặp lại' : 'Repeating shifts', hint: vi ? 'Đặt ca cố định mỗi tuần' : 'Fixed weekly shifts', icon: Layers },
     { id: 'generate', label: vi ? 'Tự tạo lịch' : 'Auto create', hint: vi ? 'Sinh lịch từ ca mẫu' : 'Generate from templates', icon: Wand2 },
+    { id: 'smart', label: vi ? 'Tiện ích thông minh' : 'Smart tools', hint: vi ? 'Gợi ý ca, tổng giờ & copy tuần' : 'Slot finder, overtime & copy week', icon: Sparkles },
   ];
 
   return (
@@ -609,8 +793,8 @@ export default function WorkSchedulesPage() {
         }
       />
 
-      {/* 3 big actions — pick what you want to do */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      {/* 4 big actions — pick what you want to do */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {tabs.map((item) => {
           const Icon = item.icon;
           const active = tab === item.id;
@@ -688,6 +872,59 @@ export default function WorkSchedulesPage() {
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showMoreFilters ? 'rotate-180' : ''}`} />
               </button>
             </div>
+
+            {/* View Switcher bar */}
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-color)] pt-2.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-[var(--text-muted)]">{vi ? 'Chế độ xem:' : 'View mode:'}</span>
+                <div className="flex items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-0.5">
+                  <button
+                    onClick={() => setScheduleView('week')}
+                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
+                      scheduleView === 'week'
+                        ? 'bg-[var(--bg-card)] text-sky-600 shadow-xs dark:text-sky-400'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    {vi ? 'Lịch tuần 7 ngày' : 'Week grid'}
+                  </button>
+                  <button
+                    onClick={() => setScheduleView('user')}
+                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
+                      scheduleView === 'user'
+                        ? 'bg-[var(--bg-card)] text-sky-600 shadow-xs dark:text-sky-400'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    <UserRound className="h-3.5 w-3.5" />
+                    {vi ? 'Theo nhân viên' : 'By staff'}
+                  </button>
+                  <button
+                    onClick={() => setScheduleView('month')}
+                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
+                      scheduleView === 'month'
+                        ? 'bg-[var(--bg-card)] text-sky-600 shadow-xs dark:text-sky-400'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                    {vi ? 'Theo tháng' : 'By month'}
+                  </button>
+                  <button
+                    onClick={() => setScheduleView('all')}
+                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
+                      scheduleView === 'all'
+                        ? 'bg-[var(--bg-card)] text-sky-600 shadow-xs dark:text-sky-400'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    <Table className="h-3.5 w-3.5" />
+                    {vi ? 'Bảng chi tiết' : 'Detailed table'}
+                  </button>
+                </div>
+              </div>
+            </div>
             {showMoreFilters && (
               <div className="mt-2.5 grid grid-cols-1 gap-2.5 border-t border-[var(--border-color)] pt-2.5 sm:grid-cols-2 lg:grid-cols-5">
                 <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} label={vi ? 'Từ ngày' : 'From'} />
@@ -753,267 +990,514 @@ export default function WorkSchedulesPage() {
             </div>
           ) : (
             <>
-              {/* Week calendar — big touch targets, always-visible add */}
-              <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] bg-[var(--bg-tertiary)]/40 px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => jumpWeek(addDaysIso(weekAnchor, -7))}
-                      aria-label={vi ? 'Tuần trước' : 'Previous week'}
-                      className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-2 text-[var(--text-secondary)] transition-colors hover:border-sky-500 hover:text-sky-500"
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => jumpWeek(todayIsoDate(0))}
-                      className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] px-4 py-2 text-xs font-bold text-[var(--text-primary)] transition-colors hover:border-sky-500"
-                    >
-                      {vi ? 'Về hôm nay' : 'Today'}
-                    </button>
-                    <button
-                      onClick={() => jumpWeek(addDaysIso(weekAnchor, 7))}
-                      aria-label={vi ? 'Tuần sau' : 'Next week'}
-                      className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-2 text-[var(--text-secondary)] transition-colors hover:border-sky-500 hover:text-sky-500"
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                    <p className="ml-1 text-sm font-bold text-[var(--text-primary)]">
-                      {formatDisplayDate(weekAnchor)} → {formatDisplayDate(weekEnd)}
-                    </p>
-                  </div>
-                  <p className="hidden text-xs text-[var(--text-muted)] sm:block">
-                    {vi ? 'Bấm vào ca để sửa • Bấm + để thêm ca mới' : 'Click a shift to edit • Click + to add'}
-                  </p>
-                </div>
-                <div className="overflow-x-auto">
-                  <div className="grid min-w-[900px] grid-cols-7 divide-x divide-[var(--border-color)]">
-                    {weekDays.map((day) => {
-                      const dayShifts = shiftsByDate.get(day) ?? [];
-                      const isToday = day === todayIso;
-                      return (
-                        <div key={day} className={`flex min-h-[300px] flex-col ${isToday ? 'bg-sky-500/[0.05]' : ''}`}>
-                          <div className={`border-b border-[var(--border-color)] px-2 py-2.5 text-center ${isToday ? 'bg-sky-600 text-white' : 'bg-[var(--bg-tertiary)]/60'}`}>
-                            <p className={`text-[11px] font-bold uppercase tracking-wider ${isToday ? 'text-sky-100' : 'text-[var(--text-muted)]'}`}>
-                              {weekdayShort(day, language)}
-                            </p>
-                            <p className={`text-lg font-bold leading-tight ${isToday ? 'text-white' : 'text-[var(--text-primary)]'}`}>
-                              {day.split('-')[2]}
-                            </p>
-                            <p className={`font-mono-code text-[10px] ${isToday ? 'text-sky-100' : 'text-[var(--text-muted)]'}`}>
-                              {dayShifts.length} {vi ? 'ca' : 'shifts'}
-                            </p>
-                          </div>
-                          <div className="flex flex-1 flex-col gap-2 p-2">
-                            {dayShifts.map((item) => (
-                              <div
-                                key={item.id}
-                                onClick={() => openEdit(item)}
-                                role="button"
-                                tabIndex={0}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' || e.key === ' ') openEdit(item);
-                                }}
-                                title={vi ? 'Bấm để sửa ca này' : 'Click to edit'}
-                                className={`cursor-pointer rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-2.5 text-left shadow-xs transition-all hover:-translate-y-px hover:shadow-md ${
-                                  item.status === 'cancelled' ? 'opacity-60' : ''
-                                }`}
-                              >
-                                <p className="flex items-center gap-1 font-mono-code text-xs font-bold text-[var(--text-primary)]">
-                                  <Clock3 className="h-3 w-3 shrink-0 text-sky-500" />
-                                  {item.startTime}–{item.endTime}
+              {/* VIEW: WEEK CALENDAR */}
+              {scheduleView === 'week' && (
+                <>
+                  <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] bg-[var(--bg-tertiary)]/40 px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => jumpWeek(addDaysIso(weekAnchor, -7))}
+                          aria-label={vi ? 'Tuần trước' : 'Previous week'}
+                          className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-2 text-[var(--text-secondary)] transition-colors hover:border-sky-500 hover:text-sky-500"
+                        >
+                          <ChevronLeft className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => jumpWeek(todayIsoDate(0))}
+                          className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] px-4 py-2 text-xs font-bold text-[var(--text-primary)] transition-colors hover:border-sky-500"
+                        >
+                          {vi ? 'Về hôm nay' : 'Today'}
+                        </button>
+                        <button
+                          onClick={() => jumpWeek(addDaysIso(weekAnchor, 7))}
+                          aria-label={vi ? 'Tuần sau' : 'Next week'}
+                          className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-2 text-[var(--text-secondary)] transition-colors hover:border-sky-500 hover:text-sky-500"
+                        >
+                          <ChevronRight className="h-5 w-5" />
+                        </button>
+                        <p className="ml-1 text-sm font-bold text-[var(--text-primary)]">
+                          {formatDisplayDate(weekAnchor)} → {formatDisplayDate(weekEnd)}
+                        </p>
+                      </div>
+                      <p className="hidden text-xs text-[var(--text-muted)] sm:block">
+                        {vi ? 'Bấm vào ca để sửa • Bấm + để thêm ca mới' : 'Click a shift to edit • Click + to add'}
+                      </p>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <div className="grid min-w-[900px] grid-cols-7 divide-x divide-[var(--border-color)]">
+                        {weekDays.map((day) => {
+                          const dayShifts = shiftsByDate.get(day) ?? [];
+                          const isToday = day === todayIso;
+                          return (
+                            <div key={day} className={`flex min-h-[300px] flex-col ${isToday ? 'bg-sky-500/[0.05]' : ''}`}>
+                              <div className={`border-b border-[var(--border-color)] px-2 py-2.5 text-center ${isToday ? 'bg-sky-600 text-white' : 'bg-[var(--bg-tertiary)]/60'}`}>
+                                <p className={`text-[11px] font-bold uppercase tracking-wider ${isToday ? 'text-sky-100' : 'text-[var(--text-muted)]'}`}>
+                                  {weekdayShort(day, language)}
                                 </p>
-                                <p className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
-                                  <span className={`h-2 w-2 shrink-0 rounded-full ${WORK_MODE_DOT[item.workMode] ?? 'bg-sky-500'}`} />
-                                  <span className="truncate">{displayNameOf(item.userId, item.userName)}</span>
+                                <p className={`text-lg font-bold leading-tight ${isToday ? 'text-white' : 'text-[var(--text-primary)]'}`}>
+                                  {day.split('-')[2]}
                                 </p>
-                                {item.title && (
-                                  <p className="mt-0.5 truncate text-[11px] text-[var(--text-muted)]">{item.title}</p>
-                                )}
-                                {item.status === 'cancelled' ? (
-                                  <span className="mt-1.5 inline-block rounded-md bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-500">
-                                    {t('schedules.cancelled')}
-                                  </span>
-                                ) : (
-                                  <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1">
-                                    <span
-                                      className={`inline-block rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
-                                        item.attendanceStatus === 'checked_out'
-                                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                                          : item.attendanceStatus === 'checked_in'
-                                            ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
-                                            : item.attendanceStatus === 'absent'
-                                              ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
-                                              : 'bg-slate-500/10 text-[var(--text-muted)]'
-                                      }`}
-                                    >
-                                      {resolveAttendanceLabel(item.attendanceStatus)}
-                                    </span>
-                                    {(!item.attendanceStatus || item.attendanceStatus === 'pending' || item.attendanceStatus === 'absent') && (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => void handleCheckIn(item, e)}
-                                        disabled={checkInMutation.isPending}
-                                        title="Check-in"
-                                        className="inline-flex items-center gap-0.5 rounded-md bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
-                                      >
-                                        <LogIn className="h-2.5 w-2.5" />
-                                        In
-                                      </button>
-                                    )}
-                                    {item.attendanceStatus === 'checked_in' && (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => void handleCheckOut(item, e)}
-                                        disabled={checkOutMutation.isPending}
-                                        title="Check-out"
-                                        className="inline-flex items-center gap-0.5 rounded-md bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-amber-700 disabled:opacity-50"
-                                      >
-                                        <LogOut className="h-2.5 w-2.5" />
-                                        Out
-                                      </button>
-                                    )}
-                                  </div>
-                                )}
-                                {(item.checkInAt || item.checkOutAt) && (
-                                  <p className="mt-1 font-mono-code text-[10px] text-[var(--text-muted)]">
-                                    {formatCheckTime(item.checkInAt)} → {formatCheckTime(item.checkOutAt)}
-                                    {(item.earlyCheckInMinutes ?? 0) > 0 ? ` • Sớm ${item.earlyCheckInMinutes}p` : ''}
-                                    {(item.lateMinutes ?? 0) > 0 ? ` • Trễ ${item.lateMinutes}p` : ''}
-                                    {(item.lateCheckOutMinutes ?? 0) > 0 ? ` • Checkout trễ ${item.lateCheckOutMinutes}p` : ''}
-                                  </p>
-                                )}
-                                {(item.checkInLocationId || item.checkInLocationName) && (
-                                  <p className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">
-                                    📍 {resolveCheckInLocationLabel(item.checkInLocationId, item.checkInLocationName)}
-                                    {item.checkInDistanceMeters != null ? ` (${formatDistanceMeters(item.checkInDistanceMeters)})` : ''}
-                                  </p>
-                                )}
+                                <p className={`font-mono-code text-[10px] ${isToday ? 'text-sky-100' : 'text-[var(--text-muted)]'}`}>
+                                  {dayShifts.length} {vi ? 'ca' : 'shifts'}
+                                </p>
                               </div>
-                            ))}
-                            {/* Always-visible big add button — easiest to discover */}
+                              <div className="flex flex-1 flex-col gap-2 p-2">
+                                {dayShifts.map((item) => {
+                                  const isConflict = hasShiftConflict(item, sortedSchedules);
+                                  return (
+                                    <div
+                                      key={item.id}
+                                      onClick={() => openEdit(item)}
+                                      role="button"
+                                      tabIndex={0}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') openEdit(item);
+                                      }}
+                                      title={vi ? 'Bấm để sửa ca này' : 'Click to edit'}
+                                      className={`cursor-pointer rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-2.5 text-left shadow-xs transition-all hover:-translate-y-px hover:shadow-md ${
+                                        item.status === 'cancelled' ? 'opacity-60' : ''
+                                      } ${isConflict ? 'border-amber-400 bg-amber-500/[0.06]' : ''}`}
+                                    >
+                                      <div className="flex items-center justify-between gap-1">
+                                        <p className="flex items-center gap-1 font-mono-code text-xs font-bold text-[var(--text-primary)]">
+                                          <Clock3 className="h-3 w-3 shrink-0 text-sky-500" />
+                                          {item.startTime}–{item.endTime}
+                                        </p>
+                                        {isConflict && (
+                                          <span className="flex items-center gap-0.5 rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-bold text-amber-600">
+                                            <AlertTriangle className="h-2.5 w-2.5" /> {vi ? 'Trùng' : 'Overlap'}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
+                                        <span className={`h-2 w-2 shrink-0 rounded-full ${WORK_MODE_DOT[item.workMode] ?? 'bg-sky-500'}`} />
+                                        <span className="truncate">{displayNameOf(item.userId, item.userName)}</span>
+                                      </p>
+                                      {item.title && (
+                                        <p className="mt-0.5 truncate text-[11px] text-[var(--text-muted)]">{item.title}</p>
+                                      )}
+                                      {item.status === 'cancelled' ? (
+                                        <span className="mt-1.5 inline-block rounded-md bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-500">
+                                          {t('schedules.cancelled')}
+                                        </span>
+                                      ) : (
+                                        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1">
+                                          <span
+                                            className={`inline-block rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                                              item.attendanceStatus === 'checked_out'
+                                                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                                                : item.attendanceStatus === 'checked_in'
+                                                  ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
+                                                  : item.attendanceStatus === 'absent'
+                                                    ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                                                    : 'bg-slate-500/10 text-[var(--text-muted)]'
+                                            }`}
+                                          >
+                                            {resolveAttendanceLabel(item.attendanceStatus)}
+                                          </span>
+                                          {(!item.attendanceStatus || item.attendanceStatus === 'pending' || item.attendanceStatus === 'absent') && (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => void handleCheckIn(item, e)}
+                                              disabled={checkInMutation.isPending}
+                                              title="Check-in"
+                                              className="inline-flex items-center gap-0.5 rounded-md bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                                            >
+                                              <LogIn className="h-2.5 w-2.5" />
+                                              In
+                                            </button>
+                                          )}
+                                          {item.attendanceStatus === 'checked_in' && (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => void handleCheckOut(item, e)}
+                                              disabled={checkOutMutation.isPending}
+                                              title="Check-out"
+                                              className="inline-flex items-center gap-0.5 rounded-md bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+                                            >
+                                              <LogOut className="h-2.5 w-2.5" />
+                                              Out
+                                            </button>
+                                          )}
+                                        </div>
+                                      )}
+                                      {(item.checkInAt || item.checkOutAt) && (
+                                        <p className="mt-1 font-mono-code text-[10px] text-[var(--text-muted)]">
+                                          {formatCheckTime(item.checkInAt)} → {formatCheckTime(item.checkOutAt)}
+                                          {(item.earlyCheckInMinutes ?? 0) > 0 ? ` • Sớm ${item.earlyCheckInMinutes}p` : ''}
+                                          {(item.lateMinutes ?? 0) > 0 ? ` • Trễ ${item.lateMinutes}p` : ''}
+                                          {(item.lateCheckOutMinutes ?? 0) > 0 ? ` • Checkout trễ ${item.lateCheckOutMinutes}p` : ''}
+                                        </p>
+                                      )}
+                                      {(item.checkInLocationId || item.checkInLocationName) && (
+                                        <p className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">
+                                          📍 {resolveCheckInLocationLabel(item.checkInLocationId, item.checkInLocationName)}
+                                          {item.checkInDistanceMeters != null ? ` (${formatDistanceMeters(item.checkInDistanceMeters)})` : ''}
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                                {/* Always-visible big add button */}
+                                <button
+                                  onClick={() => openQuickAssign(day)}
+                                  className="mt-auto flex items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-[var(--border-color)] py-2.5 text-xs font-bold text-[var(--text-muted)] transition-all hover:border-sky-500 hover:bg-sky-500/5 hover:text-sky-600"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  {vi ? 'Thêm ca' : 'Add'}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Simple list below — newest first */}
+                  <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs">
+                    <div className="border-b border-[var(--border-color)] px-4 py-3">
+                      <p className="text-sm font-bold text-[var(--text-primary)]">
+                        {vi ? `Danh sách ca (${sortedSchedules.length})` : `Shift list (${sortedSchedules.length})`}
+                      </p>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {vi ? 'Bấm Check-in/Check-out để điểm danh hộ, cây bút để sửa, thùng rác để xoá' : 'Click Check-in/Check-out to mark attendance, pencil to edit, trash to delete'}
+                      </p>
+                    </div>
+                    <div className="divide-y divide-[var(--border-color)]">
+                      {sortedSchedules.slice(0, 30).map((item) => (
+                        <div key={item.id} className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-hover)]/50">
+                          <Avatar name={displayNameOf(item.userId, item.userName)} src={item.userAvatar} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-bold text-[var(--text-primary)]">
+                              {displayNameOf(item.userId, item.userName)}
+                            </p>
+                            <p className="truncate text-xs text-[var(--text-secondary)]">
+                              {weekdayFull(parseWorkDateValue(item.workDate).getDay(), language)}, {formatDisplayDate(item.workDate)} • {item.startTime}–{item.endTime}
+                              {item.title ? ` • ${item.title}` : ''}
+                            </p>
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                              <Badge variant={item.workMode === 'remote' ? 'purple' : item.workMode === 'half_day' ? 'warning' : 'info'}>
+                                {resolveWorkModeLabel(item.workMode)}
+                              </Badge>
+                              {item.status === 'published' ? (
+                                <Badge variant="success" dot>{t('schedules.published')}</Badge>
+                              ) : (
+                                <Badge variant="danger" dot>{t('schedules.cancelled')}</Badge>
+                              )}
+                              <Badge
+                                variant={
+                                  item.attendanceStatus === 'checked_out'
+                                    ? 'success'
+                                    : item.attendanceStatus === 'checked_in'
+                                      ? 'info'
+                                      : item.attendanceStatus === 'absent'
+                                        ? 'danger'
+                                        : 'default'
+                                }
+                              >
+                                {resolveAttendanceLabel(item.attendanceStatus)}
+                              </Badge>
+                              {(item.checkInAt || item.checkOutAt) && (
+                                <span className="font-mono-code text-[11px] text-[var(--text-muted)]">
+                                  ({formatCheckTime(item.checkInAt)} → {formatCheckTime(item.checkOutAt)}
+                                  {(item.workedMinutes ?? 0) > 0 ? ` • ${formatHours(item.workedMinutes ?? 0)}` : ''}
+                                  {(item.earlyCheckInMinutes ?? 0) > 0 ? ` • Sớm ${item.earlyCheckInMinutes}p` : ''}
+                                  {(item.lateMinutes ?? 0) > 0 ? ` • Trễ ${item.lateMinutes}p` : ''}
+                                  {(item.lateCheckOutMinutes ?? 0) > 0 ? ` • Checkout trễ ${item.lateCheckOutMinutes}p` : ''})
+                                </span>
+                              )}
+                              {(item.checkInLocationId || item.checkInLocationName) && (
+                                <span className="text-[11px] font-medium text-[var(--text-secondary)]">
+                                  📍 {resolveCheckInLocationLabel(item.checkInLocationId, item.checkInLocationName)}
+                                  {item.checkInDistanceMeters != null ? ` (${formatDistanceMeters(item.checkInDistanceMeters)})` : ''}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1">
+                            {item.status === 'published' && (!item.attendanceStatus || item.attendanceStatus === 'pending' || item.attendanceStatus === 'absent') && (
+                              <button
+                                onClick={(e) => void handleCheckIn(item, e)}
+                                disabled={checkInMutation.isPending}
+                                title={vi ? 'Check-in hộ nhân viên' : 'Check-in staff'}
+                                className="inline-flex items-center gap-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                              >
+                                <LogIn className="h-3.5 w-3.5" />
+                                Check-in
+                              </button>
+                            )}
+                            {item.status === 'published' && item.attendanceStatus === 'checked_in' && (
+                              <button
+                                onClick={(e) => void handleCheckOut(item, e)}
+                                disabled={checkOutMutation.isPending}
+                                title={vi ? 'Check-out hộ nhân viên' : 'Check-out staff'}
+                                className="inline-flex items-center gap-1 rounded-xl border border-amber-500/30 bg-amber-500/10 px-2.5 py-2 text-xs font-bold text-amber-600 transition-colors hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
+                              >
+                                <LogOut className="h-3.5 w-3.5" />
+                                Check-out
+                              </button>
+                            )}
                             <button
-                              onClick={() => openQuickAssign(day)}
-                              className="mt-auto flex items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-[var(--border-color)] py-2.5 text-xs font-bold text-[var(--text-muted)] transition-all hover:border-sky-500 hover:bg-sky-500/5 hover:text-sky-600"
+                              onClick={() => openEdit(item)}
+                              aria-label={vi ? 'Sửa ca' : 'Edit shift'}
+                              className="rounded-xl border border-[var(--border-color)] p-2.5 text-[var(--text-secondary)] transition-colors hover:border-sky-500 hover:text-sky-500"
                             >
-                              <Plus className="h-4 w-4" />
-                              {vi ? 'Thêm ca' : 'Add'}
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => setDeleting(item)}
+                              aria-label={vi ? 'Xoá ca' : 'Delete shift'}
+                              className="rounded-xl border border-[var(--border-color)] p-2.5 text-[var(--text-secondary)] transition-colors hover:border-rose-500 hover:text-rose-500"
+                            >
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
+                    {sortedSchedules.length > 30 && (
+                      <p className="border-t border-[var(--border-color)] px-4 py-2.5 text-center text-xs text-[var(--text-muted)]">
+                        {vi ? `Đang hiện 30 / ${sortedSchedules.length} ca — hãy dùng ô tìm kiếm để lọc` : `Showing 30 of ${sortedSchedules.length} — use search to filter`}
+                      </p>
+                    )}
                   </div>
-                </div>
-              </div>
+                </>
+              )}
 
-              {/* Simple list below — newest first, big rows */}
-              <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs">
-                <div className="border-b border-[var(--border-color)] px-4 py-3">
-                  <p className="text-sm font-bold text-[var(--text-primary)]">
-                    {vi ? `Danh sách ca (${sortedSchedules.length})` : `Shift list (${sortedSchedules.length})`}
-                  </p>
-                  <p className="text-xs text-[var(--text-muted)]">
-                    {vi ? 'Bấm Check-in/Check-out để điểm danh hộ, cây bút để sửa, thùng rác để xoá' : 'Click Check-in/Check-out to mark attendance, pencil to edit, trash to delete'}
-                  </p>
-                </div>
-                <div className="divide-y divide-[var(--border-color)]">
-                  {sortedSchedules.slice(0, 30).map((item) => (
-                    <div key={item.id} className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-hover)]/50">
-                      <Avatar name={displayNameOf(item.userId, item.userName)} src={item.userAvatar} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-bold text-[var(--text-primary)]">
-                          {displayNameOf(item.userId, item.userName)}
-                        </p>
-                        <p className="truncate text-xs text-[var(--text-secondary)]">
-                          {weekdayFull(parseWorkDateValue(item.workDate).getDay(), language)}, {formatDisplayDate(item.workDate)} • {item.startTime}–{item.endTime}
-                          {item.title ? ` • ${item.title}` : ''}
-                        </p>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                          <Badge variant={item.workMode === 'remote' ? 'purple' : item.workMode === 'half_day' ? 'warning' : 'info'}>
-                            {resolveWorkModeLabel(item.workMode)}
-                          </Badge>
-                          {item.status === 'published' ? (
-                            <Badge variant="success" dot>{t('schedules.published')}</Badge>
-                          ) : (
-                            <Badge variant="danger" dot>{t('schedules.cancelled')}</Badge>
-                          )}
-                          <Badge
-                            variant={
-                              item.attendanceStatus === 'checked_out'
-                                ? 'success'
-                                : item.attendanceStatus === 'checked_in'
-                                  ? 'info'
-                                  : item.attendanceStatus === 'absent'
-                                    ? 'danger'
-                                    : 'default'
-                            }
-                          >
-                            {resolveAttendanceLabel(item.attendanceStatus)}
-                          </Badge>
-                          {(item.checkInAt || item.checkOutAt) && (
-                            <span className="font-mono-code text-[11px] text-[var(--text-muted)]">
-                              ({formatCheckTime(item.checkInAt)} → {formatCheckTime(item.checkOutAt)}
-                              {(item.workedMinutes ?? 0) > 0 ? ` • ${formatHours(item.workedMinutes ?? 0)}` : ''}
-                              {(item.earlyCheckInMinutes ?? 0) > 0 ? ` • Sớm ${item.earlyCheckInMinutes}p` : ''}
-                              {(item.lateMinutes ?? 0) > 0 ? ` • Trễ ${item.lateMinutes}p` : ''}
-                              {(item.lateCheckOutMinutes ?? 0) > 0 ? ` • Checkout trễ ${item.lateCheckOutMinutes}p` : ''})
+              {/* VIEW: BY STAFF */}
+              {scheduleView === 'user' && (
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {schedulesByUser.map((group) => {
+                    const overtimeWarning = group.minutes > 44 * 60;
+                    return (
+                      <div
+                        key={group.userId}
+                        className="flex flex-col overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs transition-all hover:border-sky-500/40"
+                      >
+                        <div className="flex items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-tertiary)]/40 p-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Avatar name={group.displayName} src={group.avatar} size="md" />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-bold text-[var(--text-primary)]">{group.displayName}</p>
+                              {group.email && <p className="truncate text-xs text-[var(--text-muted)]">{group.email}</p>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {overtimeWarning && (
+                              <span className="flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                                <AlertTriangle className="h-3 w-3" /> Overtime
+                              </span>
+                            )}
+                            <span className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-1 text-xs font-bold text-sky-600 dark:text-sky-400">
+                              {group.items.length} {vi ? 'ca' : 'shifts'} • {formatHours(group.minutes)}
                             </span>
-                          )}
-                          {(item.checkInLocationId || item.checkInLocationName) && (
-                            <span className="text-[11px] font-medium text-[var(--text-secondary)]">
-                              📍 {resolveCheckInLocationLabel(item.checkInLocationId, item.checkInLocationName)}
-                              {item.checkInDistanceMeters != null ? ` (${formatDistanceMeters(item.checkInDistanceMeters)})` : ''}
-                            </span>
-                          )}
+                          </div>
+                        </div>
+
+                        <div className="divide-y divide-[var(--border-color)] p-2">
+                          {group.items.map((item) => {
+                            const isConflict = hasShiftConflict(item, sortedSchedules);
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => openEdit(item)}
+                                className="flex cursor-pointer items-center justify-between gap-2 rounded-xl p-2.5 transition-colors hover:bg-[var(--bg-hover)]"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono-code text-xs font-bold text-[var(--text-primary)]">
+                                      {formatDisplayDate(item.workDate)} ({weekdayShort(item.workDate, language)})
+                                    </span>
+                                    <span className="font-mono-code text-xs font-semibold text-sky-600 dark:text-sky-400">
+                                      {item.startTime}–{item.endTime}
+                                    </span>
+                                    {isConflict && (
+                                      <span className="flex items-center gap-0.5 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-600">
+                                        <AlertTriangle className="h-2.5 w-2.5" /> {vi ? 'Trùng giờ' : 'Conflict'}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="mt-0.5 truncate text-xs text-[var(--text-muted)]">
+                                    {item.title || (vi ? 'Ca làm việc' : 'Shift')} • {resolveWorkModeLabel(item.workMode)}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <Badge
+                                    variant={
+                                      item.attendanceStatus === 'checked_out'
+                                        ? 'success'
+                                        : item.attendanceStatus === 'checked_in'
+                                          ? 'info'
+                                          : item.attendanceStatus === 'absent'
+                                            ? 'danger'
+                                            : 'default'
+                                    }
+                                  >
+                                    {resolveAttendanceLabel(item.attendanceStatus)}
+                                  </Badge>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        {item.status === 'published' && (!item.attendanceStatus || item.attendanceStatus === 'pending' || item.attendanceStatus === 'absent') && (
-                          <button
-                            onClick={(e) => void handleCheckIn(item, e)}
-                            disabled={checkInMutation.isPending}
-                            title={vi ? 'Check-in hộ nhân viên' : 'Check-in staff'}
-                            className="inline-flex items-center gap-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* VIEW: BY MONTH */}
+              {scheduleView === 'month' && (
+                <div className="space-y-4">
+                  {schedulesByMonth.map((group) => (
+                    <div
+                      key={group.monthKey}
+                      className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs"
+                    >
+                      <div className="flex items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-tertiary)]/40 px-5 py-3.5">
+                        <p className="text-sm font-bold text-[var(--text-primary)]">{group.label}</p>
+                        <span className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-1 text-xs font-bold text-sky-600 dark:text-sky-400">
+                          {group.items.length} {vi ? 'ca làm' : 'shifts'} • {formatHours(group.minutes)}
+                        </span>
+                      </div>
+                      <div className="divide-y divide-[var(--border-color)]">
+                        {group.items.map((item) => (
+                          <div
+                            key={item.id}
+                            onClick={() => openEdit(item)}
+                            className="flex cursor-pointer items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-[var(--bg-hover)]"
                           >
-                            <LogIn className="h-3.5 w-3.5" />
-                            Check-in
-                          </button>
-                        )}
-                        {item.status === 'published' && item.attendanceStatus === 'checked_in' && (
-                          <button
-                            onClick={(e) => void handleCheckOut(item, e)}
-                            disabled={checkOutMutation.isPending}
-                            title={vi ? 'Check-out hộ nhân viên' : 'Check-out staff'}
-                            className="inline-flex items-center gap-1 rounded-xl border border-amber-500/30 bg-amber-500/10 px-2.5 py-2 text-xs font-bold text-amber-600 transition-colors hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
-                          >
-                            <LogOut className="h-3.5 w-3.5" />
-                            Check-out
-                          </button>
-                        )}
-                        <button
-                          onClick={() => openEdit(item)}
-                          aria-label={vi ? 'Sửa ca' : 'Edit shift'}
-                          className="rounded-xl border border-[var(--border-color)] p-2.5 text-[var(--text-secondary)] transition-colors hover:border-sky-500 hover:text-sky-500"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeleting(item)}
-                          aria-label={vi ? 'Xoá ca' : 'Delete shift'}
-                          className="rounded-xl border border-[var(--border-color)] p-2.5 text-[var(--text-secondary)] transition-colors hover:border-rose-500 hover:text-rose-500"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <Avatar name={displayNameOf(item.userId, item.userName)} src={item.userAvatar} size="sm" />
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-bold text-[var(--text-primary)]">
+                                  {displayNameOf(item.userId, item.userName)} • {formatDisplayDate(item.workDate)} ({item.startTime}–{item.endTime})
+                                </p>
+                                <p className="truncate text-[11px] text-[var(--text-muted)]">
+                                  {item.title || (vi ? 'Ca làm việc' : 'Shift')} • {resolveWorkModeLabel(item.workMode)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <Badge
+                                variant={
+                                  item.attendanceStatus === 'checked_out'
+                                    ? 'success'
+                                    : item.attendanceStatus === 'checked_in'
+                                      ? 'info'
+                                      : item.attendanceStatus === 'absent'
+                                        ? 'danger'
+                                        : 'default'
+                                }
+                              >
+                                {resolveAttendanceLabel(item.attendanceStatus)}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))}
                 </div>
-                {sortedSchedules.length > 30 && (
-                  <p className="border-t border-[var(--border-color)] px-4 py-2.5 text-center text-xs text-[var(--text-muted)]">
-                    {vi ? `Đang hiện 30 / ${sortedSchedules.length} ca — hãy dùng ô tìm kiếm để lọc` : `Showing 30 of ${sortedSchedules.length} — use search to filter`}
-                  </p>
-                )}
-              </div>
+              )}
+
+              {/* VIEW: DETAILED TABLE */}
+              {scheduleView === 'all' && (
+                <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="border-b border-[var(--border-color)] bg-[var(--bg-tertiary)]/60 text-xs font-bold text-[var(--text-secondary)]">
+                        <tr>
+                          <th className="px-4 py-3">{vi ? 'Nhân viên' : 'Staff'}</th>
+                          <th className="px-4 py-3">{vi ? 'Ngày' : 'Date'}</th>
+                          <th className="px-4 py-3">{vi ? 'Khung giờ' : 'Time'}</th>
+                          <th className="px-4 py-3">{vi ? 'Ca làm việc' : 'Shift'}</th>
+                          <th className="px-4 py-3">{vi ? 'Hình thức' : 'Mode'}</th>
+                          <th className="px-4 py-3">{vi ? 'Trạng thái' : 'Status'}</th>
+                          <th className="px-4 py-3">{vi ? 'Điểm danh' : 'Attendance'}</th>
+                          <th className="px-4 py-3 text-right">{vi ? 'Thao tác' : 'Actions'}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--border-color)]">
+                        {sortedSchedules.map((item) => {
+                          const isConflict = hasShiftConflict(item, sortedSchedules);
+                          return (
+                            <tr key={item.id} className="transition-colors hover:bg-[var(--bg-hover)]/50">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Avatar name={displayNameOf(item.userId, item.userName)} src={item.userAvatar} size="sm" />
+                                  <span className="truncate font-semibold text-[var(--text-primary)]">
+                                    {displayNameOf(item.userId, item.userName)}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 font-mono-code text-xs text-[var(--text-secondary)]">
+                                {formatDisplayDate(item.workDate)}
+                              </td>
+                              <td className="px-4 py-3 font-mono-code text-xs font-bold text-[var(--text-primary)]">
+                                {item.startTime}–{item.endTime}
+                                {isConflict && (
+                                  <span className="ml-1 inline-flex items-center gap-0.5 rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-bold text-amber-600">
+                                    <AlertTriangle className="h-2.5 w-2.5" /> {vi ? 'Trùng' : 'Conflict'}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-xs text-[var(--text-secondary)]">
+                                {item.title || '—'}
+                              </td>
+                              <td className="px-4 py-3">
+                                <Badge variant={item.workMode === 'remote' ? 'purple' : item.workMode === 'half_day' ? 'warning' : 'info'}>
+                                  {resolveWorkModeLabel(item.workMode)}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-3">
+                                {item.status === 'published' ? (
+                                  <Badge variant="success" dot>{t('schedules.published')}</Badge>
+                                ) : (
+                                  <Badge variant="danger" dot>{t('schedules.cancelled')}</Badge>
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                <Badge
+                                  variant={
+                                    item.attendanceStatus === 'checked_out'
+                                      ? 'success'
+                                      : item.attendanceStatus === 'checked_in'
+                                        ? 'info'
+                                        : item.attendanceStatus === 'absent'
+                                          ? 'danger'
+                                          : 'default'
+                                  }
+                                >
+                                  {resolveAttendanceLabel(item.attendanceStatus)}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <button
+                                    onClick={() => openEdit(item)}
+                                    className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:border-sky-500 hover:text-sky-500"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleting(item)}
+                                    className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:text-rose-500"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -1262,6 +1746,356 @@ export default function WorkSchedulesPage() {
                   </p>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SMART UTILITIES TAB */}
+      {tab === 'smart' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* CARD 1: Free Slot Finder & Availability */}
+            <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs">
+              <div className="border-b border-[var(--border-color)] bg-[var(--bg-tertiary)]/40 px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                    <Search className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                      {vi ? 'Tìm khung giờ rảnh & Kiểm tra trùng ca' : 'Free Slot Finder & Availability'}
+                    </h3>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      {vi
+                        ? 'Tự động phát hiện giờ bận và đề xuất ca rảnh khả dụng cho nhân sự'
+                        : 'Auto-detect busy shifts and suggest free slots for staff'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 p-5">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-[var(--text-secondary)]">
+                    {vi ? 'Chọn nhân viên' : 'Select staff'}
+                  </label>
+                  <SearchableSelect
+                    options={userOptions}
+                    value={smartUserId}
+                    onChange={setSmartUserId}
+                    placeholder={vi ? 'Chọn nhân viên cần tìm giờ...' : 'Select staff...'}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-[var(--text-secondary)]">
+                      {vi ? 'Ngày làm việc' : 'Work date'}
+                    </label>
+                    <Input
+                      type="date"
+                      value={smartDate}
+                      onChange={(e) => setSmartDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-[var(--text-secondary)]">
+                      {vi ? 'Thời lượng ca (phút)' : 'Shift duration (mins)'}
+                    </label>
+                    <Select
+                      value={String(smartDuration)}
+                      onChange={(v) => setSmartDuration(Number(v))}
+                      options={[
+                        { value: '60', label: vi ? '1 giờ (60p)' : '1 hour' },
+                        { value: '120', label: vi ? '2 giờ (120p)' : '2 hours' },
+                        { value: '240', label: vi ? '4 giờ (nửa ca)' : '4 hours' },
+                        { value: '480', label: vi ? '8 giờ (cả ngày)' : '8 hours' },
+                      ]}
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => void handleCheckAvailability()}
+                  disabled={isCheckingAvailability || !smartUserId}
+                  className="w-full gap-2 py-2.5 font-bold"
+                >
+                  {isCheckingAvailability ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  {vi ? 'Kiểm tra giờ rảnh' : 'Check availability'}
+                </Button>
+
+                {/* Results display */}
+                {availability && (
+                  <div className="space-y-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-tertiary)]/30 p-3.5">
+                    <div>
+                      <span className="text-xs font-bold text-[var(--text-secondary)]">
+                        {vi ? 'Ca đã xếp (bận):' : 'Busy shifts:'}{' '}
+                      </span>
+                      {availability.busy.length === 0 ? (
+                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                          {vi ? 'Chưa có ca nào trong ngày (rảnh hoàn toàn)' : 'Entire day is free'}
+                        </span>
+                      ) : (
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {availability.busy.map((b) => (
+                            <span
+                              key={b.id}
+                              className="inline-flex items-center gap-1 rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 font-mono-code text-[11px] font-bold text-amber-600 dark:text-amber-400"
+                            >
+                              <Clock3 className="h-3 w-3" /> {b.startTime}–{b.endTime} ({b.title || 'Ca'})
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <span className="text-xs font-bold text-[var(--text-secondary)]">
+                        {vi ? 'Khung giờ rảnh gợi ý:' : 'Suggested free slots:'}
+                      </span>
+                      {availability.suggestions.length === 0 ? (
+                        <p className="mt-1 text-xs text-[var(--text-muted)]">
+                          {vi ? 'Không có khung giờ rảnh phù hợp cho độ dài đã chọn.' : 'No slots fit the duration.'}
+                        </p>
+                      ) : (
+                        <div className="mt-1.5 grid grid-cols-2 gap-2">
+                          {availability.suggestions.map((slot, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setAssignUserId(smartUserId);
+                                setAssignDate(smartDate);
+                                setAssignStart(slot.startTime);
+                                setAssignEnd(slot.endTime);
+                                setAssignMode('single');
+                                setShowAssign(true);
+                              }}
+                              className="group flex items-center justify-between rounded-xl border border-sky-500/20 bg-sky-500/5 px-3 py-2 text-left transition hover:border-sky-500 hover:bg-sky-500/10"
+                            >
+                              <span className="font-mono-code text-xs font-bold text-sky-600 dark:text-sky-400">
+                                {slot.startTime}–{slot.endTime}
+                              </span>
+                              <span className="text-[10px] font-bold text-sky-500 opacity-0 transition group-hover:opacity-100">
+                                {vi ? 'Gán ca' : 'Assign'} →
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* CARD 2: Copy Week Shifts */}
+            <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs">
+              <div className="border-b border-[var(--border-color)] bg-[var(--bg-tertiary)]/40 px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                    <Copy className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                      {vi ? 'Sao chép ca theo tuần (1-Click)' : '1-Click Week Shift Cloning'}
+                    </h3>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      {vi
+                        ? 'Sao chép toàn bộ lịch làm việc của một tuần sang tuần tiếp theo nhanh chóng'
+                        : 'Clone an entire week of work schedules to another week'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 p-5">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-[var(--text-secondary)]">
+                      {vi ? 'Tuần nguồn (Thứ 2)' : 'Source week (Mon)'}
+                    </label>
+                    <Input
+                      type="date"
+                      value={copyFromWeek}
+                      onChange={(e) => setCopyFromWeek(getWeekStartIso(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-[var(--text-secondary)]">
+                      {vi ? 'Tuần đích (Thứ 2)' : 'Target week (Mon)'}
+                    </label>
+                    <Input
+                      type="date"
+                      value={copyToWeek}
+                      onChange={(e) => setCopyToWeek(getWeekStartIso(e.target.value))}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-[var(--text-secondary)]">
+                    {vi ? 'Áp dụng cho' : 'Apply to'}
+                  </label>
+                  <SearchableSelect
+                    options={[{ value: '', label: vi ? 'Tất cả nhân viên' : 'All staff' }, ...userOptions]}
+                    value={copyUserId}
+                    onChange={setCopyUserId}
+                    placeholder={vi ? 'Tất cả nhân viên' : 'All staff'}
+                  />
+                </div>
+
+                <label className="flex items-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-tertiary)]/30 p-3 text-xs font-medium text-[var(--text-secondary)]">
+                  <input
+                    type="checkbox"
+                    checked={copyOverwrite}
+                    onChange={(e) => setCopyOverwrite(e.target.checked)}
+                    className="h-4 w-4 rounded accent-sky-500"
+                  />
+                  <span>
+                    {vi
+                      ? 'Ghi đè ca nếu tuần đích đã có ca trùng giờ'
+                      : 'Overwrite conflicting shifts in target week'}
+                  </span>
+                </label>
+
+                <Button
+                  onClick={() => void handleCopyWeek()}
+                  disabled={isCopyingWeek || copyFromWeek === copyToWeek}
+                  className="w-full gap-2 py-2.5 font-bold"
+                >
+                  {isCopyingWeek ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                  {vi ? 'Sao chép toàn bộ tuần' : 'Copy week schedules'}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 3: Weekly Summary & Overtime Analyzer */}
+          <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-xs">
+            <div className="border-b border-[var(--border-color)] bg-[var(--bg-tertiary)]/40 px-5 py-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <Clock3 className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                      {vi ? 'Tổng hợp giờ làm & Cảnh báo tăng ca (>44h)' : 'Weekly Summary & Overtime (>44h)'}
+                    </h3>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      {vi
+                        ? 'Thống kê tổng giờ làm trong tuần, tự động phát hiện vượt định mức hoặc trùng ca'
+                        : 'Calculate weekly hours and auto-flag overtime or conflicts'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="w-48">
+                    <SearchableSelect
+                      options={[{ value: '', label: vi ? 'Tất cả nhân viên' : 'All staff' }, ...userOptions]}
+                      value={summaryUserId}
+                      onChange={setSummaryUserId}
+                      placeholder={vi ? 'Tất cả nhân viên' : 'All staff'}
+                    />
+                  </div>
+                  <Input
+                    type="date"
+                    value={summaryFrom}
+                    onChange={(e) => setSummaryFrom(e.target.value)}
+                    className="w-36 text-xs"
+                  />
+                  <span className="text-xs text-[var(--text-muted)]">→</span>
+                  <Input
+                    type="date"
+                    value={summaryTo}
+                    onChange={(e) => setSummaryTo(e.target.value)}
+                    className="w-36 text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => void handleFetchSummary()}
+                    disabled={isFetchingSummary}
+                    className="gap-1 font-bold"
+                  >
+                    {isFetchingSummary ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                    {vi ? 'Tổng hợp' : 'Analyze'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5">
+              {weeklySummaryList.length === 0 ? (
+                <div className="py-8 text-center text-xs text-[var(--text-muted)]">
+                  {vi
+                    ? 'Bấm nút "Tổng hợp" ở trên để xem phân tích số giờ làm việc theo tuần'
+                    : 'Click "Analyze" above to view weekly working hour metrics'}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {weeklySummaryList.map((user) => {
+                    const hours = (user.totalMinutes / 60).toFixed(1);
+                    return (
+                      <div
+                        key={user.userId}
+                        className={`rounded-xl border p-4 transition-all ${
+                          user.overtime
+                            ? 'border-rose-500/40 bg-rose-500/5'
+                            : user.hasConflict
+                              ? 'border-amber-500/40 bg-amber-500/5'
+                              : 'border-[var(--border-color)] bg-[var(--bg-tertiary)]/20'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Avatar name={user.userName || 'Staff'} src={user.avatar} size="sm" />
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-bold text-[var(--text-primary)]">
+                                {user.userName || user.email || user.userId}
+                              </p>
+                              <p className="text-[11px] text-[var(--text-muted)]">{user.email || '—'}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-mono-code text-sm font-bold text-[var(--text-primary)]">
+                              {hours}h
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+                          {user.overtime && (
+                            <span className="inline-flex items-center gap-1 rounded bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-bold text-rose-600">
+                              <AlertTriangle className="h-3 w-3" /> {vi ? 'Tăng ca (>44h)' : 'Overtime'}
+                            </span>
+                          )}
+                          {user.hasConflict && (
+                            <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-600">
+                              <AlertTriangle className="h-3 w-3" /> {vi ? 'Trùng ca' : 'Conflict'}
+                            </span>
+                          )}
+                          {!user.overtime && !user.hasConflict && (
+                            <span className="inline-flex items-center gap-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600">
+                              <CheckCircle2 className="h-3 w-3" /> {vi ? 'Định mức chuẩn' : 'Normal'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
