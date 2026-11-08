@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
@@ -373,8 +373,11 @@ export default function WorkSchedulesPage() {
     return map;
   }, [allUsers]);
 
-  const displayNameOf = (userId: string, fallback?: string) =>
-    fallback || userById.get(userId)?.fullName || userById.get(userId)?.email || (vi ? 'Nhân viên' : 'Staff');
+  const displayNameOf = useCallback(
+    (userId: string, fallback?: string) =>
+      fallback || userById.get(userId)?.fullName || userById.get(userId)?.email || (vi ? 'Nhân viên' : 'Staff'),
+    [userById, vi],
+  );
 
   const filteredSchedules = useMemo(() => {
     const keyword = debouncedSearch.trim().toLowerCase();
@@ -426,6 +429,8 @@ export default function WorkSchedulesPage() {
   const updateTemplateMutation = useUpdateWorkScheduleTemplateMutation();
   const removeTemplateMutation = useRemoveTemplateMutation();
   const generateMutation = useGenerateSchedulesMutation();
+  const checkInMutation = useAdminCheckInScheduleMutation();
+  const checkOutMutation = useAdminCheckOutScheduleMutation();
   const schedulesByUser = useMemo(() => {
     const map = new Map<
       string,
@@ -455,7 +460,7 @@ export default function WorkSchedulesPage() {
       entry.minutes += getScheduleMinutes(item);
     });
     return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
-  }, [sortedSchedules, userById, vi]);
+  }, [sortedSchedules, userById, displayNameOf]);
 
   const schedulesByMonth = useMemo(() => {
     const map = new Map<
@@ -1995,7 +2000,15 @@ export default function WorkSchedulesPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="w-48">
+                    <SearchableSelect
+                      options={[{ value: '', label: vi ? 'Tất cả nhân viên' : 'All staff' }, ...userOptions]}
+                      value={summaryUserId}
+                      onChange={setSummaryUserId}
+                      placeholder={vi ? 'Tất cả nhân viên' : 'All staff'}
+                    />
+                  </div>
                   <Input
                     type="date"
                     value={summaryFrom}
