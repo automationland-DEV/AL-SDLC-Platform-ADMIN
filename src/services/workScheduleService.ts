@@ -134,6 +134,52 @@ export interface GenerateSchedulesResult {
   items: AdminWorkScheduleItem[];
 }
 
+export interface AvailabilityResult {
+  userId: string;
+  workDate: string;
+  busy: AdminWorkScheduleItem[];
+  freeSlots: { startTime: string; endTime: string }[];
+  suggestions: { startTime: string; endTime: string }[];
+}
+
+export interface WeeklySummaryDay {
+  workDate: string;
+  minutes: number;
+  items: AdminWorkScheduleItem[];
+  hasConflict?: boolean;
+}
+
+export interface WeeklySummaryUser {
+  userId: string;
+  userName?: string;
+  email?: string;
+  avatar?: string;
+  totalMinutes: number;
+  days: WeeklySummaryDay[];
+  overtime: boolean;
+  hasConflict?: boolean;
+}
+
+export interface CopyWeekPayload {
+  fromWeekStart: string;
+  toWeekStart: string;
+  userId?: string;
+  overwrite?: boolean;
+}
+
+export interface CopyWeekResult {
+  created: number;
+  skipped: number;
+  items?: AdminWorkScheduleItem[];
+}
+
+export interface CheckAttendancePayload {
+  note?: string;
+  locationId?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
 const unwrap = <T,>(payload: unknown): T => {
   if (payload && typeof payload === 'object' && 'data' in payload) {
     const inner = (payload as { data?: unknown }).data;
@@ -334,18 +380,58 @@ export const workScheduleService = {
     return unwrap<AdminWorkScheduleItem>(res.data);
   },
 
-  checkIn: async (id: string, note?: string): Promise<AdminWorkScheduleItem> => {
-    const res = await api.post(`/admin/work-schedules/${id}/check-in`, { note });
+  checkIn: async (id: string, input?: string | CheckAttendancePayload): Promise<AdminWorkScheduleItem> => {
+    const payload = typeof input === 'string' ? { note: input } : (input ?? {});
+    const res = await api.post(`/admin/work-schedules/${id}/check-in`, payload);
     return unwrap<AdminWorkScheduleItem>(res.data);
   },
 
-  checkOut: async (id: string, note?: string): Promise<AdminWorkScheduleItem> => {
-    const res = await api.post(`/admin/work-schedules/${id}/check-out`, { note });
+  checkOut: async (id: string, input?: string | CheckAttendancePayload): Promise<AdminWorkScheduleItem> => {
+    const payload = typeof input === 'string' ? { note: input } : (input ?? {});
+    const res = await api.post(`/admin/work-schedules/${id}/check-out`, payload);
     return unwrap<AdminWorkScheduleItem>(res.data);
   },
 
   remove: async (id: string): Promise<void> => {
     await api.delete(`/admin/work-schedules/${id}`);
+  },
+
+  availability: async (params: { userId: string; workDate: string; durationMinutes?: number }): Promise<AvailabilityResult> => {
+    const res = await api.get('/admin/work-schedules/availability', {
+      params: {
+        userId: params.userId,
+        workDate: params.workDate,
+        durationMinutes: params.durationMinutes ?? 120,
+      },
+    });
+    return unwrap<AvailabilityResult>(res.data);
+  },
+
+  weeklySummary: async (params: { userId?: string; from: string; to: string; overtimeHours?: number }): Promise<WeeklySummaryUser[]> => {
+    const res = await api.get('/admin/work-schedules/weekly-summary', {
+      params: {
+        userId: params.userId || undefined,
+        from: params.from,
+        to: params.to,
+        overtimeHours: params.overtimeHours,
+      },
+    });
+    const payload = unwrap<WeeklySummaryUser[] | { data?: WeeklySummaryUser[] }>(res.data);
+    if (Array.isArray(payload)) return payload;
+    if (payload && typeof payload === 'object' && 'data' in payload && Array.isArray((payload as { data?: unknown }).data)) {
+      return (payload as { data: WeeklySummaryUser[] }).data;
+    }
+    return [];
+  },
+
+  copyWeek: async (payload: CopyWeekPayload): Promise<CopyWeekResult> => {
+    const res = await api.post('/admin/work-schedules/copy-week', payload);
+    const result = unwrap<CopyWeekResult>(res.data);
+    return {
+      created: result?.created ?? 0,
+      skipped: result?.skipped ?? 0,
+      items: result?.items ?? [],
+    };
   },
 
   listTemplates: async (userId?: string): Promise<AdminWorkScheduleTemplate[]> => {
