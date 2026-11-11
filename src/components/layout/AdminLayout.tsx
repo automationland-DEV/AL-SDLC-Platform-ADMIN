@@ -25,6 +25,7 @@ import ThemeSwitcher from '../ThemeSwitcher';
 import AdminNotificationBell from '../AdminNotificationBell';
 import LanguageSwitcher from '../LanguageSwitcher';
 import { useTranslation } from '../../i18n/useTranslation';
+import { resolveAvatarFrameUrl } from '../../utils/avatar';
 
 export function AdminLayout() {
   const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768);
@@ -213,18 +214,27 @@ export function AdminLayout() {
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 className="flex items-center gap-2.5 focus:outline-none hover:opacity-85 transition-opacity cursor-pointer"
               >
-                {user?.avatar && !imgError ? (
-                  <img
-                    src={user.avatar}
-                    alt={user.fullName || user.email}
-                    className="w-8 h-8 rounded-lg border border-[var(--border-color)] object-cover shrink-0"
-                    onError={() => setImgError(true)}
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-600 dark:text-sky-400 font-mono-code font-bold text-xs shrink-0">
-                    {user?.fullName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'A'}
-                  </div>
-                )}
+                <div className="relative shrink-0">
+                  {user?.avatar && !imgError ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.fullName || user.email}
+                      className="w-8 h-8 rounded-full border border-[var(--border-color)] object-cover shrink-0"
+                      onError={() => setImgError(true)}
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-600 dark:text-sky-400 font-mono-code font-bold text-xs shrink-0">
+                      {user?.fullName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'A'}
+                    </div>
+                  )}
+                  {user?.avatarFrame && (
+                    <img
+                      src={resolveAvatarFrameUrl(user.avatarFrame)}
+                      alt="frame"
+                      className="absolute -inset-[18%] w-[136%] h-[136%] max-w-none pointer-events-none z-10 object-contain"
+                    />
+                  )}
+                </div>
                 <div className="hidden md:flex items-center gap-1.5">
                   <span className="text-xs font-semibold text-[var(--text-primary)] truncate max-w-[130px]">
                     {user?.fullName || user?.email}
