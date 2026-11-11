@@ -58,6 +58,7 @@ export function AdminLayout() {
     { path: '/reports', labelKey: 'nav.reports' as const, icon: ClipboardList },
     { path: '/mail', labelKey: 'nav.mail' as const, icon: Mail },
     { path: '/stickers', labelKey: 'nav.stickers' as const, icon: Sparkles },
+    { path: '/avatar-frames', labelKey: 'nav.avatarFrames' as const, icon: Sparkles },
     { path: '/storage', labelKey: 'nav.storage' as const, icon: HardDrive },
   ];
 
