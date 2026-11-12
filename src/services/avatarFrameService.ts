@@ -48,15 +48,21 @@ export interface AdminAvatarFrameUserSearchItem {
  * UI works with a normalised shape (`id`, `avatarUrl`). This maps the API
  * payload onto the shape the components expect.
  */
-function normalizeUser(raw: any): AdminAvatarFrameUserSearchItem {
+function normalizeUser(raw: unknown): AdminAvatarFrameUserSearchItem {
+  const r = (raw ?? {}) as Record<string, unknown>;
   return {
-    id: String(raw?.id ?? raw?._id ?? ''),
-    fullName: raw?.fullName ?? '',
-    email: raw?.email ?? '',
-    avatarUrl: raw?.avatarUrl ?? raw?.avatar ?? null,
-    avatarFrame: raw?.avatarFrame ?? null,
-    role: raw?.role ?? 'user',
-    status: raw?.status ?? 'active',
+    id: String(r.id ?? r._id ?? ''),
+    fullName: typeof r.fullName === 'string' ? r.fullName : '',
+    email: typeof r.email === 'string' ? r.email : '',
+    avatarUrl:
+      typeof r.avatarUrl === 'string'
+        ? r.avatarUrl
+        : typeof r.avatar === 'string'
+          ? r.avatar
+          : null,
+    avatarFrame: typeof r.avatarFrame === 'string' ? r.avatarFrame : null,
+    role: typeof r.role === 'string' ? r.role : 'user',
+    status: typeof r.status === 'string' ? r.status : 'active',
   };
 }
 
