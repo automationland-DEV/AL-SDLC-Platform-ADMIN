@@ -6,6 +6,7 @@ import { useWorkspaceTasksQuery, useDeleteTaskMutation } from '../../../../hooks
 import { TaskDetailModal } from './TaskDetailModal';
 import toast from 'react-hot-toast';
 import type { Task } from '../../../../types';
+import FramedAvatar from '../../../../components/ui/FramedAvatar';
 
 interface WorkspaceTasksTableProps {
   workspaceId: string;
@@ -189,7 +190,13 @@ export function WorkspaceTasksTable({ workspaceId }: WorkspaceTasksTableProps) {
                     {task.assignee?.fullName || task.assignee?.email ? (
                       <div className="flex items-center gap-2 min-w-0">
                         {task.assignee.avatar ? (
-                          <img src={task.assignee.avatar} alt="" className="w-5 h-5 rounded-full object-cover shrink-0 border border-[var(--border-color)]" />
+                          <FramedAvatar
+                            src={task.assignee.avatar}
+                            frame={task.assignee.avatarFrame}
+                            name={task.assignee.fullName}
+                            className="w-5 h-5"
+                            imageClassName="shrink-0 border border-[var(--border-color)]"
+                          />
                         ) : (
                           <div className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-500 flex items-center justify-center font-bold text-[10px] shrink-0 border border-sky-500/30">
                             {(task.assignee.fullName || task.assignee.email || 'U').charAt(0).toUpperCase()}
@@ -202,7 +209,13 @@ export function WorkspaceTasksTable({ workspaceId }: WorkspaceTasksTableProps) {
                     ) : task.reporter?.fullName || task.reporter?.email ? (
                       <div className="flex items-center gap-2 min-w-0">
                         {task.reporter.avatar ? (
-                          <img src={task.reporter.avatar} alt="" className="w-5 h-5 rounded-full object-cover shrink-0 border border-[var(--border-color)]" />
+                          <FramedAvatar
+                            src={task.reporter.avatar}
+                            frame={task.reporter.avatarFrame}
+                            name={task.reporter.fullName}
+                            className="w-5 h-5"
+                            imageClassName="shrink-0 border border-[var(--border-color)]"
+                          />
                         ) : (
                           <div className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center font-bold text-[10px] shrink-0 border border-indigo-500/30">
                             {(task.reporter.fullName || task.reporter.email || 'U').charAt(0).toUpperCase()}

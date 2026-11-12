@@ -1,8 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, Search, Loader2, FileText, File, Download, ExternalLink, ImageIcon, Play, ChevronLeft } from 'lucide-react';
 import { chatChannelService } from '../../../../services';
 import type { ChatMessage } from '../../../../types';
+import FramedAvatar from '../../../../components/ui/FramedAvatar';
+import { useResizablePanel } from '../../../../hooks/useResizablePanel';
+import ResizeHandle from '../../../../components/ui/ResizeHandle';
 
 interface ChatSearchPanelProps {
   channelId: string;
@@ -20,6 +23,17 @@ interface Attachment {
 }
 
 export default function ChatSearchPanel({ channelId, onClose, onJumpToMessage }: ChatSearchPanelProps) {
+  const {
+    width: panelWidth,
+    handleMouseDown: handleResize,
+    handleReset: handleResizeReset,
+  } = useResizablePanel({
+    defaultWidth: 320,
+    minWidth: 260,
+    maxWidth: 560,
+    side: 'left',
+    storageKey: 'al_admin_chat_search_w',
+  });
   const [activeTab, setActiveTab] = useState<'messages' | 'files' | 'links'>('messages');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -175,7 +189,11 @@ export default function ChatSearchPanel({ channelId, onClose, onJumpToMessage }:
   };
 
   return (
-    <div className="w-full sm:w-80 absolute sm:relative inset-0 sm:inset-auto z-20 sm:z-auto border-l-0 sm:border-l border-[var(--border-color)] bg-[var(--bg-primary)] flex flex-col h-full flex-shrink-0 animate-in slide-in-from-right-8 duration-300">
+    <div
+      style={{ '--admin-chat-search-w': `${panelWidth}px` } as CSSProperties}
+      className="w-full sm:w-[var(--admin-chat-search-w)] absolute sm:relative inset-0 sm:inset-auto z-20 sm:z-auto border-l-0 sm:border-l border-[var(--border-color)] bg-[var(--bg-primary)] flex flex-col h-full flex-shrink-0 animate-in slide-in-from-right-8 duration-300 relative group/resizer"
+    >
+      <ResizeHandle onMouseDown={handleResize} onDoubleClick={handleResizeReset} side="left" />
       <div className="px-3 py-3 sm:px-4 sm:py-3 border-b border-[var(--border-color)] flex items-center justify-between gap-2 bg-[var(--bg-secondary)]">
         <div className="flex items-center gap-2 min-w-0">
           <button 
@@ -251,7 +269,12 @@ export default function ChatSearchPanel({ channelId, onClose, onJumpToMessage }:
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center text-white text-[10px] font-bold overflow-hidden flex-shrink-0">
                           {selectedSender.avatar ? (
-                            <img src={selectedSender.avatar} alt={selectedSender.fullName} className="w-full h-full object-cover" />
+                            <FramedAvatar
+                              src={selectedSender.avatar}
+                              frame={selectedSender.avatarFrame}
+                              name={selectedSender.fullName}
+                              className="w-full h-full"
+                            />
                           ) : (
                             <span>{(selectedSender.fullName || selectedSender.email || 'U').charAt(0).toUpperCase()}</span>
                           )}
@@ -303,7 +326,12 @@ export default function ChatSearchPanel({ channelId, onClose, onJumpToMessage }:
                           >
                             <div className="w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center text-white text-[10px] font-bold overflow-hidden flex-shrink-0">
                               {m.avatar ? (
-                                <img src={m.avatar} alt={m.fullName || m.email} className="w-full h-full object-cover" />
+                                <FramedAvatar
+                                  src={m.avatar}
+                                  frame={m.avatarFrame}
+                                  name={m.fullName || m.email}
+                                  className="w-full h-full"
+                                />
                               ) : (
                                 <span>{(m.fullName || m.email || 'U').charAt(0).toUpperCase()}</span>
                               )}

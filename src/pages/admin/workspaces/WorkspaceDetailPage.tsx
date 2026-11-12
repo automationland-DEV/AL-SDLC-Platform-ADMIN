@@ -9,6 +9,7 @@ import { WorkspaceTasksTable } from '../components/workspaces/WorkspaceTasksTabl
 import { userService } from '../../../services';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import FramedAvatar from '../../../components/ui/FramedAvatar';
 
 export default function WorkspaceDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -94,7 +95,7 @@ export default function WorkspaceDetailPage() {
     return (rawObj.data ?? workspaceRaw) as Workspace;
   }, [workspaceRaw]);
 
-  const members: { user: { _id?: string; fullName?: string; email?: string; avatar?: string } | null; role: string }[] = useMemo(() => {
+  const members: { user: { _id?: string; fullName?: string; email?: string; avatar?: string; avatarFrame?: string | null } | null; role: string }[] = useMemo(() => {
     if (!workspace?.members) return [];
     return (workspace.members as WorkspaceMember[]).map(m => {
       const userId = m.userId;
@@ -263,8 +264,14 @@ export default function WorkspaceDetailPage() {
                   {members.map((m, idx) => (
                     <div key={idx} className="px-5 py-3 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        {m.user?.avatar ? (
-                          <img src={m.user.avatar} alt="" className="w-8 h-8 rounded-lg object-cover border border-[var(--border-color)] shrink-0" />
+                        {m.user?.avatar || m.user?.avatarFrame ? (
+                          <FramedAvatar
+                            src={m.user.avatar}
+                            frame={m.user.avatarFrame}
+                            name={m.user?.fullName || m.user?.email}
+                            className="w-8 h-8"
+                            imageClassName="rounded-lg border border-[var(--border-color)] shrink-0"
+                          />
                         ) : (
                           <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-500 font-bold text-xs shrink-0">
                             {m.user?.fullName?.charAt(0).toUpperCase() || m.user?.email?.charAt(0).toUpperCase() || 'U'}

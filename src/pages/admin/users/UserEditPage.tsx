@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { Button, Select, Badge, PageHeader } from '../../../components/ui';
 import { useUserDetailQuery, useUpdateUserRoleMutation, useUpdateUserStatusMutation } from '../../../hooks/queries';
 import { useTranslation } from '../../../i18n/useTranslation';
+import FramedAvatar from '../../../components/ui/FramedAvatar';
 
 
 const getErrorMessage = (error: unknown, defaultMsg: string) => {
@@ -130,8 +131,14 @@ export default function UserEditPage() {
           <div className="p-6 space-y-5">
             {/* User Info Banner */}
             <div className="bg-gradient-to-r from-sky-500/5 to-transparent rounded-xl p-4 border border-[var(--border-color)] flex items-center gap-4">
-              {user.avatar ? (
-                <img src={user.avatar} alt="" className="w-12 h-12 rounded-xl object-cover border border-[var(--border-color)] shrink-0" />
+              {user.avatar || user.avatarFrame ? (
+                <FramedAvatar
+                  src={user.avatar}
+                  frame={user.avatarFrame}
+                  name={user.fullName || user.email}
+                  className="w-12 h-12"
+                  imageClassName="rounded-xl border border-[var(--border-color)] shrink-0"
+                />
               ) : (
                 <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-500 font-bold text-lg shrink-0">
                   {(user.fullName || user.email || 'U').charAt(0).toUpperCase()}

@@ -142,22 +142,33 @@ export interface AvailabilityResult {
   suggestions: { startTime: string; endTime: string }[];
 }
 
+/** Một ngày trong bảng tổng hợp tuần (khớp WeeklySummaryDayDto của backend). */
 export interface WeeklySummaryDay {
   workDate: string;
   minutes: number;
-  items: AdminWorkScheduleItem[];
-  hasConflict?: boolean;
+  shifts: number;
 }
 
+/**
+ * Bảng tổng hợp giờ làm của một nhân viên trong tuần.
+ * Khớp WeeklySummaryUserDto của backend: `byDay` / `conflicts` (không phải
+ * `days` / `hasConflict`), kèm thêm các chỉ số điểm danh.
+ */
 export interface WeeklySummaryUser {
   userId: string;
   userName?: string;
-  email?: string;
-  avatar?: string;
   totalMinutes: number;
-  days: WeeklySummaryDay[];
+  totalHours: number;
+  shifts: number;
   overtime: boolean;
-  hasConflict?: boolean;
+  workedMinutes: number;
+  workedHours: number;
+  checkedInShifts: number;
+  completedShifts: number;
+  lateShifts: number;
+  absentShifts: number;
+  byDay: WeeklySummaryDay[];
+  conflicts: AdminWorkScheduleItem[];
 }
 
 export interface CopyWeekPayload {

@@ -1,7 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { X, Loader2, MessageSquare, ArrowDown } from 'lucide-react';
 import type { ChatMessage } from '../../../../types';
 import AdminMessageItem from './AdminMessageItem';
+import { useResizablePanel } from '../../../../hooks/useResizablePanel';
+import ResizeHandle from '../../../../components/ui/ResizeHandle';
 
 interface AdminThreadPanelProps {
   activeThread: ChatMessage;
@@ -13,6 +15,17 @@ interface AdminThreadPanelProps {
 export default function AdminThreadPanel({ activeThread, threadReplies, loadingThread, onClose }: AdminThreadPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const {
+    width: panelWidth,
+    handleMouseDown: handleResize,
+    handleReset: handleResizeReset,
+  } = useResizablePanel({
+    defaultWidth: 400,
+    minWidth: 300,
+    maxWidth: 600,
+    side: 'left',
+    storageKey: 'al_admin_thread_w',
+  });
 
   useEffect(() => {
     if (!loadingThread && scrollRef.current) {
@@ -33,7 +46,11 @@ export default function AdminThreadPanel({ activeThread, threadReplies, loadingT
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#FFFFFF] dark:bg-[#181818] border-l border-[#EAEAEA] dark:border-white/[0.06] select-text">
+    <div
+      style={{ '--admin-thread-w': `${panelWidth}px` } as CSSProperties}
+      className="flex flex-col h-full w-full sm:w-[var(--admin-thread-w)] bg-[#FFFFFF] dark:bg-[#181818] border-l border-[#EAEAEA] dark:border-white/[0.06] select-text relative group/resizer"
+    >
+      <ResizeHandle onMouseDown={handleResize} onDoubleClick={handleResizeReset} side="left" />
       {/* Header */}
       <div className="h-14 flex items-center justify-between px-4 border-b border-[#EAEAEA] dark:border-white/[0.06] bg-[#FFFFFF] dark:bg-[#202020] flex-shrink-0">
         <div className="flex items-center gap-2">

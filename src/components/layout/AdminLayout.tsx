@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type CSSProperties } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -26,9 +26,22 @@ import AdminNotificationBell from '../AdminNotificationBell';
 import LanguageSwitcher from '../LanguageSwitcher';
 import { useTranslation } from '../../i18n/useTranslation';
 import { resolveAvatarFrameUrl } from '../../utils/avatar';
+import { useResizablePanel } from '../../hooks/useResizablePanel';
+import ResizeHandle from '../../components/ui/ResizeHandle';
 
 export function AdminLayout() {
   const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768);
+  const {
+    width: sidebarWidth,
+    handleMouseDown: handleSidebarResize,
+    handleReset: handleSidebarReset,
+  } = useResizablePanel({
+    defaultWidth: 256,
+    minWidth: 200,
+    maxWidth: 360,
+    side: 'right',
+    storageKey: 'al_admin_sidebar_w',
+  });
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -88,10 +101,14 @@ export function AdminLayout() {
 
       {/* Sidebar */}
       <aside
+        style={collapsed ? undefined : ({ '--admin-sidebar-w': `${sidebarWidth}px` } as CSSProperties)}
         className={`fixed left-0 top-0 h-full z-50 transition-all duration-250 ease-in-out print:hidden ${
-          collapsed ? '-translate-x-full md:translate-x-0 md:w-20' : 'translate-x-0 w-64'
-        } bg-[var(--bg-card)] border-r border-[var(--border-color)] flex flex-col shadow-sm`}
+          collapsed ? '-translate-x-full md:translate-x-0 md:w-20' : 'translate-x-0 w-64 md:!w-[var(--admin-sidebar-w)]'
+        } bg-[var(--bg-card)] border-r border-[var(--border-color)] flex flex-col shadow-sm relative group/resizer`}
       >
+        {!collapsed && (
+          <ResizeHandle onMouseDown={handleSidebarResize} onDoubleClick={handleSidebarReset} side="right" />
+        )}
         {/* Official Brand Logo */}
         <div
           className={`h-16 flex items-center ${
@@ -183,8 +200,9 @@ export function AdminLayout() {
 
       {/* Main Container */}
       <main
+        style={collapsed ? undefined : ({ '--admin-sidebar-w': `${sidebarWidth}px` } as CSSProperties)}
         className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-250 ease-in-out print:m-0 print:p-0 print:h-auto print:overflow-visible print:block ${
-          collapsed ? 'md:ml-20' : 'md:ml-64'
+          collapsed ? 'md:ml-20' : 'md:ml-[var(--admin-sidebar-w)]'
         }`}
       >
         {/* Fixed Header */}

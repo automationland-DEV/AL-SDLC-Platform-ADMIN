@@ -349,7 +349,7 @@ export default function ChatViewerPage() {
 
         {/* Thread Sidebar */}
         {activeThread && (
-          <div className="w-full md:w-[400px] flex-shrink-0 flex flex-col bg-[var(--bg-card)] absolute md:relative inset-0 md:inset-auto z-10 border-l-0 md:border-l border-[var(--border-color)]">
+          <div className="w-full md:w-auto flex-shrink-0 flex flex-col bg-[var(--bg-card)] absolute md:relative inset-0 md:inset-auto z-10 border-l-0 md:border-l border-[var(--border-color)]">
             <AdminThreadPanel 
               activeThread={activeThread}
               threadReplies={threadReplies}

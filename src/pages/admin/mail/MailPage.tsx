@@ -49,26 +49,47 @@ import type {
   MailRecipient,
 } from '../../../services/mailService';
 import { hasHtmlContent, plainTextToHtml } from '../../../utils/mailBody';
-import { resolveAvatarUrl } from '../../../utils/avatar';
+import { resolveAvatarUrl, resolveAvatarFrameUrl } from '../../../utils/avatar';
 import MailRichTextEditor from '../../../components/mail/MailRichTextEditor';
 
 /** Avatar of a recipient, falling back to the first letter of the name. */
-function RecipientAvatar({ avatarUrl, name }: { avatarUrl?: string; name: string }) {
+function RecipientAvatar({
+  avatarUrl,
+  name,
+  frame,
+}: {
+  avatarUrl?: string;
+  name: string;
+  frame?: string | null;
+}) {
   const resolved = resolveAvatarUrl(avatarUrl);
+  const frameUrl = resolveAvatarFrameUrl(frame);
 
-  if (resolved) {
-    return (
-      <img
-        src={resolved}
-        alt=""
-        className="h-8 w-8 shrink-0 rounded-lg border border-[var(--border-color)] object-cover"
-      />
-    );
+  const body = resolved ? (
+    <img
+      src={resolved}
+      alt=""
+      className="h-8 w-8 shrink-0 rounded-lg border border-[var(--border-color)] object-cover"
+    />
+  ) : (
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sky-500/30 bg-sky-500/10 text-xs font-bold text-sky-500">
+      {(name || 'U').charAt(0).toUpperCase()}
+    </div>
+  );
+
+  if (!frameUrl) {
+    return body;
   }
 
   return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sky-500/30 bg-sky-500/10 text-xs font-bold text-sky-500">
-      {(name || 'U').charAt(0).toUpperCase()}
+    <div className="relative h-8 w-8 shrink-0">
+      {body}
+      <img
+        src={frameUrl}
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute -inset-[18%] h-[136%] w-[136%] max-w-none select-none object-contain"
+      />
     </div>
   );
 }
@@ -433,6 +454,7 @@ function ComposePanel() {
                           <RecipientAvatar
                             avatarUrl={recipient.avatar}
                             name={recipient.fullName || recipient.email}
+                            frame={recipient.avatarFrame}
                           />
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-xs font-semibold text-[var(--text-primary)]">
@@ -489,6 +511,7 @@ function ComposePanel() {
                             <RecipientAvatar
                               avatarUrl={recipient.avatar}
                               name={recipient.fullName || recipient.email}
+                              frame={recipient.avatarFrame}
                             />
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-sm text-[var(--text-primary)]">
@@ -875,6 +898,7 @@ function InternalMailPanel() {
                       <RecipientAvatar
                         avatarUrl={message.senderAvatar ?? undefined}
                         name={message.senderName}
+                        frame={message.senderAvatarFrame}
                       />
                       <div className="min-w-0">
                         <p className="font-medium text-[var(--text-primary)]">{message.senderName}</p>
@@ -993,6 +1017,7 @@ function InternalMailPanel() {
                     <RecipientAvatar
                       avatarUrl={item.senderAvatar ?? undefined}
                       name={item.senderName}
+                      frame={item.senderAvatarFrame}
                     />
                     <p className="text-sm font-semibold text-[var(--text-primary)]">
                       {item.senderName}

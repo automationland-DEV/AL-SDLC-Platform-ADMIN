@@ -8,12 +8,14 @@ import { chatChannelService } from '../../../services';
 import { useDeleteChannelMutation } from '../../../hooks/queries';
 import { useTranslation } from '../../../i18n/useTranslation';
 import type { ChatChannel } from '../../../types';
+import FramedAvatar from '../../../components/ui/FramedAvatar';
 
 interface ChannelMember {
   _id?: string;
   id?: string;
   userId?: string;
   avatar?: string;
+  avatarFrame?: string | null;
   fullName?: string;
   email?: string;
   role?: string;
@@ -226,7 +228,12 @@ export default function ChannelDetailPage() {
                   <div key={m._id || m.id || m.userId} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border-color)]">
                     <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center flex-shrink-0">
                       {m.avatar ? (
-                        <img src={m.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                        <FramedAvatar
+                          src={m.avatar}
+                          frame={m.avatarFrame}
+                          name={m.fullName || m.email}
+                          className="w-8 h-8"
+                        />
                       ) : (
                         <span className="text-xs font-medium text-primary-600">
                           {(m.fullName || m.email || '?').charAt(0).toUpperCase()}

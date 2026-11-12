@@ -91,6 +91,7 @@ export const userService = {
     birthday?: string;
     gender?: string;
     avatar?: string;
+    avatarFrame?: string | null;
   }): Promise<User> => {
     const response = await api.put<unknown>(API_ROUTES.USERS.ME, data);
     const raw = response.data as Record<string, unknown>;

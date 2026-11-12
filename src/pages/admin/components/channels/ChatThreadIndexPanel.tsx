@@ -1,7 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, MessageSquare, Loader2, ChevronLeft } from 'lucide-react';
 import { chatChannelService } from '../../../../services';
+import FramedAvatar from '../../../../components/ui/FramedAvatar';
+import { useResizablePanel } from '../../../../hooks/useResizablePanel';
+import ResizeHandle from '../../../../components/ui/ResizeHandle';
 
 interface ChatThreadIndexPanelProps {
   channelId: string;
@@ -10,6 +13,17 @@ interface ChatThreadIndexPanelProps {
 }
 
 export default function ChatThreadIndexPanel({ channelId, onClose, onOpenThread }: ChatThreadIndexPanelProps) {
+  const {
+    width: panelWidth,
+    handleMouseDown: handleResize,
+    handleReset: handleResizeReset,
+  } = useResizablePanel({
+    defaultWidth: 350,
+    minWidth: 280,
+    maxWidth: 560,
+    side: 'left',
+    storageKey: 'al_admin_chat_threads_w',
+  });
   const [selectedSenderId, setSelectedSenderId] = useState<string>('');
   const [showSenderDropdown, setShowSenderDropdown] = useState(false);
   const [senderSearchQuery, setSenderSearchQuery] = useState('');
@@ -60,7 +74,11 @@ export default function ChatThreadIndexPanel({ channelId, onClose, onOpenThread 
   };
 
   return (
-    <div className="w-full sm:w-[350px] absolute sm:relative inset-0 sm:inset-auto z-20 sm:z-auto border-l-0 sm:border-l border-[var(--border-color)] bg-[var(--bg-primary)] flex flex-col h-full flex-shrink-0 animate-in slide-in-from-right-8 duration-300">
+    <div
+      style={{ '--admin-chat-threads-w': `${panelWidth}px` } as CSSProperties}
+      className="w-full sm:w-[var(--admin-chat-threads-w)] absolute sm:relative inset-0 sm:inset-auto z-20 sm:z-auto border-l-0 sm:border-l border-[var(--border-color)] bg-[var(--bg-primary)] flex flex-col h-full flex-shrink-0 animate-in slide-in-from-right-8 duration-300 relative group/resizer"
+    >
+      <ResizeHandle onMouseDown={handleResize} onDoubleClick={handleResizeReset} side="left" />
       <div className="px-3 py-3 sm:px-4 sm:py-3 border-b border-[var(--border-color)] flex items-center justify-between gap-2 bg-[var(--bg-secondary)]">
         <div className="flex items-center gap-2 min-w-0">
           <button 
@@ -94,7 +112,12 @@ export default function ChatThreadIndexPanel({ channelId, onClose, onOpenThread 
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center text-white text-[10px] font-bold overflow-hidden flex-shrink-0">
                     {selectedSender.avatar ? (
-                      <img src={selectedSender.avatar} alt={selectedSender.fullName} className="w-full h-full object-cover" />
+                      <FramedAvatar
+                        src={selectedSender.avatar}
+                        frame={selectedSender.avatarFrame}
+                        name={selectedSender.fullName}
+                        className="w-full h-full"
+                      />
                     ) : (
                       <span>{(selectedSender.fullName || selectedSender.email || 'U').charAt(0).toUpperCase()}</span>
                     )}
@@ -159,7 +182,12 @@ export default function ChatThreadIndexPanel({ channelId, onClose, onOpenThread 
                     >
                       <div className="w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center text-white text-[10px] font-bold overflow-hidden flex-shrink-0">
                         {m.avatar ? (
-                          <img src={m.avatar} alt={m.fullName || m.email} className="w-full h-full object-cover" />
+                          <FramedAvatar
+                            src={m.avatar}
+                            frame={m.avatarFrame}
+                            name={m.fullName || m.email}
+                            className="w-full h-full"
+                          />
                         ) : (
                           <span>{(m.fullName || m.email || 'U').charAt(0).toUpperCase()}</span>
                         )}
