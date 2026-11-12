@@ -1,7 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, Search, ChevronLeft } from 'lucide-react';
 import { chatChannelService } from '../../../../services';
+import FramedAvatar from '../../../../components/ui/FramedAvatar';
+import { useResizablePanel } from '../../../../hooks/useResizablePanel';
+import ResizeHandle from '../../../../components/ui/ResizeHandle';
 
 interface ChatMemberPanelProps {
   channelId: string;
@@ -52,6 +55,17 @@ const getRoleBadge = (role?: string, globalRole?: string) => {
 };
 
 export default function ChatMemberPanel({ channelId, onClose }: ChatMemberPanelProps) {
+  const {
+    width: panelWidth,
+    handleMouseDown: handleResize,
+    handleReset: handleResizeReset,
+  } = useResizablePanel({
+    defaultWidth: 320,
+    minWidth: 260,
+    maxWidth: 560,
+    side: 'left',
+    storageKey: 'al_admin_chat_members_w',
+  });
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: members = [], isLoading } = useQuery({
@@ -71,7 +85,11 @@ export default function ChatMemberPanel({ channelId, onClose }: ChatMemberPanelP
   }, [members, searchQuery]);
 
   return (
-    <div className="w-full sm:w-80 absolute sm:relative inset-0 sm:inset-auto z-20 sm:z-auto border-l-0 sm:border-l border-[var(--border-color)] bg-[var(--bg-primary)] flex flex-col h-full flex-shrink-0 animate-in slide-in-from-right-8 duration-300">
+    <div
+      style={{ '--admin-chat-members-w': `${panelWidth}px` } as CSSProperties}
+      className="w-full sm:w-[var(--admin-chat-members-w)] absolute sm:relative inset-0 sm:inset-auto z-20 sm:z-auto border-l-0 sm:border-l border-[var(--border-color)] bg-[var(--bg-primary)] flex flex-col h-full flex-shrink-0 animate-in slide-in-from-right-8 duration-300 relative group/resizer"
+    >
+      <ResizeHandle onMouseDown={handleResize} onDoubleClick={handleResizeReset} side="left" />
       <div className="px-3 py-3 sm:px-4 sm:py-3 border-b border-[var(--border-color)] flex items-center justify-between gap-2 bg-[var(--bg-secondary)]">
         <div className="flex items-center gap-2 min-w-0">
           <button 
@@ -121,7 +139,12 @@ export default function ChatMemberPanel({ channelId, onClose }: ChatMemberPanelP
               >
                 <div className="relative w-8 h-8 rounded-full overflow-hidden bg-primary-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                   {member.avatar ? (
-                    <img src={member.avatar} alt={member.fullName || member.email} className="w-full h-full object-cover" />
+                    <FramedAvatar
+                      src={member.avatar}
+                      frame={member.avatarFrame}
+                      name={member.fullName || member.email}
+                      className="w-full h-full"
+                    />
                   ) : (
                     <span>{(member.fullName || member.email || 'U').charAt(0).toUpperCase()}</span>
                   )}

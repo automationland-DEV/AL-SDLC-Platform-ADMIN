@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { Button, Badge, Table, TableRow, TableCell, ConfirmModal, Select } from '../../../components/ui';
 import { useDebounce } from '../../../hooks/useDebounce';
 import type { User, UserRole, UserStatus } from '../../../types';
+import FramedAvatar from '../../../components/ui/FramedAvatar';
 import {
   useUsersQuery,
   useDeleteUserMutation,
@@ -270,8 +271,14 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell className="max-w-0">
                       <div className="flex items-center gap-3">
-                        {userItem.avatar ? (
-                          <img src={userItem.avatar} alt="" className="w-8 h-8 rounded-lg object-cover border border-[var(--border-color)] shrink-0" />
+                        {userItem.avatar || userItem.avatarFrame ? (
+                          <FramedAvatar
+                            src={userItem.avatar}
+                            frame={userItem.avatarFrame}
+                            name={userItem.fullName || userItem.email}
+                            className="w-8 h-8"
+                            imageClassName="rounded-lg border border-[var(--border-color)] shrink-0"
+                          />
                         ) : (
                           <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center font-mono-code font-bold text-xs text-sky-500 shrink-0">
                             {userItem.fullName ? userItem.fullName.charAt(0).toUpperCase() : 'U'}
@@ -328,8 +335,14 @@ export default function UsersPage() {
                 <div key={userItem.id} className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      {userItem.avatar ? (
-                        <img src={userItem.avatar} alt="" className="w-9 h-9 rounded-lg object-cover border border-[var(--border-color)] shrink-0" />
+                      {userItem.avatar || userItem.avatarFrame ? (
+                        <FramedAvatar
+                          src={userItem.avatar}
+                          frame={userItem.avatarFrame}
+                          name={userItem.fullName || userItem.email}
+                          className="w-9 h-9"
+                          imageClassName="rounded-lg border border-[var(--border-color)] shrink-0"
+                        />
                       ) : (
                         <div className="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center font-mono-code font-bold text-xs text-sky-500 shrink-0">
                           {userItem.fullName ? userItem.fullName.charAt(0).toUpperCase() : 'U'}

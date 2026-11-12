@@ -79,21 +79,26 @@ export default function AvatarFramesPage() {
   };
 
   const categories = useMemo(() => {
+    if (overview?.categories && overview.categories.length > 0) {
+      return overview.categories.filter((c) => c.id !== 'all');
+    }
     if (!overview?.catalog) return [];
     const set = new Set<string>();
     overview.catalog.forEach((f) => {
       if (f.category) set.add(f.category);
     });
-    return Array.from(set);
+    return Array.from(set).map((c) => ({ id: c, name: c, nameVi: c }));
   }, [overview]);
 
   const filteredFrames = useMemo(() => {
     if (!overview?.catalog) return [];
     return overview.catalog.filter((f) => {
+      const q = frameSearch.toLowerCase().trim();
       const matchSearch =
-        !frameSearch ||
-        f.name.toLowerCase().includes(frameSearch.toLowerCase()) ||
-        f.id.toLowerCase().includes(frameSearch.toLowerCase());
+        !q ||
+        f.name.toLowerCase().includes(q) ||
+        (f.nameVi && f.nameVi.toLowerCase().includes(q)) ||
+        f.id.toLowerCase().includes(q);
       const matchCat =
         selectedCategory === 'all' || f.category === selectedCategory;
       return matchSearch && matchCat;
@@ -380,8 +385,8 @@ export default function AvatarFramesPage() {
               >
                 <option value="all">Tất cả thể loại</option>
                 {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
+                  <option key={cat.id} value={cat.id}>
+                    {cat.nameVi || cat.name}
                   </option>
                 ))}
               </select>

@@ -14,6 +14,7 @@ export type AdminStorageUserItem = {
   email: string;
   fullName?: string;
   avatar?: string;
+  avatarFrame?: string | null;
   role: string;
   status: string;
   usedBytes: number;

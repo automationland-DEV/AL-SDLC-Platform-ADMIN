@@ -43,7 +43,7 @@ export interface LoginResponse {
 
 // Workspace Types
 export interface WorkspaceMember {
-  userId: string | { _id?: string; id?: string; fullName?: string; email?: string; avatar?: string };
+  userId: string | { _id?: string; id?: string; fullName?: string; email?: string; avatar?: string; avatarFrame?: string | null };
   role: WorkspaceRoleName;
 }
 
@@ -57,7 +57,8 @@ export interface Workspace {
   key: string;
   slug?: string;
   avatar?: string;
-  ownerId?: string | { _id?: string; id?: string; fullName?: string; email?: string; avatar?: string };
+  avatarFrame?: string | null;
+  ownerId?: string | { _id?: string; id?: string; fullName?: string; email?: string; avatar?: string; avatarFrame?: string | null };
   members?: WorkspaceMember[];
   description?: string;
   visibility: WorkspaceAccess;
@@ -74,7 +75,7 @@ export interface Workspace {
 // Document Types
 export interface Document {
   _id: string;
-  uploadedBy?: string | { _id?: string; fullName?: string; email?: string; avatar?: string };
+  uploadedBy?: string | { _id?: string; fullName?: string; email?: string; avatar?: string; avatarFrame?: string | null };
   name: string;
   originalName?: string;
   filename?: string;
@@ -133,19 +134,19 @@ export interface ChatAttachment {
 
 export interface ChatMessage {
   _id: string;
-  senderId?: { _id?: string; fullName?: string; email?: string; avatar?: string };
+  senderId?: { _id?: string; fullName?: string; email?: string; avatar?: string; avatarFrame?: string | null };
   content: string;
   type?: string;
   attachments?: ChatAttachment[];
   reactions?: Record<string, unknown>;
   isDeleted?: boolean;
   replyCount?: number;
-  replyUsers?: { _id?: string; fullName?: string; avatar?: string }[];
+  replyUsers?: { _id?: string; fullName?: string; avatar?: string; avatarFrame?: string | null }[];
   stickerId?: { url: string };
   editedAt?: string;
-  replyToId?: { _id: string; senderId?: { _id?: string; fullName?: string; email?: string; avatar?: string }; content?: string; type?: string; stickerId?: { url: string } } | null;
+  replyToId?: { _id: string; senderId?: { _id?: string; fullName?: string; email?: string; avatar?: string; avatarFrame?: string | null }; content?: string; type?: string; stickerId?: { url: string } } | null;
   threadParentId?: string | null;
-  lastReplyParticipants?: { userId?: string; _id?: string; fullName?: string; avatar?: string }[];
+  lastReplyParticipants?: { userId?: string; _id?: string; fullName?: string; avatar?: string; avatarFrame?: string | null }[];
   createdAt: string;
   lastReplyAt?: string;
 }
@@ -171,6 +172,7 @@ export interface TaskUserSummary {
   fullName?: string;
   email?: string;
   avatar?: string;
+  avatarFrame?: string | null;
 }
 
 export interface TaskLabelSummary {

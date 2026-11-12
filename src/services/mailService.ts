@@ -67,6 +67,7 @@ export interface MailRecipient {
   email: string;
   fullName?: string;
   avatar?: string;
+  avatarFrame?: string | null;
 }
 
 /** A mail exchanged inside the platform, as shown to the admin. */
@@ -79,6 +80,7 @@ export interface AdminMailMessage {
   senderName: string;
   senderEmail: string;
   senderAvatar?: string | null;
+  senderAvatarFrame?: string | null;
   recipientIds: string[];
   recipientNames: string[];
   kind: 'direct' | 'broadcast';

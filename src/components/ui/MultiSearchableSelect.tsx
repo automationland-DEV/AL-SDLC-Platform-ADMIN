@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, ChevronDown, Check, X } from 'lucide-react';
+import FramedAvatar from './FramedAvatar';
 
 interface Option {
   value: string;
   label: string;
   avatar?: string;
+  avatarFrame?: string | null;
   email?: string;
 }
 
@@ -73,7 +75,14 @@ export function MultiSearchableSelect({
                   key={val}
                   className="flex items-center gap-1 bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-[var(--text-primary)] text-xs font-medium px-2 py-1 rounded-md"
                 >
-                  {opt.avatar && <img src={opt.avatar} alt="" className="w-4 h-4 rounded-full" />}
+                  {opt.avatar && (
+                    <FramedAvatar
+                      src={opt.avatar}
+                      frame={opt.avatarFrame}
+                      name={opt.label}
+                      className="w-4 h-4"
+                    />
+                  )}
                   {opt.label}
                   <button
                     onClick={(e) => removeOption(e, val)}
@@ -126,7 +135,13 @@ export function MultiSearchableSelect({
                   >
                     <div className="flex items-center gap-2.5 overflow-hidden">
                       {option.avatar ? (
-                        <img src={option.avatar} alt="" className="w-6 h-6 rounded-full object-cover border border-[var(--border-color)] shrink-0" />
+                        <FramedAvatar
+                          src={option.avatar}
+                          frame={option.avatarFrame}
+                          name={option.label}
+                          className="w-6 h-6"
+                          imageClassName="border border-[var(--border-color)] shrink-0"
+                        />
                       ) : (
                         <div className="w-6 h-6 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center shrink-0">
                           <span className="text-[10px] font-bold text-[var(--text-muted)]">

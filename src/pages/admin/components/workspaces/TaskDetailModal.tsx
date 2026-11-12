@@ -2,6 +2,7 @@ import { X, Calendar, Clock, User, Tag, Layers, CheckCircle2, AlertCircle, FileT
 import { Badge, Button } from '../../../../components/ui';
 import { useTranslation } from '../../../../i18n/useTranslation';
 import { useTaskDetailQuery } from '../../../../hooks/queries';
+import FramedAvatar from '../../../../components/ui/FramedAvatar';
 
 interface TaskDetailModalProps {
   isOpen: boolean;
@@ -183,8 +184,13 @@ export function TaskDetailModal({ isOpen, workspaceId, taskId, onClose }: TaskDe
                   </label>
                   {task.assignee ? (
                     <div className="flex items-center gap-2.5 p-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-tertiary)]/40">
-                      {task.assignee.avatar ? (
-                        <img src={task.assignee.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                      {task.assignee.avatar || task.assignee.avatarFrame ? (
+                        <FramedAvatar
+                          src={task.assignee.avatar}
+                          frame={task.assignee.avatarFrame}
+                          name={task.assignee.fullName}
+                          className="w-7 h-7"
+                        />
                       ) : (
                         <div className="w-7 h-7 rounded-full bg-sky-500/20 text-sky-500 flex items-center justify-center font-bold text-xs shrink-0">
                           {task.assignee.fullName?.charAt(0) || 'U'}
@@ -208,8 +214,13 @@ export function TaskDetailModal({ isOpen, workspaceId, taskId, onClose }: TaskDe
                   </label>
                   {task.reporter ? (
                     <div className="flex items-center gap-2.5 p-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-tertiary)]/40">
-                      {task.reporter.avatar ? (
-                        <img src={task.reporter.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                      {task.reporter.avatar || task.reporter.avatarFrame ? (
+                        <FramedAvatar
+                          src={task.reporter.avatar}
+                          frame={task.reporter.avatarFrame}
+                          name={task.reporter.fullName}
+                          className="w-7 h-7"
+                        />
                       ) : (
                         <div className="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center font-bold text-xs shrink-0">
                           {task.reporter.fullName?.charAt(0) || 'U'}

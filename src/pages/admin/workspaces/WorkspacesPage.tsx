@@ -6,6 +6,7 @@ import { Button, Badge, Table, TableRow, TableCell, ConfirmModal } from '../../.
 import type { Workspace } from '../../../types';
 import toast from 'react-hot-toast';
 import { useDebounce } from '../../../hooks/useDebounce';
+import FramedAvatar from '../../../components/ui/FramedAvatar';
 import {
   useWorkspacesQuery,
   useDeleteWorkspaceMutation,
@@ -251,8 +252,14 @@ export default function WorkspacesPage() {
                     <TableCell className="max-w-0">
                       {ws.ownerId ? (
                         <div className="flex items-center gap-2.5">
-                          {typeof ws.ownerId === 'object' && ws.ownerId.avatar ? (
-                            <img src={ws.ownerId.avatar} alt="" className="w-6 h-6 rounded-md object-cover border border-[var(--border-color)] shrink-0" />
+                          {typeof ws.ownerId === 'object' && (ws.ownerId.avatar || ws.ownerId.avatarFrame) ? (
+                            <FramedAvatar
+                              src={ws.ownerId.avatar}
+                              frame={ws.ownerId.avatarFrame}
+                              name={ws.ownerId.fullName || ws.ownerId.email}
+                              className="w-6 h-6"
+                              imageClassName="rounded-md border border-[var(--border-color)] shrink-0"
+                            />
                           ) : (
                             <div className="w-6 h-6 rounded-md bg-violet-500/10 border border-violet-500/30 flex items-center justify-center font-mono-code font-bold text-[10px] text-violet-500 shrink-0">
                               {typeof ws.ownerId === 'object'

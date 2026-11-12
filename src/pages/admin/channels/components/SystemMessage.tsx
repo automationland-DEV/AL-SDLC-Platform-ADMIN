@@ -1,5 +1,6 @@
 import { renderMessageContent } from '../utils/messageContentRenderer';
 import { UserPlus, UserMinus } from 'lucide-react';
+import FramedAvatar from '../../../../components/ui/FramedAvatar';
 
 interface SystemMessageProps {
   message: unknown;
@@ -17,7 +18,7 @@ export default function SystemMessage({
   currentUserId,
 }: SystemMessageProps) {
   const msg = message as { _id: string; action?: string; content?: string; createdAt?: string | Date };
-  const snd = sender as { avatar?: string; fullName?: string };
+  const snd = sender as { avatar?: string; avatarFrame?: string | null; fullName?: string };
   const action = msg.action;
 
   if (action === 'added_members' || action === 'removed_members' || action === 'left_channel') {
@@ -51,8 +52,13 @@ export default function SystemMessage({
       <div className="flex-1 h-px bg-[#EAEAEA] dark:bg-white/[0.06]"></div>
       <div className="flex items-start gap-2 max-w-[70%] sm:max-w-[60%]">
         <div className="mt-0.5 sm:mt-0 shrink-0">
-          {snd.avatar ? (
-            <img src={snd.avatar} alt={displayName} className="w-4 h-4 rounded-full object-cover" />
+          {snd.avatar || snd.avatarFrame ? (
+            <FramedAvatar
+              src={snd.avatar}
+              frame={snd.avatarFrame}
+              name={displayName}
+              className="w-4 h-4"
+            />
           ) : (
             <div className="w-4 h-4 rounded-full bg-[#2563EB] flex items-center justify-center text-[9px] text-white font-bold">
               {initialLetter}

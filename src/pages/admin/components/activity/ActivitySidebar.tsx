@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { userService } from '../../../../services';
 import { useTranslation } from '../../../../i18n/useTranslation';
 import type { User } from '../../../../types';
+import FramedAvatar from '../../../../components/ui/FramedAvatar';
 
 interface ActivitySidebarProps {
   selectedUserId: string;
@@ -112,7 +113,13 @@ export function ActivitySidebar({ selectedUserId, onUserSelect }: ActivitySideba
                   }`}
                 >
                   {u.avatar ? (
-                    <img src={u.avatar} alt={displayName} className="w-7 h-7 rounded-md object-cover border border-[var(--border-color)] shrink-0" />
+                    <FramedAvatar
+                      src={u.avatar}
+                      frame={u.avatarFrame}
+                      name={displayName}
+                      className="w-7 h-7"
+                      imageClassName="rounded-md border border-[var(--border-color)] shrink-0"
+                    />
                   ) : (
                     <div className="w-7 h-7 rounded-md bg-sky-500/10 border border-sky-500/30 flex items-center justify-center font-mono-code font-bold text-[10px] text-sky-500 shrink-0">
                       {displayName.charAt(0).toUpperCase()}
