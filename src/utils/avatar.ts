@@ -28,3 +28,30 @@ export function resolveAvatarUrl(url?: string | null): string | undefined {
 
   return `${baseUrl}${path}`;
 }
+
+/**
+ * Resolve an animated avatar frame GIF URL.
+ */
+export function resolveAvatarFrameUrl(frame?: string | null): string | undefined {
+  if (!frame) return undefined;
+  const trimmed = frame.trim();
+  if (!trimmed) return undefined;
+
+  if (
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('blob:')
+  ) {
+    return trimmed;
+  }
+
+  const cleanId = trimmed.replace(/\.gif$/i, '');
+  const baseUrl = API_BASE_URL.replace(/\/$/, '');
+  if (/^\d+$/.test(cleanId)) {
+    return `${baseUrl}/avatar-frames/media/${cleanId}`;
+  }
+
+  const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return `${baseUrl}${path}`;
+}

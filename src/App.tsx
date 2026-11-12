@@ -33,6 +33,7 @@ const DailyReportsPage = lazy(() => import('./pages/admin/reports/DailyReportsPa
 const WorkSchedulesPage = lazy(() => import('./pages/admin/schedules/WorkSchedulesPage'));
 const StoragePage = lazy(() => import('./pages/admin/storage/StoragePage'));
 const StickersPage = lazy(() => import('./pages/admin/stickers/StickersPage'));
+const AvatarFramesPage = lazy(() => import('./pages/admin/avatar-frames/AvatarFramesPage'));
 
 function PageLoader() {
   return (
@@ -100,6 +101,7 @@ function App() {
             <Route path="mail" element={<MailPage />} />
             <Route path="storage" element={<StoragePage />} />
             <Route path="stickers" element={<StickersPage />} />
+            <Route path="avatar-frames" element={<AvatarFramesPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
