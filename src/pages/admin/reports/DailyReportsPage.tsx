@@ -9,8 +9,10 @@ import {
   MessageSquare,
   RefreshCw,
   Search,
+  Trash2,
   Users,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import {
   Badge,
   Button,
@@ -21,6 +23,7 @@ import {
 import { useDailyReportWorkspacesQuery, useDailyReportsQuery } from '../../../hooks/queries';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useTranslation } from '../../../i18n/useTranslation';
+import { dailyReportService } from '../../../services/dailyReportService';
 import type {
   AdminDailyReport,
   AdminReporterGroup,
@@ -44,7 +47,15 @@ const formatDateTime = (value?: string | null) => {
 };
 
 /** Nội dung báo cáo được lưu dạng HTML, hiển thị lại ở dạng văn bản thuần. */
-const ReportContent = ({ report }: { report: AdminDailyReport }) => {
+const ReportContent = ({
+  report,
+  onRemoveReply,
+  removingReplyId,
+}: {
+  report: AdminDailyReport;
+  onRemoveReply?: (replyId: string) => void;
+  removingReplyId?: string | null;
+}) => {
   const hasContent = Boolean(report.plainText || report.content);
 
   return (
@@ -116,24 +127,44 @@ const ReportContent = ({ report }: { report: AdminDailyReport }) => {
             Phản hồi ({report.replies.length})
           </p>
           <div className="space-y-2">
-            {report.replies.map((reply) => (
-              <div
-                key={reply.id}
-                className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-2"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-[var(--text-primary)]">
-                    {reply.authorName || 'Thành viên'}
-                  </span>
-                  <span className="text-[10px] text-[var(--text-muted)]">
-                    {formatDateTime(reply.createdAt)}
-                  </span>
+            {report.replies.map((reply) => {
+              const isRemoving = removingReplyId === reply.id;
+
+              return (
+                <div
+                  key={reply.id}
+                  className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-[var(--text-primary)]">
+                      {reply.authorName || 'Thành viên'}
+                    </span>
+                    <span className="text-[10px] text-[var(--text-muted)]">
+                      {formatDateTime(reply.createdAt)}
+                    </span>
+                    {onRemoveReply ? (
+                      <button
+                        type="button"
+                        onClick={() => onRemoveReply(reply.id)}
+                        disabled={isRemoving}
+                        title="Xoá phản hồi"
+                        className="ml-auto inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-red-600 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:text-red-400"
+                      >
+                        {isRemoving ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3 w-3" />
+                        )}
+                        Xoá
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap text-xs text-[var(--text-secondary)]">
+                    {reply.content}
+                  </p>
                 </div>
-                <p className="mt-1 whitespace-pre-wrap text-xs text-[var(--text-secondary)]">
-                  {reply.content}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -142,7 +173,15 @@ const ReportContent = ({ report }: { report: AdminDailyReport }) => {
 };
 
 /** Nhóm theo người báo cáo bên trong một workspace. */
-const ReporterRow = ({ group }: { group: AdminReporterGroup }) => {
+const ReporterRow = ({
+  group,
+  onRemoveReply,
+  removingReplyId,
+}: {
+  group: AdminReporterGroup;
+  onRemoveReply?: (reportId: string, replyId: string) => void;
+  removingReplyId?: string | null;
+}) => {
   const [expanded, setExpanded] = useState(false);
   const lateCount = group.reports.filter((report) => report.isLate).length;
   const editedCount = group.reports.filter((report) => report.isEdited).length;
@@ -212,7 +251,15 @@ const ReporterRow = ({ group }: { group: AdminReporterGroup }) => {
                   <Badge variant="info">Đã chỉnh sửa</Badge>
                 ) : null}
               </div>
-              <ReportContent report={report} />
+              <ReportContent
+                report={report}
+                removingReplyId={removingReplyId}
+                onRemoveReply={
+                  onRemoveReply
+                    ? (replyId) => onRemoveReply(report.id, replyId)
+                    : undefined
+                }
+              />
             </div>
           ))}
         </div>
@@ -222,7 +269,15 @@ const ReporterRow = ({ group }: { group: AdminReporterGroup }) => {
 };
 
 /** Nhóm theo workspace — cấp cao nhất của dữ liệu báo cáo trong admin. */
-const WorkspaceRow = ({ group }: { group: AdminWorkspaceReportGroup }) => {
+const WorkspaceRow = ({
+  group,
+  onRemoveReply,
+  removingReplyId,
+}: {
+  group: AdminWorkspaceReportGroup;
+  onRemoveReply?: (reportId: string, replyId: string) => void;
+  removingReplyId?: string | null;
+}) => {
   const [expanded, setExpanded] = useState(false);
   const lateReports = group.reporters.reduce(
     (sum, reporter) => sum + reporter.reports.filter((report) => report.isLate).length,
@@ -278,7 +333,12 @@ const WorkspaceRow = ({ group }: { group: AdminWorkspaceReportGroup }) => {
             </p>
           ) : (
             group.reporters.map((reporter) => (
-              <ReporterRow key={reporter.reporterId} group={reporter} />
+              <ReporterRow
+                key={reporter.reporterId}
+                group={reporter}
+                onRemoveReply={onRemoveReply}
+                removingReplyId={removingReplyId}
+              />
             ))
           )}
         </div>
@@ -300,6 +360,8 @@ export default function DailyReportsPage() {
   const [workspaceFilter, setWorkspaceFilter] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  /** Id của phản hồi đang được xoá, để hiển thị trạng thái loading. */
+  const [removingReplyId, setRemovingReplyId] = useState<string | null>(null);
 
   const { data: workspaceOptions } = useDailyReportWorkspacesQuery();
 
@@ -345,6 +407,27 @@ export default function DailyReportsPage() {
     ],
     [workspaceOptions],
   );
+
+  /** Super admin xoá một phản hồi của báo cáo. */
+  const handleRemoveReply = async (reportId: string, replyId: string) => {
+    if (!window.confirm('Xoá phản hồi này? Thao tác không thể hoàn tác lại.')) {
+      return;
+    }
+
+    setRemovingReplyId(replyId);
+    try {
+      await dailyReportService.removeReply(reportId, replyId);
+      toast.success('Đã xoá phản hồi');
+      await refetch();
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? 'Không xoá được phản hồi';
+      toast.error(message);
+    } finally {
+      setRemovingReplyId(null);
+    }
+  };
 
   return (
     <div className="h-full min-h-0 flex flex-col font-sans">
@@ -431,7 +514,14 @@ export default function DailyReportsPage() {
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto">
             {workspaces.map((group) => (
-              <WorkspaceRow key={group.workspaceId} group={group} />
+              <WorkspaceRow
+                key={group.workspaceId}
+                group={group}
+                onRemoveReply={(reportId, replyId) =>
+                  void handleRemoveReply(reportId, replyId)
+                }
+                removingReplyId={removingReplyId}
+              />
             ))}
           </div>
         )}

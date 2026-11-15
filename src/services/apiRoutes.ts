@@ -83,6 +83,8 @@ export const API_ROUTES = {
     BASE: '/admin/daily-reports',
     WORKSPACES: '/admin/daily-reports/workspaces',
     DETAIL: (id: string) => `/admin/daily-reports/${id}`,
+    REPLY: (reportId: string, replyId: string) =>
+      `/admin/daily-reports/${reportId}/replies/${replyId}`,
   },
 };
 

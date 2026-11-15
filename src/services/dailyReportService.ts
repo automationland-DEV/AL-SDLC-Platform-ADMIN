@@ -40,4 +40,9 @@ export const dailyReportService = {
     const response = await api.get<unknown>(API_ROUTES.DAILY_REPORTS.DETAIL(id));
     return unwrap<AdminDailyReport | null>(response.data) ?? null;
   },
+
+  /** Super admin xoá một phản hồi của báo cáo. */
+  removeReply: async (reportId: string, replyId: string): Promise<void> => {
+    await api.delete(API_ROUTES.DAILY_REPORTS.REPLY(reportId, replyId));
+  },
 };
